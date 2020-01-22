@@ -4,7 +4,7 @@ import logging
 import numpy as np
 import pandas as pd
 
-from pfsspec.parallel import SmartParallel
+from pfsspec.parallel import SmartParallel, prll_map
 from pfsspec.data.dataset import Dataset
 import pfsspec.util as util
 
@@ -74,6 +74,9 @@ class DatasetBuilder():
 
     def process_item(self, i):
         self.init_random_state()
+
+    def do_nothing(self, i):
+        print(i)
 
     def build(self):
         self.dataset = self.create_dataset()

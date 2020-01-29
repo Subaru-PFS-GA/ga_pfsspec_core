@@ -1,5 +1,6 @@
 import logging
 import numpy as np
+import scipy.stats
 import pandas as pd
 
 from pfsspec.pfsobject import PfsObject
@@ -147,6 +148,22 @@ class Dataset(PfsObject):
         ds.mask = np.concatenate([self.mask, b.mask], axis=0) if self.mask is not None and b.mask is not None else None
 
         return ds
+
+    def add_predictions(self, labels, prediction):
+        i = 0
+        for l in labels:
+            if prediction.shape[2] == 1:
+                self.params[l + '_pred'] = prediction[:,i,0]
+            else:
+                self.params[l + '_pred'] = np.mean(prediction[:,i,:], axis=-1)
+                self.params[l + '_std'] = np.std(prediction[:,i,:], axis=-1)
+                self.params[l + '_skew'] = scipy.stats.skew(prediction[:,i,:], axis=-1)
+                self.params[l + '_median'] = np.median(prediction[:,i,:], axis=-1)
+
+                # TODO: how to get the mode?
+                # TODO: add quantiles?
+
+            i += 1
 
     def run_pca(self, truncate=None):
         if self.wave.ndim != 1:

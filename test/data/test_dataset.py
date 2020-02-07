@@ -23,3 +23,26 @@ class TestDataset(TestBase):
         a = a.merge(b)
 
         self.assertEqual(ds.flux.shape[0], a.flux.shape[0])
+
+    def test_filter(self):
+        pass
+
+        # ts_gen.set_filter(None)
+        # print(ts_gen.get_input_count(), ts_gen.batch_size, ts_gen.steps_per_epoch())
+
+        # ts_gen.set_filter(ts_gen.dataset.params['interp_param'] == 'Fe_H')
+        # print(ts_gen.get_input_count(), ts_gen.batch_size, ts_gen.steps_per_epoch())
+
+        # ts_gen.set_filter(None)
+        # ts_gen.shuffle = False
+        # ts_gen.reshuffle()
+        # idx = ts_gen.next_batch_index(1)
+        # print(idx)
+        # print(ts_gen.next_batch(1)[1])
+
+        # ts_gen.set_filter(ts_gen.dataset.params['interp_param'] == 'Fe_H')
+        # ts_gen.shuffle = False
+        # ts_gen.reshuffle()
+        # idx = ts_gen.next_batch_index(1)
+        # print(idx)
+        # print(ts_gen.next_batch(1)[1])

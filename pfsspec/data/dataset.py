@@ -30,15 +30,16 @@ class Dataset(PfsObject):
             self.PC = None
 
     def get_spectrum_count(self):
-        return self.params.shape[0]
+        if filter is not None:
+            return self.params[filter].shape[0]
+        else:
+            return self.params.shape[0]
 
     def create_spectrum(self):
         return Spectrum()
 
     def get_spectrum(self, i):
         spec = self.create_spectrum()
-
-        # TODO: update this to handle variable wavelength
 
         if self.wave.ndim == 1:
             spec.wave = self.wave

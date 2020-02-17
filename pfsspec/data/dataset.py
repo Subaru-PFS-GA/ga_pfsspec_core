@@ -122,8 +122,7 @@ class Dataset(PfsObject):
     def filter(self, f):
         ds = Dataset()
 
-        ds.params = self.params.ix[f]
-        #ds.params = self.params.iloc[a_range]
+        ds.params = self.params.iloc[f]
         self.reset_index(ds.params)
         if self.wave.ndim == 1:
             ds.wave = self.wave

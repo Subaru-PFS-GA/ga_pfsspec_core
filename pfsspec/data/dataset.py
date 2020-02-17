@@ -120,19 +120,20 @@ class Dataset(PfsObject):
         return split_index, a, b
 
     def filter(self, f):
-        ds = Dataset()
-
-        ds.params = self.params.iloc[f]
-        self.reset_index(ds.params)
-        if self.wave.ndim == 1:
-            ds.wave = self.wave
+        if f is None:
+            return self
         else:
-            ds.wave = self.wave[f]
-        ds.flux = self.flux[f]
-        ds.error = self.error[f] if self.error is not None else None
-        ds.mask = self.mask[f] if self.mask is not None else None
-
-        return ds
+            ds = Dataset()
+            ds.params = self.params.iloc[f]
+            self.reset_index(ds.params)
+            if self.wave.ndim == 1:
+                ds.wave = self.wave
+            else:
+                ds.wave = self.wave[f]
+            ds.flux = self.flux[f]
+            ds.error = self.error[f] if self.error is not None else None
+            ds.mask = self.mask[f] if self.mask is not None else None
+            return ds
 
     def merge(self, b):
         ds = Dataset()

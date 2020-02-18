@@ -23,11 +23,8 @@ class SurveySpectrumReader(SpectrumReader):
         survey.params = params
         survey.spectra = []
 
-        # TODO: rewrite to SmartParallel
-        raise NotImplementedError()
-        #rows = [rows for index, rows in params.iterrows()]
-        #q, rng = prll_map(None, self.load_spectrum_wrapper, rows, verbose=True)
-        ## TODO: test
-        #survey.spectra = [q.get()[1] for x in rng]
+        rows = [rows for index, rows in params.iterrows()]
+        with SmartParallel(verbose=True, parallel=True) as p:
+            survey.spectra = [r for r in p.map(self.load_spectrum_wrapper, rows)]
 
         return survey

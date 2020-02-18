@@ -1,6 +1,5 @@
 import os
 import sys
-import aiofiles
 import numpy as np
 from astropy.io import fits
 from SciServer import Authentication, CasJobs

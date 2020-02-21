@@ -78,8 +78,8 @@ class Dataset(PfsObject):
         self.save_item('error', self.error)
         self.save_item('mask', self.error)
 
-    def load(self, filename, format='pickle'):
-        super(Dataset, self).load(filename, format)
+    def load(self, filename, format='pickle', s=None):
+        super(Dataset, self).load(filename, format=format, s=s)
 
         logging.info("Loaded dataset with shapes:")
         logging.info("  params:  {}".format(self.params.shape))
@@ -90,13 +90,18 @@ class Dataset(PfsObject):
         logging.info("  columns: {}".format(self.params.columns))
 
     def load_items(self, s=None):
-        self.params = self.load_item('params', pd.DataFrame)
-        self.wave = self.load_item('wave', np.ndarray)
-        self.flux = self.load_item('flux', np.ndarray)
-        self.error = self.load_item('error', np.ndarray)
+        self.params = self.load_item('params', pd.DataFrame, s=s)
+        if len(self.get_item_shape('wave')) == 1:
+            # Same grid
+            self.wave = self.load_item('wave', np.ndarray)
+        else:
+            # Varying wavelengths, for each spectrum
+            self.wave = self.load_item('wave', np.ndarray, s=s)
+        self.flux = self.load_item('flux', np.ndarray, s=s)
+        self.error = self.load_item('error', np.ndarray, s=s)
         if self.error is not None and np.any(np.isnan(self.error)):
             self.error = None
-        self.mask = self.load_item('mask', np.ndarray)
+        self.mask = self.load_item('mask', np.ndarray, s=s)
 
     def reset_index(self, df):
         df.index = pd.RangeIndex(len(df.index))

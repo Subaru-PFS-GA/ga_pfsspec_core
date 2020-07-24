@@ -9,8 +9,8 @@ from pfsspec.surveys.surveyspectrumreader import SurveySpectrumReader
 from pfsspec.surveys.sdssspectrum import SdssSpectrum
 
 class SdssSpectrumReader(SurveySpectrumReader):
-    def __init__(self):
-        super(SdssSpectrumReader, self).__init__()
+    def __init__(self, verbose=True, parallel=True):
+        super(SdssSpectrumReader, self).__init__(verbose=verbose, parallel=parallel)
         self.path = None
 
     def read(self, file):
@@ -29,6 +29,7 @@ class SdssSpectrumReader(SurveySpectrumReader):
         spec.mask = np.int32(file[0].data[3, :])
         return spec
 
+    @staticmethod
     def get_filename(mjd, plate, fiber, das='das2', ver='1d_26'):
         # .../das2/spectro/1d_26/0288/1d/spSpec-52000-0288-005.fit
         return '{:s}/spectro/{:s}/{:04d}/1d/spSpec-{:5d}-{:04d}-{:03d}.fit'.format(das, ver, int(plate), int(mjd), int(plate), int(fiber))
@@ -80,9 +81,11 @@ class SdssSpectrumReader(SurveySpectrumReader):
 
         return self.execute_query(sql)
 
-    def load_spectrum(self, row):
+    def load_spectrum(self, index, row):
         filename = SdssSpectrumReader.get_filename(row['mjd'], row['plate'], row['fiberID'])
         filename = os.path.join(self.path, filename)
         with fits.open(filename, memmap=False) as hdus:
             spec = self.read(hdus)
+            spec.index = index
+            spec.id = row['id']
             return spec

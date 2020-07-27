@@ -22,3 +22,9 @@ class Survey():
         logging.info("  spectra: {}".format(len(self.spectra)))
         logging.info("  params:  {}".format(self.params.shape))
         logging.info("  columns: {}".format(self.params.columns))
+
+    def add_args(self, parser):
+        pass
+
+    def init_from_args(self, args):
+        pass

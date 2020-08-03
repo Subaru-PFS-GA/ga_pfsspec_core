@@ -69,7 +69,8 @@ class SdssSpectrumReader(SurveySpectrumReader):
             p.psfMag_g AS mag_g, p.psfMagErr_g AS mag_g_err,
             p.psfMag_r AS mag_r, p.psfMagErr_r AS mag_r_err,
             p.psfMag_i AS mag_i, p.psfMagErr_i AS mag_i_err,
-            p.psfMag_z AS mag_z, p.psfMagErr_z AS mag_z_err
+            p.psfMag_z AS mag_z, p.psfMagErr_z AS mag_z_err,
+            p.extinction_r AS ext
         FROM SpecObj s
             INNER JOIN sppParams spp ON spp.specobjID = s.specObjID
             INNER JOIN PhotoObj p ON p.objID = s.bestObjID

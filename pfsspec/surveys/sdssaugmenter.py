@@ -3,11 +3,16 @@ import numpy as np
 from pfsspec.data.datasetaugmenter import DatasetAugmenter
 
 class SdssAugmenter(DatasetAugmenter):
+    """Implements data augmentation to train on observed SDSS spectra."""
+
     def __init__(self):
         super(SdssAugmenter, self).__init__()
 
     @classmethod
     def from_dataset(cls, dataset, labels, coeffs, weight=None, batch_size=1, shuffle=True, seed=0):
+        # TODO: verify order of parameters
+        raise NotImplementedError()
+        
         input_shape = dataset.flux.shape
         output_shape = (len(labels),)
         d = super(SdssAugmenter, cls).from_dataset(dataset, labels, coeffs, weight,

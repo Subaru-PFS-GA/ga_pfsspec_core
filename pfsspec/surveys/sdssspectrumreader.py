@@ -6,9 +6,11 @@ from SciServer import Authentication, CasJobs
 
 from pfsspec.surveys.survey import Survey
 from pfsspec.surveys.surveyspectrumreader import SurveySpectrumReader
-from pfsspec.surveys.sdssspectrum import SdssSpectrum
+from pfsspec.surveys.sdssstellarspectrum import SdssStellarSpectrum
 
 class SdssSpectrumReader(SurveySpectrumReader):
+    # TODO: create separate class for galaxies and factor out common functions
+
     def __init__(self, verbose=True, parallel=True):
         super(SdssSpectrumReader, self).__init__(verbose=verbose, parallel=parallel)
         self.path = None
@@ -21,7 +23,7 @@ class SdssSpectrumReader(SurveySpectrumReader):
         numbins = file[0].data.shape[1]
         logwave = loglambda0 + loglambda1 * np.arange(0, numbins)
 
-        spec = SdssSpectrum()
+        spec = SdssStellarSpectrum()
         spec.wave = wave = 10 ** logwave
         spec.flux = file[0].data[0, :]
         spec.flux_err = file[0].data[2, :]
@@ -58,7 +60,7 @@ class SdssSpectrumReader(SurveySpectrumReader):
         sql = \
         """
         SELECT {} 
-            s.specObjID AS id, s.mjd, s.plate, s.fiberID, s.ra AS ra, s.dec AS dec, 
+            s.specObjID AS id, s.mjd, s.plate, s.fiberID AS fiber, s.ra AS ra, s.dec AS dec, 
             s.z AS redshift, s.zErr AS redshift_err, s.sn_1 AS snr,
             spp.feha AS Fe_H, spp.fehaerr AS Fe_H_err, 
             spp.teffa AS T_eff, spp.teffaerr AS T_eff_err,
@@ -83,10 +85,17 @@ class SdssSpectrumReader(SurveySpectrumReader):
         return self.execute_query(sql)
 
     def load_spectrum(self, index, row):
-        filename = SdssSpectrumReader.get_filename(row['mjd'], row['plate'], row['fiberID'])
+        filename = SdssSpectrumReader.get_filename(row['mjd'], row['plate'], row['fiber'])
         filename = os.path.join(self.path, filename)
         with fits.open(filename, memmap=False) as hdus:
             spec = self.read(hdus)
             spec.index = index
             spec.id = row['id']
+            spec.mjd = row['mjd']
+            spec.plate = row['plate']
+            spec.fiber = row['fiber']
+            spec.T_eff = row['T_eff']
+            spec.Fe_H = row['Fe_H']
+            spec.log_g = row['log_g']
+            spec.a_Fe = row['a_Fe']
             return spec

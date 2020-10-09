@@ -16,13 +16,18 @@ class SurveyDatasetBuilder(DatasetBuilder):
         return len(self.survey.spectra)
 
     def get_wave_count(self):
-        return self.pipeline.rebin.shape[0]
+        return self.pipeline.get_wave_count()
 
     def process_item(self, i):
+        params = self.get_params(i)
         spec = self.survey.spectra[i]
-        self.pipeline.run(spec)
+        spec.set_params(params)
+        self.pipeline.run(spec, **params)
         return spec
 
+    def get_params(self, i):
+        return dict(self.params.iloc[i])
+
     def build(self):
-        super(SdssDatasetBuilder, self).build()
-        self.dataset.wave[:] = self.pipeline.rebin
+        super(SurveyDatasetBuilder, self).build()
+        self.dataset.wave[:] = self.pipeline.get_wave()

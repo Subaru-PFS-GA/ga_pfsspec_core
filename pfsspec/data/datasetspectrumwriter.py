@@ -24,7 +24,7 @@ class DatasetSpectrumWriter(SpectrumWriter):
         self.write(file, spec)
 
     def write_all(self):
-        rng = range(self.dataset.get_spectrum_count())
+        rng = range(self.dataset.get_count())
 
         k = 0
         with SmartParallel(verbose=True, parallel=True) as p:

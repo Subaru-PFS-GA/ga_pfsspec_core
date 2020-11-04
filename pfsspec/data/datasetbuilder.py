@@ -50,7 +50,8 @@ class DatasetBuilder():
         raise NotImplementedError()
 
     def create_dataset(self, init_storage=True):
-        dataset = Dataset()
+        # TODO: implement direct hdf5 allocation here
+        dataset = Dataset(preload_arrays=True)
         if init_storage:
             constant_wave = self.pipeline.is_constant_wave()
             dataset.init_storage(self.get_wave_count(), self.get_spectrum_count(), constant_wave=constant_wave)
@@ -81,7 +82,7 @@ class DatasetBuilder():
     def build(self):
         self.dataset = self.create_dataset()
 
-        logging.info('Building dataset of size {}'.format(self.dataset.flux.shape))
+        logging.info('Building dataset of size {}'.format(self.dataset.shape))
 
         rng = range(self.get_spectrum_count())
         with SmartParallel(initializer=self.init_process, verbose=True, parallel=self.parallel) as p:
@@ -89,8 +90,9 @@ class DatasetBuilder():
 
         # Sort spectra by id
         # Here we assume that params is also sorted on the id column (not the default index!)
-        if self.match_params is not None and spectra[0].id is not None:
-            spectra.sort(key=lambda s: s.id)
+        # if self.match_params is not None and spectra[0].id is not None:
+        # TODO: verify this with imported data where ids can have a different sequence
+        spectra.sort(key=lambda s: s.id)
 
         for i in range(len(spectra)):
             if self.dataset.wave.ndim != 1:
@@ -101,8 +103,6 @@ class DatasetBuilder():
             self.dataset.error[i, :] = spectra[i].flux_err
 
         self.copy_params_from_spectra(spectra)
-
-        return spectra
 
     def copy_params_from_spectra(self, spectra):
         columns = spectra[0].get_param_names()

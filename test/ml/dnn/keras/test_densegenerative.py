@@ -41,8 +41,8 @@ class TestDenseGenerative(TestBase):
         coeffs = [1000, 1, 1]
 
         generator = KuruczGenerativeAugmenter(ts, labels, coeffs, batch_size=200, shuffle=True)
-        training_generator = generator.copy()
-        validation_generator = generator.copy()
+        training_generator = type(generator)(generator)
+        validation_generator = type(generator)(generator)
 
         model = DenseGenerative(levels=1, units=32)
         model.loss = 'max_absolute_error'

@@ -128,6 +128,24 @@ class Dataset(PfsObject):
 
             # Everything else is written to the disk lazyly
 
+    #endregion
+    #region Params access
+
+    def get_params(self, labels, idx=None, chunk_size=None, chunk_id=None):
+        if chunk_id is None:
+            return self.params[labels].iloc[idx]
+        else:
+            return self.params[labels].iloc[chunk_id * chunk_size + idx]
+
+    def set_params(self, labels, values, idx=None, chunk_size=None, chunk_id=None):
+        for i, label in enumerate(labels):
+            if label not in self.params.columns:
+                self.params.loc[:, label] = np.zeros((), dtype=values.dtype)
+            
+            if chunk_id is None:
+                self.params[label].iloc[idx] = values[..., i]
+            else:
+                self.params[label].iloc[chunk_id * chunk_size + idx] = values[..., i]
 
     #endregion
     #region Array access
@@ -140,8 +158,10 @@ class Dataset(PfsObject):
             to = min((chunk_id + 1) * chunk_size, self.shape[0])
             return np.s_[fr:to]
 
-    def check_cache(self, data, name, chunk_size, chunk_id):
+    def check_cache(self, name, chunk_size, chunk_id):
         # Flush cache if necessary
+        data = getattr(self, name)
+
         if self.cache_chunk_id != chunk_id or self.current_chunk_size != chunk_size:
             data = None
 
@@ -158,67 +178,79 @@ class Dataset(PfsObject):
         if data is None:
             s = self.get_chunk_slice(chunk_size, chunk_id)
             data = self.load_item(name, np.ndarray, s=s)
-        return data
+        
+        setattr(self, name, data)
+
+    def get_item(self, name, idx=None, chunk_size=None, chunk_id=None):
+        if not self.preload_arrays:
+            if chunk_size is None:
+                # No chunking, load directly from storage
+                # Assume idx is absolute within file and not relative to chunk
+                data = self.load_item(name, np.ndarray, s=idx)
+                return data
+            else:
+                # Chunked lazy loading, use cache
+                # Assume idx is relative to chunk
+                self.check_cache(name, chunk_size, chunk_id)
+        # Return slice from cache
+        return getattr(self, name)[idx if idx is not None else ()]
+
+    def set_item(self, name, data, idx=None, chunk_size=None, chunk_id=None):
+        if self.preload_arrays:
+            getattr(self, name)[idx if idx is not None else ()] = data
+        elif chunk_size is not None:
+            # Load necessary chunk, update and save
+            # Assume index is relative to chunk
+            s = self.get_chunk_slice(chunk_size, chunk_id)
+            v = self.load_item(name, np.ndarray, s=s)
+            v[idx] = data
+            self.save_item(name, v, s=s)
+        else:
+            # No chunking, write directly to storage
+            # Assume idx is absolute to file
+            self.save_item(name, data, s=idx)
+
+    def has_item(self, name):
+        if self.preload_arrays:
+            return getattr(self, name) is not None
+        else:
+            return super(Dataset, self).has_item(name)
 
     def get_wave(self, idx=None, chunk_size=None, chunk_id=None):
         if self.constant_wave:
             return self.wave
-        if not self.preload_arrays:
-            self.wave = self.check_cache(self.wave, 'wave', chunk_size, chunk_id)
-        return self.wave[idx if idx is not None else ()]
+        else:
+            return self.get_item('wave', idx, chunk_size, chunk_id)
 
     def set_wave(self, wave, idx=None, chunk_size=None, chunk_id=None):
         if self.constant_wave:
             self.wave = wave
-        elif self.preload_arrays:
-            self.wave[idx if idx is not None else ()] = wave
         else:
-            s = self.get_chunk_slice(chunk_size, chunk_id)
-            v = self.load_item('wave', np.ndarray, s=s)
-            v[idx] = wave
-            self.save_item('wave', v, s=s)
+            self.set_item('wave', wave, idx, chunk_size, chunk_id)
 
     def get_flux(self, idx=None, chunk_size=None, chunk_id=None):
-        if not self.preload_arrays:
-            self.flux = self.check_cache(self.flux, 'flux', chunk_size, chunk_id)
-        return self.flux[idx if idx is not None else ()]
+        return self.get_item('flux', idx, chunk_size, chunk_id)
 
-    def set_flux(self, flux, chunk_size=None, chunk_id=None):
-        if self.preload_arrays:
-            self.flux[idx if idx is not None else ()] = flux
-        else:
-            s = self.get_chunk_slice(chunk_size, chunk_id)
-            v = self.load_item('flux', np.ndarray, s=s)
-            v[idx] = flux
-            self.save_item('flux', v, s=s)
+    def set_flux(self, flux, idx=None, chunk_size=None, chunk_id=None):
+        self.set_item('flux', flux, idx, chunk_size, chunk_id)
 
     def has_error(self):
-        if self.preload_arrays:
-            return self.error is not None
-        else:
-            return self.has_item('error')
+        return self.has_item('error')
 
     def get_error(self, idx=None, chunk_size=None, chunk_id=None):
-        if not self.preload_arrays:
-            self.error = self.check_cache(self.error, 'error', chunk_size, chunk_id)
-        return self.error[idx if idx is not None else ()]
+        return self.get_item('error', idx, chunk_size, chunk_id)
 
-    def set_error(self, error, s=None):
-        raise NotImplementedError()
+    def set_error(self, error, idx=None, chunk_size=None, chunk_id=None):
+        self.set_item('error', error, idx, chunk_size, chunk_id)
 
     def has_mask(self):
-        if self.preload_arrays:
-            return self.mask is not None
-        else:
-            return self.has_item('mask')
+        return self.has_item('mask')
 
     def get_mask(self, idx=None, chunk_size=None, chunk_id=None):
-        if not self.preload_arrays:
-            self.mask = self.check_cache(self.mask, 'mask', chunk_size, chunk_id)
-        return self.mask[idx if idx is not None else ()]
+        return self.get_item('mask', idx, chunk_size, chunk_id)
 
-    def set_mask(self, mask, s=None):
-        raise NotImplementedError()
+    def set_mask(self, mask, idx=None, chunk_size=None, chunk_id=None):
+        self.set_item('mask', mask, idx, chunk_size, chunk_id)
 
     #endregion
 
@@ -232,14 +264,13 @@ class Dataset(PfsObject):
     def get_spectrum(self, i):
         spec = self.create_spectrum()
 
-        s = np.s_[i]
         if self.constant_wave:
             spec.wave = self.get_wave()
         else:
-            spec.wave = self.get_wave(s=s)
-        spec.flux = self.get_flux(s=s)
-        spec.flux_err = self.get_error(s=s)
-        spec.mask = self.get_mask(s=s)
+            spec.wave = self.get_wave(idx=i)
+        spec.flux = self.get_flux(idx=i)
+        spec.flux_err = self.get_error(idx=i)
+        spec.mask = self.get_mask(idx=i)
 
         params = self.params.loc[i].to_dict()
         for p in params:

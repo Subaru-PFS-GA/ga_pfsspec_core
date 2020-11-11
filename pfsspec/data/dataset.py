@@ -204,6 +204,9 @@ class Dataset(PfsObject):
             s = self.get_chunk_slice(chunk_size, chunk_id)
             v = self.load_item(name, np.ndarray, s=s)
             v[idx] = data
+
+            # TODO: This is now a write-through cache, consider write-back
+            #       mode (but might not work with multiple threads!)
             self.save_item(name, v, s=s)
         else:
             # No chunking, write directly to storage
@@ -251,6 +254,12 @@ class Dataset(PfsObject):
 
     def set_mask(self, mask, idx=None, chunk_size=None, chunk_id=None):
         self.set_item('mask', mask, idx, chunk_size, chunk_id)
+
+    def set_params(self, row):
+        if self.params is None:
+            self.params = pd.DataFrame(row, index=[row['id']])
+        else:
+            self.params.loc[row['id']] = row
 
     #endregion
 

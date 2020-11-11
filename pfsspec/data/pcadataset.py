@@ -7,8 +7,8 @@ from pfsspec.data.dataset import Dataset
 from pfsspec.obsmod.spectrum import Spectrum
 
 class PCADataset(Dataset):
-    def __init__(self, orig=None):
-        super(PCADataset, self).__init__(orig=orig)
+    def __init__(self, orig=None, preload_arrays=False):
+        super(PCADataset, self).__init__(orig=orig, preload_arrays=preload_arrays)
 
         if isinstance(orig, PCADataset):
             self.U = orig.U

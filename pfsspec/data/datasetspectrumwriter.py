@@ -5,6 +5,10 @@ from pfsspec.parallel import SmartParallel
 from pfsspec.data.spectrumwriter import SpectrumWriter
 
 class DatasetSpectrumWriter(SpectrumWriter):
+    # TODO: consider making DatasetSpectrumWriter a new branch of classes
+    #       instead of inheriting from spectrum writer and make spectrumwriter
+    #       a property instead so different types can be mixed and matched, just
+    #       like with spectrumreader
     def __init__(self, dataset=None):
         super(DatasetSpectrumWriter, self).__init__()
 
@@ -25,6 +29,9 @@ class DatasetSpectrumWriter(SpectrumWriter):
 
     def write_all(self):
         rng = range(self.dataset.get_count())
+
+        # TODO: set number of threads here somewhere.
+        raise NotImplementedError()
 
         k = 0
         with SmartParallel(verbose=True, parallel=True) as p:

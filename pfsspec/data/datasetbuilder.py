@@ -14,6 +14,7 @@ class DatasetBuilder():
             self.random_seed = random_seed or orig.random_seed
             self.random_state = None
             self.parallel = orig.parallel
+            self.threads = orig.threads
             self.match_params = orig.params
             self.pipeline = orig.pipeline
             self.dataset = orig.dataset if dataset is None else dataset
@@ -21,6 +22,7 @@ class DatasetBuilder():
             self.random_seed = random_seed
             self.random_state = None
             self.parallel = True
+            self.threads = None
             self.match_params = None
             self.pipeline = None
             self.dataset = None
@@ -42,6 +44,7 @@ class DatasetBuilder():
         self.parallel = ('debug' not in args or not args['debug']) and self.random_seed is None
         if not self.parallel:
             logging.info('Dataset builder running in sequential mode.')
+        self.threads = self.get_arg('threads', self.threads, args)
 
     def create_dataset(self, preload_arrays=False):
         return Dataset(preload_arrays=preload_arrays)
@@ -74,10 +77,11 @@ class DatasetBuilder():
     def store_item(self, i, spec):
         s = np.s_[i, :]
 
+        # TODO: when implementing continue, first item test should be different
         if i == 0 and self.dataset.constant_wave:
             self.dataset.set_wave(spec.wave)
             # self.pipeline.get_wave()
-        else:
+        elif not self.dataset.constant_wave:
             self.dataset.set_wave(spec.wave, idx=s)
 
         self.dataset.set_flux(spec.flux, idx=s)
@@ -85,6 +89,9 @@ class DatasetBuilder():
             self.dataset.set_error(spec.flux_err, idx=s)
         if spec.mask is not None:
             self.dataset.set_mask(spec.mask, idx=s)
+
+        row = spec.get_params_as_datarow()
+        self.dataset.set_params_row(row)
 
     def process_and_store_item(self, i):
         spec = self.process_item(i)
@@ -98,8 +105,6 @@ class DatasetBuilder():
         logging.info('Building dataset of size {}'.format(self.dataset.shape))
 
         rng = range(self.get_spectrum_count())
-        with SmartParallel(initializer=self.init_process, verbose=True, parallel=self.parallel) as p:
+        with SmartParallel(initializer=self.init_process, verbose=True, parallel=self.parallel, threads=self.threads) as p:
             for s in p.map(self.process_item, rng):
                 self.store_item(s.id, s)
-                row = s.get_params_as_datarow()
-                self.dataset.set_params(row)

@@ -113,8 +113,6 @@ class Dataset(PfsObject):
         logging.info("  columns: {}".format(self.params.columns))
 
     def save_items(self):
-        self.save_item('params', self.params)
-        
         if self.preload_arrays:
             self.save_item('wave', self.wave)
             self.save_item('flux', self.flux)
@@ -128,16 +126,20 @@ class Dataset(PfsObject):
 
             # Everything else is written to the disk lazyly
 
+        self.save_item('params', self.params)
+
     #endregion
     #region Params access
 
     def get_params(self, labels, idx=None, chunk_size=None, chunk_id=None):
+        # Here we assume that the params DataFrame is already in memory
         if chunk_id is None:
             return self.params[labels].iloc[idx]
         else:
             return self.params[labels].iloc[chunk_id * chunk_size + idx]
 
     def set_params(self, labels, values, idx=None, chunk_size=None, chunk_id=None):
+        # Append the new row to the DataFrame
         for i, label in enumerate(labels):
             if label not in self.params.columns:
                 self.params.loc[:, label] = np.zeros((), dtype=values.dtype)
@@ -146,6 +148,26 @@ class Dataset(PfsObject):
                 self.params[label].iloc[idx] = values[..., i]
             else:
                 self.params[label].iloc[chunk_id * chunk_size + idx] = values[..., i]
+
+        # When in lazy-loading mode, make sure that the new row is appended to the
+        # backing store (HDF5). Here we make the assumption that the number of columns
+        # don't change.
+        if not self.preload_arrays:
+            min_string_length = { 'interp_param': 15 }
+            self.save_item('params', self.params, s=idx, min_string_length=min_string_length)
+
+    def set_params_row(self, row):
+        if self.params is None:
+            self.params = pd.DataFrame(row, index=[row['id']])
+        else:
+            self.params.loc[row['id']] = row
+
+        # When in lazy-loading mode, make sure that the new row is appended to the
+        # backing store (HDF5). Here we make the assumption that the number of columns
+        # don't change.
+        if not self.preload_arrays:
+            min_string_length = { 'interp_param': 15 }
+            self.save_item('params', self.params, s=row['id'], min_string_length=min_string_length)
 
     #endregion
     #region Array access
@@ -228,6 +250,8 @@ class Dataset(PfsObject):
     def set_wave(self, wave, idx=None, chunk_size=None, chunk_id=None):
         if self.constant_wave:
             self.wave = wave
+            if not self.preload_arrays:
+                self.save_item('wave', wave)
         else:
             self.set_item('wave', wave, idx, chunk_size, chunk_id)
 
@@ -254,12 +278,6 @@ class Dataset(PfsObject):
 
     def set_mask(self, mask, idx=None, chunk_size=None, chunk_id=None):
         self.set_item('mask', mask, idx, chunk_size, chunk_id)
-
-    def set_params(self, row):
-        if self.params is None:
-            self.params = pd.DataFrame(row, index=[row['id']])
-        else:
-            self.params.loc[row['id']] = row
 
     #endregion
 

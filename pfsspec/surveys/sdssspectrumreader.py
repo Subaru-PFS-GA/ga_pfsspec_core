@@ -11,8 +11,8 @@ from pfsspec.surveys.sdssstellarspectrum import SdssStellarSpectrum
 class SdssSpectrumReader(SurveySpectrumReader):
     # TODO: create separate class for galaxies and factor out common functions
 
-    def __init__(self, verbose=True, parallel=True):
-        super(SdssSpectrumReader, self).__init__(verbose=verbose, parallel=parallel)
+    def __init__(self, verbose=True, parallel=True, threads=None):
+        super(SdssSpectrumReader, self).__init__(verbose=verbose, parallel=parallel, threads=threads)
         self.path = None
 
     def read(self, file):

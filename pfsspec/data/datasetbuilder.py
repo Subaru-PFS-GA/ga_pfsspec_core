@@ -15,6 +15,7 @@ class DatasetBuilder():
             self.random_state = None
             self.parallel = orig.parallel
             self.threads = orig.threads
+            self.resume = orig.resume
             self.match_params = orig.params
             self.pipeline = orig.pipeline
             self.dataset = orig.dataset if dataset is None else dataset
@@ -23,6 +24,7 @@ class DatasetBuilder():
             self.random_state = None
             self.parallel = True
             self.threads = None
+            self.resume = False
             self.match_params = None
             self.pipeline = None
             self.dataset = None
@@ -45,6 +47,7 @@ class DatasetBuilder():
         if not self.parallel:
             logging.info('Dataset builder running in sequential mode.')
         self.threads = self.get_arg('threads', self.threads, args)
+        self.resume = self.get_arg('resume', self.resume, args)
 
     def create_dataset(self, preload_arrays=False):
         return Dataset(preload_arrays=preload_arrays)
@@ -102,9 +105,15 @@ class DatasetBuilder():
         print(i)
 
     def build(self):
-        logging.info('Building dataset of size {}'.format(self.dataset.shape))
-
-        rng = range(self.get_spectrum_count())
+        if not self.resume:
+            logging.info('Building a new dataset of size {}'.format(self.dataset.shape))
+            rng = range(self.get_spectrum_count())
+        else:
+            logging.info('Resume building a dataset of size {}'.format(self.dataset.shape))
+            all = set(range(self.get_spectrum_count()))
+            existing = set(self.dataset.params['id'])
+            rng = list(all - existing)
+                
         with SmartParallel(initializer=self.init_process, verbose=True, parallel=self.parallel, threads=self.threads) as p:
             for s in p.map(self.process_item, rng):
                 self.store_item(s.id, s)

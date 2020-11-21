@@ -3,6 +3,7 @@ import os
 import logging
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 from pfsspec.parallel import SmartParallel, prll_map
 from pfsspec.data.dataset import Dataset
@@ -16,7 +17,8 @@ class DatasetBuilder():
             self.parallel = orig.parallel
             self.threads = orig.threads
             self.resume = orig.resume
-            self.match_params = orig.params
+            self.chunk_size = orig.chunk_size
+            self.match_params = orig.match_params
             self.pipeline = orig.pipeline
             self.dataset = orig.dataset if dataset is None else dataset
         else:
@@ -25,6 +27,7 @@ class DatasetBuilder():
             self.parallel = True
             self.threads = None
             self.resume = False
+            self.chunk_size = None
             self.match_params = None
             self.pipeline = None
             self.dataset = None
@@ -38,7 +41,7 @@ class DatasetBuilder():
         return util.is_arg(name, args)
 
     def add_args(self, parser):
-        pass
+        parser.add_argument('--chunk-size', type=int, help='Dataset chunk size.\n')
 
     def init_from_args(self, args):
         # Only allow parallel if random seed is not set
@@ -48,6 +51,7 @@ class DatasetBuilder():
             logging.info('Dataset builder running in sequential mode.')
         self.threads = self.get_arg('threads', self.threads, args)
         self.resume = self.get_arg('resume', self.resume, args)
+        self.chunk_size = self.get_arg('chunk_size', self.chunk_size, args)
 
     def create_dataset(self, preload_arrays=False):
         return Dataset(preload_arrays=preload_arrays)
@@ -78,21 +82,30 @@ class DatasetBuilder():
         self.init_random_state()
 
     def store_item(self, i, spec):
-        s = np.s_[i, :]
+        if self.chunk_size is None:
+            chunk_size = None
+            chunk_id = None
+            s = np.s_[i, :]
+        else:
+            # When chunking, use chunk-relative index
+            chunk_size = self.chunk_size
+            chunk_id, ii = self.dataset.get_chunk_id(i, self.chunk_size)
+            s = np.s_[ii, :]
 
         # TODO: when implementing continue, first item test should be different
         if i == 0 and self.dataset.constant_wave:
             self.dataset.set_wave(spec.wave)
             # self.pipeline.get_wave()
         elif not self.dataset.constant_wave:
-            self.dataset.set_wave(spec.wave, idx=s)
+            self.dataset.set_wave(spec.wave, idx=s, chunk_size=chunk_size, chunk_id=chunk_id)
 
-        self.dataset.set_flux(spec.flux, idx=s)
+        self.dataset.set_flux(spec.flux, idx=s, chunk_size=chunk_size, chunk_id=chunk_id)
         if spec.flux_err is not None:
-            self.dataset.set_error(spec.flux_err, idx=s)
+            self.dataset.set_error(spec.flux_err, idx=s, chunk_size=chunk_size, chunk_id=chunk_id)
         if spec.mask is not None:
-            self.dataset.set_mask(spec.mask, idx=s)
+            self.dataset.set_mask(spec.mask, idx=s, chunk_size=chunk_size, chunk_id=chunk_id)
 
+        # TODO: chunking here
         row = spec.get_params_as_datarow()
         self.dataset.set_params_row(row)
 
@@ -105,15 +118,51 @@ class DatasetBuilder():
         print(i)
 
     def build(self):
+        # If chunking is used, make sure that spectra are processed in batches so no frequent
+        # cache misses occur at the boundaries of the chunks.
+        
+        count = self.get_spectrum_count()
+        chunk_ranges = []
+        total_items = 0
+
+        if self.chunk_size is not None:
+            if count % self.chunk_size != 0:
+                raise Exception('Total count must be a multiple of chunk size.')
+
+            for chunk_id in range(count // self.chunk_size):
+                rng = range(chunk_id * self.chunk_size, (chunk_id + 1) * self.chunk_size)
+                chunk_ranges.append(rng)
+                total_items += len(rng)
+        else:
+            rng = range(count)
+            chunk_ranges.append(rng)
+            total_items += len(rng)
+
         if not self.resume:
             logging.info('Building a new dataset of size {}'.format(self.dataset.shape))
-            rng = range(self.get_spectrum_count())
         else:
             logging.info('Resume building a dataset of size {}'.format(self.dataset.shape))
-            all = set(range(self.get_spectrum_count()))
             existing = set(self.dataset.params['id'])
-            rng = list(all - existing)
-                
-        with SmartParallel(initializer=self.init_process, verbose=True, parallel=self.parallel, threads=self.threads) as p:
-            for s in p.map(self.process_item, rng):
-                self.store_item(s.id, s)
+            total_items = 0
+            for chunk_id in range(count // self.chunk_size):
+                all = set(chunk_ranges[chunk_id])
+                rng = list(all - existing)
+                chunk_ranges[chunk_id] = rng
+                total_items += len(rng)
+
+        t = tqdm(total=total_items)
+        if self.chunk_size is not None:
+            # Run processing in chunks, data is written to the disk continuously
+            for rng in chunk_ranges:
+                if len(rng) > 0:
+                    with SmartParallel(initializer=self.init_process, verbose=False, parallel=self.parallel, threads=self.threads) as p:
+                        for s in p.map(self.process_item, rng):
+                            self.store_item(s.id, s)
+                            t.update(1)
+                    self.dataset.flush_cache_all(None, None)
+        else:
+            # Run in a single chunk, everything will be saved at the end
+            with SmartParallel(initializer=self.init_process, verbose=False, parallel=self.parallel, threads=self.threads) as p:
+                    for s in p.map(self.process_item, chunk_ranges[0]):
+                        self.store_item(s.id, s)
+                        t.update(1)

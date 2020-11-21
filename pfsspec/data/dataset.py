@@ -15,6 +15,12 @@ class Dataset(PfsObject):
     def __init__(self, preload_arrays=None, orig=None):
         super(Dataset, self).__init__(orig=orig)
 
+        # TODO: we now have wave and three data arrays for flux, error and mask
+        #       this is usually enough for training but also consider making it
+        #       more generic to support continuum, etc. or entirely different types
+        #       of datasets, like the implementation of grid.
+        #       This could be done based on the function get_item and set_item
+
         if isinstance(orig, Dataset):
             self.preload_arrays = preload_arrays or orig.preload_arrays
             self.constant_wave = orig.constant_wave
@@ -118,6 +124,7 @@ class Dataset(PfsObject):
             self.save_item('flux', self.flux)
             self.save_item('error', self.error)
             self.save_item('mask', self.error)
+            self.save_item('params', self.params)
         else:
             if self.constant_wave:
                 self.save_item('wave', self.wave)
@@ -125,8 +132,6 @@ class Dataset(PfsObject):
                 pass
 
             # Everything else is written to the disk lazyly
-
-        self.save_item('params', self.params)
 
     #endregion
     #region Params access
@@ -149,28 +154,20 @@ class Dataset(PfsObject):
             else:
                 self.params[label].iloc[chunk_id * chunk_size + idx] = values[..., i]
 
-        # When in lazy-loading mode, make sure that the new row is appended to the
-        # backing store (HDF5). Here we make the assumption that the number of columns
-        # don't change.
-        if not self.preload_arrays:
-            min_string_length = { 'interp_param': 15 }
-            self.save_item('params', self.params, s=idx, min_string_length=min_string_length)
-
     def set_params_row(self, row):
         if self.params is None:
             self.params = pd.DataFrame(row, index=[row['id']])
         else:
-            self.params.loc[row['id']] = row
-
-        # When in lazy-loading mode, make sure that the new row is appended to the
-        # backing store (HDF5). Here we make the assumption that the number of columns
-        # don't change.
-        if not self.preload_arrays:
-            min_string_length = { 'interp_param': 15 }
-            self.save_item('params', self.params, s=row['id'], min_string_length=min_string_length)
+            #self.params.iloc[row['id']] = row
+            #self.params.loc[row['id']] = row
+            self.params = self.params.append(pd.Series(row, index=self.params.columns, name=row['id']))
+            pass
 
     #endregion
     #region Array access
+
+    def get_chunk_id(self, i, chunk_size):
+        return i // chunk_size, i % chunk_size
 
     def get_chunk_slice(self, chunk_size, chunk_id):
         if chunk_id is None:
@@ -180,28 +177,78 @@ class Dataset(PfsObject):
             to = min((chunk_id + 1) * chunk_size, self.shape[0])
             return np.s_[fr:to]
 
-    def check_cache(self, name, chunk_size, chunk_id):
-        # Flush cache if necessary
-        data = getattr(self, name)
+    def read_cache(self, name, chunk_size, chunk_id):
+        # Reset cache if necessary
+        if self.cache_chunk_id is None or self.cache_chunk_id != chunk_id or self.cache_chunk_size != chunk_size:
+            self.reset_cache_all(chunk_size, chunk_id)
 
-        if self.cache_chunk_id != chunk_id or self.current_chunk_size != chunk_size:
-            data = None
+        # TODO: merge read and write cache
 
-            if not self.constant_wave:
-                self.wave = None
-            self.flux = None
-            self.error = None
-            self.mask = None
-
-            self.current_chunk_id = chunk_id
-            self.current_chunk_size = chunk_size
-        
         # Load and cache current
+        data = getattr(self, name)
         if data is None:
+            logging.debug('Reading dataset chunk {} from disk.'.format(chunk_id))
             s = self.get_chunk_slice(chunk_size, chunk_id)
             data = self.load_item(name, np.ndarray, s=s)
         
         setattr(self, name, data)
+
+    def reset_cache_all(self, chunk_size, chunk_id):
+        self.params = None
+        if not self.constant_wave:
+            self.wave = None
+        self.flux = None
+        self.error = None
+        self.mask = None
+
+        self.cache_chunk_id = chunk_id
+        self.cache_chunk_size = chunk_size
+
+    def write_cache(self, name, chunk_size, chunk_id):
+        # Flush cache if necessary
+        if self.cache_chunk_id is None:
+            self.reset_cache_all(chunk_size, chunk_id)
+        elif self.cache_chunk_id != chunk_id or self.cache_chunk_size != chunk_size:
+            self.flush_cache_all(chunk_size, chunk_id)
+
+        # TODO: merge read and write cache
+
+        # Load and cache current
+        data = getattr(self, name)
+        if data is None:
+            logging.debug('Reading dataset chunk {} from disk.'.format(chunk_id))
+            s = self.get_chunk_slice(chunk_size, chunk_id)
+            data = self.load_item(name, np.ndarray, s=s)
+        
+        setattr(self, name, data)
+
+    def flush_cache_item(self, name):
+        s = self.get_chunk_slice(self.cache_chunk_size, self.cache_chunk_id)
+        data = getattr(self, name)
+        if data is not None:
+            self.save_item(name, data, s=s)
+        setattr(self, name, None)
+
+    def flush_cache_all(self, chunk_size, chunk_id):
+        logging.debug('Flushing dataset chunk {} to disk.'.format(self.cache_chunk_id))
+
+        if not self.constant_wave:
+            self.flush_cache_item('wave')
+        self.flush_cache_item('flux')
+        self.flush_cache_item('error')
+        self.flush_cache_item('mask')
+
+        # Sort and save the last chunk of the parameters
+        if self.params is not None:
+            self.params.sort_values('id', inplace=True)
+        min_string_length = { 'interp_param': 15 }
+        s = self.get_chunk_slice(self.cache_chunk_size, self.cache_chunk_id)
+        self.save_item('params', self.params, s=s, min_string_length=min_string_length)
+
+        logging.debug('Flushed dataset chunk {} to disk.'.format(self.cache_chunk_id))
+
+        self.cache_chunk_id = chunk_id
+        self.cache_chunk_size = chunk_size
 
     def get_item(self, name, idx=None, chunk_size=None, chunk_id=None):
         if not self.preload_arrays:
@@ -213,27 +260,21 @@ class Dataset(PfsObject):
             else:
                 # Chunked lazy loading, use cache
                 # Assume idx is relative to chunk
-                self.check_cache(name, chunk_size, chunk_id)
+                self.read_cache(name, chunk_size, chunk_id)
         # Return slice from cache
         return getattr(self, name)[idx if idx is not None else ()]
 
     def set_item(self, name, data, idx=None, chunk_size=None, chunk_id=None):
-        if self.preload_arrays:
-            getattr(self, name)[idx if idx is not None else ()] = data
-        elif chunk_size is not None:
-            # Load necessary chunk, update and save
-            # Assume index is relative to chunk
-            s = self.get_chunk_slice(chunk_size, chunk_id)
-            v = self.load_item(name, np.ndarray, s=s)
-            v[idx] = data
+        if not self.preload_arrays:
+            if chunk_size is None:
+                # No chunking, write directly to storage
+                # Assume idx is absolute within file and not relative to chunk
+                self.save_item(name, data, s=idx)
+                return
+            else:
+                self.write_cache(name, chunk_size, chunk_id)
 
-            # TODO: This is now a write-through cache, consider write-back
-            #       mode (but might not work with multiple threads!)
-            self.save_item(name, v, s=s)
-        else:
-            # No chunking, write directly to storage
-            # Assume idx is absolute to file
-            self.save_item(name, data, s=idx)
+        getattr(self, name)[idx if idx is not None else ()] = data
 
     def has_item(self, name):
         if self.preload_arrays:

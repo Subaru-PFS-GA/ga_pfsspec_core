@@ -34,6 +34,7 @@ class Dataset(PfsObject):
 
             self.cache_chunk_id = orig.cache_chunk_id
             self.cache_chunk_size = orig.cache_chunk_size
+            self.cache_dirty = orig.cache_dirty
         else:
             self.preload_arrays = preload_arrays or False
             self.constant_wave = True
@@ -47,7 +48,28 @@ class Dataset(PfsObject):
 
             self.cache_chunk_id = None
             self.cache_chunk_size = None
+            self.cache_dirty = False
+
+    #region Counts and chunks
+
+    def get_count(self):
+        return self.params.shape[0]
+
+    def get_chunk_id(self, i, chunk_size):
+        return i // chunk_size, i % chunk_size
+
+    def get_chunk_count(self, chunk_size):
+        return np.int32(np.ceil(self.get_count() / chunk_size))
+
+    def get_chunk_slice(self, chunk_size, chunk_id):
+        if chunk_id is None:
+            return np.s_[()]
+        else:
+            fr = chunk_id * chunk_size
+            to = min((chunk_id + 1) * chunk_size, self.shape[0])
+            return np.s_[fr:to]
             
+    #endregion
     #region Load and save
 
     def init_storage(self, wcount, scount, constant_wave=True):
@@ -115,8 +137,10 @@ class Dataset(PfsObject):
         super(Dataset, self).save(filename, format=format)
 
         logging.info("Saved dataset with shapes:")
-        logging.info("  params:  {}".format(self.params.shape))
-        logging.info("  columns: {}".format(self.params.columns))
+        logging.info("  arrays:  {}".format(self.shape))
+        if self.params is not None:
+            logging.info("  params:  {}".format(self.params.shape))
+            logging.info("  columns: {}".format(self.params.columns))
 
     def save_items(self):
         if self.preload_arrays:
@@ -125,11 +149,10 @@ class Dataset(PfsObject):
             self.save_item('error', self.error)
             self.save_item('mask', self.error)
             self.save_item('params', self.params)
+        elif self.constant_wave:
+            self.save_item('wave', self.wave)
         else:
-            if self.constant_wave:
-                self.save_item('wave', self.wave)
-            else:
-                pass
+            pass
 
             # Everything else is written to the disk lazyly
 
@@ -139,9 +162,16 @@ class Dataset(PfsObject):
     def get_params(self, labels, idx=None, chunk_size=None, chunk_id=None):
         # Here we assume that the params DataFrame is already in memory
         if chunk_id is None:
-            return self.params[labels].iloc[idx]
+            if labels is None:
+                return self.params.iloc[idx]
+            else:
+                return self.params[labels].iloc[idx]
         else:
-            return self.params[labels].iloc[chunk_id * chunk_size + idx]
+            s = self.get_chunk_slice(chunk_size, chunk_id)
+            if labels is None:
+                return self.params.iloc[s].iloc[idx if idx is not None else slice(None)]
+            else:
+                return self.params[labels].iloc[s].iloc[idx if idx is not None else slice(None)]
 
     def set_params(self, labels, values, idx=None, chunk_size=None, chunk_id=None):
         # Append the new row to the DataFrame
@@ -158,31 +188,17 @@ class Dataset(PfsObject):
         if self.params is None:
             self.params = pd.DataFrame(row, index=[row['id']])
         else:
-            #self.params.iloc[row['id']] = row
-            #self.params.loc[row['id']] = row
             self.params = self.params.append(pd.Series(row, index=self.params.columns, name=row['id']))
-            pass
 
     #endregion
     #region Array access
 
-    def get_chunk_id(self, i, chunk_size):
-        return i // chunk_size, i % chunk_size
-
-    def get_chunk_slice(self, chunk_size, chunk_id):
-        if chunk_id is None:
-            return np.s_[()]
-        else:
-            fr = chunk_id * chunk_size
-            to = min((chunk_id + 1) * chunk_size, self.shape[0])
-            return np.s_[fr:to]
-
     def read_cache(self, name, chunk_size, chunk_id):
         # Reset cache if necessary
-        if self.cache_chunk_id is None or self.cache_chunk_id != chunk_id or self.cache_chunk_size != chunk_size:
+        if self.cache_dirty and (self.cache_chunk_id != chunk_id or self.cache_chunk_size != chunk_size):
+            self.flush_cache_all(chunk_size, chunk_id)
+        elif self.cache_chunk_id is None or self.cache_chunk_id != chunk_id or self.cache_chunk_size != chunk_size:
             self.reset_cache_all(chunk_size, chunk_id)
-
-        # TODO: merge read and write cache
 
         # Load and cache current
         data = getattr(self, name)
@@ -190,11 +206,11 @@ class Dataset(PfsObject):
             logging.debug('Reading dataset chunk {} from disk.'.format(chunk_id))
             s = self.get_chunk_slice(chunk_size, chunk_id)
             data = self.load_item(name, np.ndarray, s=s)
+            self.cache_dirty = False
         
         setattr(self, name, data)
 
     def reset_cache_all(self, chunk_size, chunk_id):
-        self.params = None
         if not self.constant_wave:
             self.wave = None
         self.flux = None
@@ -203,24 +219,7 @@ class Dataset(PfsObject):
 
         self.cache_chunk_id = chunk_id
         self.cache_chunk_size = chunk_size
-
-    def write_cache(self, name, chunk_size, chunk_id):
-        # Flush cache if necessary
-        if self.cache_chunk_id is None:
-            self.reset_cache_all(chunk_size, chunk_id)
-        elif self.cache_chunk_id != chunk_id or self.cache_chunk_size != chunk_size:
-            self.flush_cache_all(chunk_size, chunk_id)
-
-        # TODO: merge read and write cache
-
-        # Load and cache current
-        data = getattr(self, name)
-        if data is None:
-            logging.debug('Reading dataset chunk {} from disk.'.format(chunk_id))
-            s = self.get_chunk_slice(chunk_size, chunk_id)
-            data = self.load_item(name, np.ndarray, s=s)
-        
-        setattr(self, name, data)
+        self.cache_dirty = False
 
     def flush_cache_item(self, name):
         s = self.get_chunk_slice(self.cache_chunk_size, self.cache_chunk_id)
@@ -244,6 +243,12 @@ class Dataset(PfsObject):
         min_string_length = { 'interp_param': 15 }
         s = self.get_chunk_slice(self.cache_chunk_size, self.cache_chunk_id)
         self.save_item('params', self.params, s=s, min_string_length=min_string_length)
+
+        # TODO: The issue with merging new chunks into an existing DataFrame is that
+        #       the index is rebuilt repeadately, causing an even increasing processing
+        #       time. To prevent this, we reset the params DataFrame here but it should
+        #       only happen during building a dataset. Figure out a better solution to this.
+        self.params = None
 
         logging.debug('Flushed dataset chunk {} to disk.'.format(self.cache_chunk_id))
 
@@ -272,7 +277,8 @@ class Dataset(PfsObject):
                 self.save_item(name, data, s=idx)
                 return
             else:
-                self.write_cache(name, chunk_size, chunk_id)
+                self.read_cache(name, chunk_size, chunk_id)
+                self.cache_dirty = True
 
         getattr(self, name)[idx if idx is not None else ()] = data
 
@@ -321,9 +327,6 @@ class Dataset(PfsObject):
         self.set_item('mask', mask, idx, chunk_size, chunk_id)
 
     #endregion
-
-    def get_count(self):
-        return self.params.shape[0]
 
     def create_spectrum(self):
         # Override this function to return a specific kind of class derived from Spectrum.
@@ -402,12 +405,12 @@ class Dataset(PfsObject):
             return ds
 
     def merge(self, b):
-        ds = Dataset()
+        if self.preload_arrays and b.preload_arrays:
+            ds = Dataset()
 
-        ds.params = pd.concat([self.params, b.params], axis=0)
-        self.reset_index(ds.params)
+            ds.params = pd.concat([self.params, b.params], axis=0)
+            self.reset_index(ds.params)
 
-        if self.preload_arrays:
             if self.constant_wave:
                 ds.wave = self.wave
             else:
@@ -415,18 +418,33 @@ class Dataset(PfsObject):
             ds.flux = np.concatenate([self.flux, b.flux], axis=0)
             ds.error = np.concatenate([self.error, b.error], axis=0) if self.error is not None and b.error is not None else None
             ds.mask = np.concatenate([self.mask, b.mask], axis=0) if self.mask is not None and b.mask is not None else None
+            ds.shape = (ds.params.shape[0],) + self.shape[1:]
+
+            return ds
         else:
-            if self.constant_wave:
-                ds.wave = self.wave
-            else:
-                ds.wave = None
-            ds.flux = None
-            ds.error = None
-            ds.mask = None
+            raise Exception('To merge, both datasets should be preloaded into memory.')
 
-        ds.shape = (ds.params.shape[0],) + self.shape[1:]
+    def merge_chunk(self, b, chunk_size, chunk_id, chunk_offset):
+        # We assume that chunk sizes are compatible and the destination dataset (self)
+        # is properly preallocated
+        def copy_item(name):
+            data = b.get_item(name, chunk_size=chunk_size, chunk_id=chunk_id)
+            self.set_item(name, data, chunk_size=chunk_size, chunk_id=chunk_offset + chunk_id)
+        
+        if self.constant_wave:
+            self.wave = b.wave
+        else:
+            copy_item('wave')
 
-        return ds
+        for name in ['flux', 'error', 'mask']:
+            copy_item(name)
+
+        # When merging the parameters, the id field must be shifted by the offset
+        self.params = b.get_params(None, chunk_size=chunk_size, chunk_id=chunk_id)
+        self.params['id'] = self.params['id'].apply(lambda x: x + chunk_size * chunk_offset)
+        self.params.set_index(pd.Index(list(self.params['id'])), drop=False, inplace=True)
+
+        pass
 
     ###
 

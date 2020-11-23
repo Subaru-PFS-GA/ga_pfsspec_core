@@ -231,8 +231,8 @@ class TestSpectrum(TestBase):
         self.save_fig()
 
     def test_add_calib_bias(self):
-        grid = self.get_kurucz_grid()
-        spec = grid.get_nearest_model(Fe_H=0.0, T_eff=7000, log_g=1.45)
+        grid = self.get_bosz_grid()
+        spec = grid.get_nearest_model(Fe_H=0.0, T_eff=7000, log_g=1.45, C_M=0, O_M=0)
         spec.rebin(np.linspace(6300, 9700, 1200))
         spec.plot(xlim=(5000, 10000))
 

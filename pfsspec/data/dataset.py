@@ -149,10 +149,14 @@ class Dataset(PfsObject):
             self.save_item('error', self.error)
             self.save_item('mask', self.error)
             self.save_item('params', self.params)
-        elif self.constant_wave:
-            self.save_item('wave', self.wave)
         else:
-            pass
+            if self.constant_wave:
+                self.save_item('wave', self.wave)
+
+            # Flushing the chunk cache sets the params to None so if params
+            # is not None, it means that we have to save it now
+            if self.params is not None:
+                self.save_item('params', self.params)
 
             # Everything else is written to the disk lazyly
 
@@ -252,8 +256,7 @@ class Dataset(PfsObject):
 
         logging.debug('Flushed dataset chunk {} to disk.'.format(self.cache_chunk_id))
 
-        self.cache_chunk_id = chunk_id
-        self.cache_chunk_size = chunk_size
+        self.reset_cache_all(chunk_id, chunk_size)
 
     def get_item(self, name, idx=None, chunk_size=None, chunk_id=None):
         if not self.preload_arrays:

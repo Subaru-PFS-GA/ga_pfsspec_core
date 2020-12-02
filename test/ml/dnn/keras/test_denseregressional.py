@@ -17,14 +17,14 @@ class TestDenseRegressional(TestBase):
         labels = ['log_g', ]
         coeffs = [1, ]
 
-        training_generator = SdssAugmenter(ts, labels, coeffs, batch_size=200)
-        validation_generator = SdssAugmenter(vs, labels, coeffs, batch_size=200)
+        training_augmenter = SdssAugmenter(ts, labels, coeffs, batch_size=200)
+        validation_augmenter = SdssAugmenter(vs, labels, coeffs, batch_size=200)
 
         model = DenseRegressional(levels=1, units=32)
         model.epochs = 1
-        model.set_model_shapes(training_generator.input_shape, training_generator.output_shape)
+        model.set_model_shapes(training_augmenter.input_shape, training_augmenter.output_shape)
         model.ensure_model_created()
-        model.train(training_generator, validation_generator)
+        model.train(training_augmenter, validation_augmenter)
         model.load_weights(model.checkpoint_path)      # TODO
-        model.predict(validation_generator)
+        model.predict(validation_augmenter)
 

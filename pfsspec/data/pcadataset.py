@@ -39,9 +39,9 @@ class PCADataset(Dataset):
         self.mask = np.full(self.flux.shape, False)
 
     def save_pca(self, filename, format=None):
-        logging.info("Saving PCA eigensystem to file {}...".format(filename))
+        self.logger.info("Saving PCA eigensystem to file {}...".format(filename))
         self.save(filename, format=format, save_items_func=self.save_pca_items)
-        logging.info("Saved PCA eigensystem.")
+        self.logger.info("Saved PCA eigensystem.")
 
     def save_pca_items(self):
         self.save_item('U', self.U)
@@ -49,9 +49,9 @@ class PCADataset(Dataset):
         self.save_item('V', self.V)
 
     def load_pca(self, filename, s=None, format=None):
-        logging.info("Loading PCA eigensystem from file {}...".format(filename))
+        self.logger.info("Loading PCA eigensystem from file {}...".format(filename))
         self.load(filename, s=s, format=format, load_items_func=self.load_pca_items)
-        logging.info("Loaded PCA eigensystem.")
+        self.logger.info("Loaded PCA eigensystem.")
 
     def load_pca_items(self, s=None):
         self.U = self.load_item('U', np.ndarray)

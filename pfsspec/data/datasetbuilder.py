@@ -6,11 +6,14 @@ import pandas as pd
 from tqdm import tqdm
 
 from pfsspec.parallel import SmartParallel, prll_map
+from pfsspec.pfsobject import PfsObject
 from pfsspec.data.dataset import Dataset
 import pfsspec.util as util
 
-class DatasetBuilder():
+class DatasetBuilder(PfsObject):
     def __init__(self, orig=None, random_seed=None):
+        super(DatasetBuilder, self).__init__(orig=orig)
+
         if orig is not None:
             self.random_seed = random_seed or orig.random_seed
             self.random_state = None
@@ -48,7 +51,7 @@ class DatasetBuilder():
         # It would be very painful to reproduce the same dataset with multiprocessing
         self.parallel = ('debug' not in args or not args['debug']) and self.random_seed is None
         if not self.parallel:
-            logging.info('Dataset builder running in sequential mode.')
+            self.logger.info('Dataset builder running in sequential mode.')
         self.threads = self.get_arg('threads', self.threads, args)
         self.resume = self.get_arg('resume', self.resume, args)
         self.chunk_size = self.get_arg('chunk_size', self.chunk_size, args)
@@ -76,7 +79,7 @@ class DatasetBuilder():
             else:
                 self.random_state = np.random.RandomState(None)
             self.pipeline.random_state = self.random_state
-            logging.debug("Initialized random state on pid {}, rnd={}".format(os.getpid(), self.random_state.rand()))
+            self.logger.debug("Initialized random state on pid {}, rnd={}".format(os.getpid(), self.random_state.rand()))
 
     def process_item(self, i):
         self.init_random_state()
@@ -139,9 +142,9 @@ class DatasetBuilder():
             total_items += len(rng)
 
         if not self.resume:
-            logging.info('Building a new dataset of size {}'.format(self.dataset.shape))
+            self.logger.info('Building a new dataset of size {}'.format(self.dataset.shape))
         else:
-            logging.info('Resume building a dataset of size {}'.format(self.dataset.shape))
+            self.logger.info('Resume building a dataset of size {}'.format(self.dataset.shape))
             existing = set(self.dataset.params['id'])
             total_items = 0
             for chunk_id in range(count // self.chunk_size):

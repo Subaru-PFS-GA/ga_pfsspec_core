@@ -18,10 +18,10 @@ class Survey():
             self.params = pickle.load(f)
             self.spectra = pickle.load(f)
 
-        logging.info("Loaded survey with shapes:")
-        logging.info("  spectra: {}".format(len(self.spectra)))
-        logging.info("  params:  {}".format(self.params.shape))
-        logging.info("  columns: {}".format(self.params.columns))
+        self.logger.info("Loaded survey with shapes:")
+        self.logger.info("  spectra: {}".format(len(self.spectra)))
+        self.logger.info("  params:  {}".format(self.params.shape))
+        self.logger.info("  columns: {}".format(self.params.columns))
 
     def add_args(self, parser):
         pass

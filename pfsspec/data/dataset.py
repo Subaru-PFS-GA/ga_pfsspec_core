@@ -75,7 +75,7 @@ class Dataset(PfsObject):
     def init_storage(self, wcount, scount, constant_wave=True):
         self.constant_wave = constant_wave
         if self.preload_arrays:
-            logging.debug('Initializing memory for dataset of size {}.'.format((scount, wcount)))
+            self.logger.debug('Initializing memory for dataset of size {}.'.format((scount, wcount)))
 
             if constant_wave:
                 self.wave = np.empty(wcount)
@@ -85,9 +85,9 @@ class Dataset(PfsObject):
             self.error = np.empty((scount, wcount))
             self.mask = np.empty((scount, wcount))
 
-            logging.debug('Initialized memory for dataset of size {}.'.format((scount, wcount)))
+            self.logger.debug('Initialized memory for dataset of size {}.'.format((scount, wcount)))
         else:
-            logging.debug('Allocating disk storage for dataset of size {}.'.format((scount, wcount)))
+            self.logger.debug('Allocating disk storage for dataset of size {}.'.format((scount, wcount)))
 
             if constant_wave:
                 self.allocate_item('wave', (wcount,), np.float)
@@ -97,16 +97,16 @@ class Dataset(PfsObject):
             self.allocate_item('error', (scount, wcount), np.float)
             self.allocate_item('mask', (scount, wcount), np.int32)
 
-            logging.debug('Allocated disk storage for dataset of size {}.'.format((scount, wcount)))
+            self.logger.debug('Allocated disk storage for dataset of size {}.'.format((scount, wcount)))
 
         self.shape = (scount, wcount)
 
     def load(self, filename, format='h5', s=None):
         super(Dataset, self).load(filename, format=format, s=s)
 
-        logging.info("Loaded dataset with shapes:")
-        logging.info("  params:  {}".format(self.params.shape))
-        logging.info("  columns: {}".format(self.params.columns))
+        self.logger.info("Loaded dataset with shapes:")
+        self.logger.info("  params:  {}".format(self.params.shape))
+        self.logger.info("  columns: {}".format(self.params.columns))
 
     def load_items(self, s=None):
         self.params = self.load_item('params', pd.DataFrame, s=s)
@@ -136,11 +136,11 @@ class Dataset(PfsObject):
     def save(self, filename, format='h5'):
         super(Dataset, self).save(filename, format=format)
 
-        logging.info("Saved dataset with shapes:")
-        logging.info("  arrays:  {}".format(self.shape))
+        self.logger.info("Saved dataset with shapes:")
+        self.logger.info("  arrays:  {}".format(self.shape))
         if self.params is not None:
-            logging.info("  params:  {}".format(self.params.shape))
-            logging.info("  columns: {}".format(self.params.columns))
+            self.logger.info("  params:  {}".format(self.params.shape))
+            self.logger.info("  columns: {}".format(self.params.columns))
 
     def save_items(self):
         if self.preload_arrays:
@@ -207,7 +207,7 @@ class Dataset(PfsObject):
         # Load and cache current
         data = getattr(self, name)
         if data is None:
-            logging.debug('Reading dataset chunk {} from disk.'.format(chunk_id))
+            self.logger.debug('Reading dataset chunk `{}:{}` from disk.'.format(name, chunk_id))
             s = self.get_chunk_slice(chunk_size, chunk_id)
             data = self.load_item(name, np.ndarray, s=s)
             self.cache_dirty = False
@@ -233,7 +233,7 @@ class Dataset(PfsObject):
         setattr(self, name, None)
 
     def flush_cache_all(self, chunk_size, chunk_id):
-        logging.debug('Flushing dataset chunk {} to disk.'.format(self.cache_chunk_id))
+        self.logger.debug('Flushing dataset chunk `:{}` to disk.'.format(self.cache_chunk_id))
 
         if not self.constant_wave:
             self.flush_cache_item('wave')
@@ -254,7 +254,7 @@ class Dataset(PfsObject):
         #       only happen during building a dataset. Figure out a better solution to this.
         self.params = None
 
-        logging.debug('Flushed dataset chunk {} to disk.'.format(self.cache_chunk_id))
+        self.logger.debug('Flushed dataset chunk {} to disk.'.format(self.cache_chunk_id))
 
         self.reset_cache_all(chunk_id, chunk_size)
 
@@ -263,8 +263,17 @@ class Dataset(PfsObject):
             if chunk_size is None:
                 # No chunking, load directly from storage
                 # Assume idx is absolute within file and not relative to chunk
-                data = self.load_item(name, np.ndarray, s=idx)
-                return data
+
+                # HDF file doesn't support fancy indexing with unsorted arrays
+                # so sort and reshuffle here
+                if isinstance(idx, np.ndarray):
+                    srt = np.argsort(idx)
+                    data = self.load_item(name, np.ndarray, s=idx[srt])
+                    srt = np.argsort(srt)
+                    return data[srt]
+                else:
+                    data = self.load_item(name, np.ndarray, s=idx)
+                    return data
             else:
                 # Chunked lazy loading, use cache
                 # Assume idx is relative to chunk

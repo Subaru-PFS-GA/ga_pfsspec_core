@@ -17,8 +17,8 @@ class Merge(Script):
         'dataset': DatasetMerger
     }
 
-    def __init__(self, logging=True):
-        super(Merge, self).__init__(logging=logging)
+    def __init__(self, logging_enabled=True):
+        super(Merge, self).__init__(logging_enabled=logging_enabled)
 
         self.input_pattern = None
         self.merger = None
@@ -58,7 +58,7 @@ class Merge(Script):
         self.init_merger()
         self.merger.merge()
 
-        logging.info('Results are written to {}'.format(self.args['out']))
+        self.logger.info('Results are written to {}'.format(self.args['out']))
 
     def execute_notebooks(self):
         super(Merge, self).execute_notebooks()

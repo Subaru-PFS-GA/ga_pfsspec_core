@@ -98,13 +98,13 @@ class TestDataset(TestBase):
         # ts_gen.set_filter(None)
         # ts_gen.shuffle = False
         # ts_gen.reshuffle()
-        # idx = ts_gen.get_batch_index(1)
+        # chunk_id, idx = ts_gen.get_batch_index(1)
         # print(idx)
         # print(ts_gen.get_batch(1)[1])
 
         # ts_gen.set_filter(ts_gen.dataset.params['interp_param'] == 'Fe_H')
         # ts_gen.shuffle = False
         # ts_gen.reshuffle()
-        # idx = ts_gen.get_batch_index(1)
+        # chunk_id, idx = ts_gen.get_batch_index(1)
         # print(idx)
         # print(ts_gen.get_batch(1)[1])

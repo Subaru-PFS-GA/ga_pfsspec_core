@@ -38,4 +38,4 @@ class DatasetSpectrumWriter(SpectrumWriter):
             for r in p.map(self.process_item, rng):
                 k += 1
 
-        logging.info('{} files written.'.format(k))
+        self.logger.info('{} files written.'.format(k))

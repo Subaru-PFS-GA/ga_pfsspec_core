@@ -12,15 +12,15 @@ class TestSky(TestBase):
         sky.load(file, format='h5')
 
         self.assertIsNotNone(sky.wave)
-        self.assertIsNotNone(sky.data['counts'])
-        self.assertIsNotNone(sky.data['conv'])
+        self.assertIsNotNone(sky.values['counts'])
+        self.assertIsNotNone(sky.values['conv'])
 
         sky = Sky()
         sky.preload_arrays = False
         sky.load(file, format='h5')
 
         self.assertIsNotNone(sky.wave)
-        data = sky.get_nearest_data_item('conv', za=10, fa=0.5)
+        data = sky.get_nearest_value('conv', za=10, fa=0.5)
         self.assertIsNotNone(data)
 
     def test_interpolate(self):
@@ -29,5 +29,5 @@ class TestSky(TestBase):
         sky.preload_arrays = True
         sky.load(file, format='h5')
 
-        data, _ = sky.interpolate_data_item_linear('conv', za=10, fa=0.5)
+        data, _ = sky.interpolate_value_linear('conv', za=10, fa=0.5)
         self.assertIsNotNone(data)

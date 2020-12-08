@@ -3,10 +3,18 @@ import numpy as np
 import pandas as pd
 import pickle
 
-class Survey():
-    def __init__(self):
-        self.params = None
-        self.spectra = None
+from pfsspec.pfsobject import PfsObject
+
+class Survey(PfsObject):
+    def __init__(self, orig=None):
+        super(Survey, self).__init__(orig=orig)
+
+        if isinstance(orig, Survey):
+            self.params = orig.params
+            self.spectra = orig.spectra
+        else:
+            self.params = None
+            self.spectra = None
 
     def save(self, filename):
         with open(filename, 'wb') as f:

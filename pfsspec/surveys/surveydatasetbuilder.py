@@ -25,9 +25,9 @@ class SurveyDatasetBuilder(DatasetBuilder):
         spec.set_params(params)
         self.pipeline.run(spec, **params)
 
-        # TODO: use mask from spectra
-        raise NotImplementedError()
-
+        # TODO: Reset ID, this might override survey id but is necessary
+        #       to save directly into HDF5
+        spec.id = i
         return spec
 
     def get_params(self, i):
@@ -36,8 +36,5 @@ class SurveyDatasetBuilder(DatasetBuilder):
     def build(self):
         super(SurveyDatasetBuilder, self).build()
 
-        # TODO: only copy wavelength if constant wave is use, otherwise the dataset
-        #       builder should fill in the wave array one spectrum at a time
-        raise NotImplementedError()
-
-        self.dataset.wave[:] = self.pipeline.get_wave()
+        if self.pipeline.is_constant_wave():
+            self.dataset.wave[:] = self.pipeline.get_wave()

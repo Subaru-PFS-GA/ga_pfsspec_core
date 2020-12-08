@@ -16,8 +16,8 @@ class TestSpectrum(TestBase):
         self.save_fig()
 
     def test_rebin(self):
-        grid = self.get_kurucz_grid()
-        spec = grid.get_nearest_model(Fe_H=0.0, T_eff=7000, log_g=1.45)
+        grid = self.get_bosz_grid()
+        spec = grid.get_nearest_model(Fe_H=0.0, T_eff=7000, log_g=1.45, C_M=0, O_M=0)
         spec.plot()
 
         nwave = np.arange(3800, 6500, 2.7) + 2.7 / 2
@@ -26,6 +26,21 @@ class TestSpectrum(TestBase):
 
         self.assertEqual((1000,), spec.wave.shape)
         self.assertEqual((1000,), spec.flux.shape)
+        self.save_fig()
+
+    def test_rebin_with_mask(self):
+        grid = self.get_bosz_grid()
+        spec = grid.get_nearest_model(Fe_H=0.0, T_eff=7000, log_g=1.45, C_M=0, O_M=0)
+        spec.mask = np.arange(spec.wave.shape[0], dtype=np.int64)       # fake mask
+        spec.plot()
+
+        nwave = np.arange(3800, 6500, 2.7) + 2.7 / 2
+        spec.rebin(nwave)
+        spec.plot()
+
+        self.assertEqual((1000,), spec.wave.shape)
+        self.assertEqual((1000,), spec.flux.shape)
+        self.assertEqual((1000,), spec.mask.shape)
         self.save_fig()
 
     def test_zero_mask(self):

@@ -55,6 +55,8 @@ class DatasetBuilder(PfsObject):
         self.threads = self.get_arg('threads', self.threads, args)
         self.resume = self.get_arg('resume', self.resume, args)
         self.chunk_size = self.get_arg('chunk_size', self.chunk_size, args)
+        if self.chunk_size == 0:
+            self.chunk_size = None
 
     def create_dataset(self, preload_arrays=False):
         return Dataset(preload_arrays=preload_arrays)
@@ -129,6 +131,8 @@ class DatasetBuilder(PfsObject):
         total_items = 0
 
         if self.chunk_size is not None:
+            # TODO: this is a restriction when preparing data sets based on
+            #       surveys where spectrum counts will never match chunking
             if count % self.chunk_size != 0:
                 raise Exception('Total count must be a multiple of chunk size.')
 
@@ -169,3 +173,6 @@ class DatasetBuilder(PfsObject):
                     for s in p.map(self.process_item, chunk_ranges[0]):
                         self.store_item(s.id, s)
                         t.update(1)
+
+        # Sort dataset parameters which can be shuffled due to parallel execution
+        self.dataset.params.sort_index(inplace=True)

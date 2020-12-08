@@ -22,10 +22,7 @@ class SdssAugmenter(RegressionalDatasetAugmenter):
         return d
 
     def add_args(self, parser):
-        parser.add_argument('--noise', type=float, default=None, help='Add noise.\n')
-        parser.add_argument('--noise-sch', type=str, choices=['constant', 'linear'], default='constant', help='Noise schedule.\n')
-        parser.add_argument('--aug-offset', type=float, default=None, help='Augment by adding a random offset.\n')
-        parser.add_argument('--aug-scale', type=float, default=None, help='Augment by multiplying with a random number.\n')
+        super(SdssAugmenter, self).add_args(parser)
 
     def augment_batch(self, chunk_id, idx):
         flux, labels, weight = super(SdssAugmenter, self).augment_batch(chunk_id, idx)

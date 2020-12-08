@@ -1,7 +1,9 @@
-from pfsspec.obsmod.spectrum import Spectrum
+from pfsspec.surveys.surveyspectrum import SurveySpectrum
 
-class SdssSpectrum():
+class SdssSpectrum(SurveySpectrum):
     def __init__(self, orig=None):
+        super(SdssSpectrum, self).__init__(orig=orig)
+
         if isinstance(orig, SdssSpectrum):
             self.mjd = orig.mjd
             self.plate = orig.plate

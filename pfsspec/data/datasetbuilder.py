@@ -49,10 +49,10 @@ class DatasetBuilder(PfsObject):
     def init_from_args(self, args):
         # Only allow parallel if random seed is not set
         # It would be very painful to reproduce the same dataset with multiprocessing
-        self.parallel = self.random_seed is None
+        self.threads = self.get_arg('threads', self.threads, args)
+        self.parallel = self.random_seed is None and (self.threads is None or self.threads > 1)
         if not self.parallel:
             self.logger.info('Dataset builder running in sequential mode.')
-        self.threads = self.get_arg('threads', self.threads, args)
         self.resume = self.get_arg('resume', self.resume, args)
         self.chunk_size = self.get_arg('chunk_size', self.chunk_size, args)
         if self.chunk_size == 0:

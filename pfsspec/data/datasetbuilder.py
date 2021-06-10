@@ -175,4 +175,7 @@ class DatasetBuilder(PfsObject):
                         t.update(1)
 
         # Sort dataset parameters which can be shuffled due to parallel execution
-        self.dataset.params.sort_index(inplace=True)
+        # If we write params to the HDF5 file directly, params will be None so
+        # we don't need to sort.
+        if self.dataset.params is not None:
+            self.dataset.params.sort_index(inplace=True)

@@ -256,7 +256,7 @@ class Dataset(PfsObject):
 
         self.logger.debug('Flushed dataset chunk {} to disk.'.format(self.cache_chunk_id))
 
-        self.reset_cache_all(chunk_id, chunk_size)
+        self.reset_cache_all(chunk_size, chunk_id)
 
     def get_item(self, name, idx=None, chunk_size=None, chunk_id=None):
         if not self.preload_arrays:

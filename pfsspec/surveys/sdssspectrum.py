@@ -1,6 +1,10 @@
 from pfsspec.surveys.surveyspectrum import SurveySpectrum
 
 class SdssSpectrum(SurveySpectrum):
+    """
+    Mixin that implements additional parameters for SDSS survey data.
+    """
+
     def __init__(self, orig=None):
         super(SdssSpectrum, self).__init__(orig=orig)
 

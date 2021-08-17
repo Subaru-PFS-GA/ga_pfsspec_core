@@ -1,6 +1,10 @@
 from pfsspec.data.datasetbuilder import DatasetBuilder
 
 class SurveyDatasetBuilder(DatasetBuilder):
+    """
+    Implements functions to turn Survey data into a dataset for DNN training.
+    """
+
     def __init__(self, orig=None, random_seed=None):
         super(SurveyDatasetBuilder, self).__init__(orig=orig, random_seed=random_seed)
         

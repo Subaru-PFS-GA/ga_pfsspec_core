@@ -4,7 +4,7 @@ import numpy as np
 from astropy.io import fits
 from SciServer import Authentication, CasJobs
 
-from pfsspec.surveys.survey import Survey
+from pfsspec.data.survey import Survey
 from pfsspec.surveys.surveyspectrumreader import SurveySpectrumReader
 from pfsspec.surveys.sdssstellarspectrum import SdssStellarSpectrum
 

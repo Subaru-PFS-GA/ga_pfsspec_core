@@ -1,7 +1,7 @@
 import sys
 
 from pfsspec.data.spectrumreader import SpectrumReader
-from pfsspec.surveys.survey import Survey
+from pfsspec.data.survey import Survey
 from pfsspec.util.parallel import SmartParallel
 
 class SurveySpectrumReader(SpectrumReader):

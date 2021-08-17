@@ -3,7 +3,7 @@ import numpy as np
 import scipy.stats
 import pandas as pd
 
-from pfsspec.pfsobject import PfsObject
+from pfsspec.common.pfsobject import PfsObject
 from pfsspec.obsmod.spectrum import Spectrum
 
 class Dataset(PfsObject):

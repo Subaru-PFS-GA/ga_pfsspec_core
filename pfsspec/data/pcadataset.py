@@ -4,7 +4,7 @@ import scipy.stats
 import pandas as pd
 
 from pfsspec.data.dataset import Dataset
-from pfsspec.obsmod.spectrum import Spectrum
+from pfsspec.common.spectrum import Spectrum
 
 class PcaDataset(Dataset):
     def __init__(self, orig=None, preload_arrays=False):

@@ -9,7 +9,7 @@ class Survey(PfsObject):
     """
     Implements functions to store survey data of any type of Spectrum implementation.
 
-    Stored data pickled.
+    Stores data pickled.
     """
 
     # TODO: Can we easily rewrite this to store spectra in HDF5. Spectra are not
@@ -26,13 +26,19 @@ class Survey(PfsObject):
             self.params = None
             self.spectra = None
 
-    def save(self, filename):
-        with open(filename, 'wb') as f:
+    def save(self, filename=None, format=None):
+        self.filename = filename or self.filename
+        self.format = format or self.fileformat
+
+        with open(self.filename, 'wb') as f:
             pickle.dump(self.params, f)
             pickle.dump(self.spectra, f)
 
-    def load(self, filename):
-        with open(filename, 'rb') as f:
+    def load(self, filename=None):
+        self.filename = filename or self.filename
+        self.fileformat = format or self.fileformat
+
+        with open(self.filename, 'rb') as f:
             self.params = pickle.load(f)
             self.spectra = pickle.load(f)
 

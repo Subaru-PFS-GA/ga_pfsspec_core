@@ -1,6 +1,10 @@
 from pfsspec.common.spectrum import Spectrum
 
 class SurveySpectrum():
+    """
+    Mixin that implements parameters for survey data.
+    """
+
     def __init__(self, orig=None):
         if isinstance(orig, SurveySpectrum):
             self.ra = orig.ra

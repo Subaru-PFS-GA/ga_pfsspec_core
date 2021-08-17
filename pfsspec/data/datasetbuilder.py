@@ -123,9 +123,6 @@ class DatasetBuilder(PfsObject):
         self.store_item(i, spec)
         return spec
 
-    def do_nothing(self, i):
-        print(i)
-
     def build(self):
         # If chunking is used, make sure that spectra are processed in batches so no frequent
         # cache misses occur at the boundaries of the chunks.

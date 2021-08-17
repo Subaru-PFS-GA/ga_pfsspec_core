@@ -4,7 +4,7 @@ import scipy.stats
 import pandas as pd
 
 from pfsspec.common.pfsobject import PfsObject
-from pfsspec.obsmod.spectrum import Spectrum
+from pfsspec.common.spectrum import Spectrum
 
 class Dataset(PfsObject):
     # Implements a class to store preprocessed spectra with parameters stored as

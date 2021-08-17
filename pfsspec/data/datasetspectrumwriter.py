@@ -1,7 +1,7 @@
 import os
 import logging
 
-from pfsspec.parallel import SmartParallel
+from pfsspec.util.parallel import SmartParallel
 from pfsspec.data.spectrumwriter import SpectrumWriter
 
 class DatasetSpectrumWriter(SpectrumWriter):

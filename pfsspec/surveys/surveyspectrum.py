@@ -1,8 +1,8 @@
-from pfsspec.obsmod.spectrum import Spectrum
+from pfsspec.common.spectrum import Spectrum
 
 class SurveySpectrum():
     def __init__(self, orig=None):
-        if isinstance(orig, SdssSpectrum):
+        if isinstance(orig, SurveySpectrum):
             self.ra = orig.ra
             self.dec = orig.dec
         else:

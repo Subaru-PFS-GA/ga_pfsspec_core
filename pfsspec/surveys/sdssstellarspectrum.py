@@ -1,7 +1,8 @@
-from pfsspec.obsmod.stellarspectrum import StellarSpectrum
+from pfsspec.common.stellarspectrum import StellarSpectrum
 from pfsspec.surveys.sdssspectrum import SdssSpectrum
 
 class SdssStellarSpectrum(StellarSpectrum, SdssSpectrum):
+    # TODO: make StellarSpectrum a mixin
     def __init__(self, orig=None):
         StellarSpectrum.__init__(self, orig=orig)
         SdssSpectrum.__init__(self, orig=orig)

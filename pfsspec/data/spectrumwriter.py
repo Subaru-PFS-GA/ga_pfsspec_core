@@ -1,4 +1,4 @@
-from pfsspec.pfsobject import PfsObject
+from pfsspec.common.pfsobject import PfsObject
 
 class SpectrumWriter(PfsObject):
     def __init__(self, orig=None):

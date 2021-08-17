@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from pfsspec.parallel import SmartParallel, prll_map
-from pfsspec.pfsobject import PfsObject
+from pfsspec.util.parallel import SmartParallel, prll_map
+from pfsspec.common.pfsobject import PfsObject
 from pfsspec.data.dataset import Dataset
 import pfsspec.util as util
 

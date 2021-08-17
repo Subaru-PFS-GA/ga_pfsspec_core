@@ -6,6 +6,16 @@ import pickle
 from pfsspec.common.pfsobject import PfsObject
 
 class Survey(PfsObject):
+    """
+    Implements functions to store survey data of any type of Spectrum implementation.
+
+    Stored data pickled.
+    """
+
+    # TODO: Can we easily rewrite this to store spectra in HDF5. Spectra are not
+    #       supposed to be uniform here but we still can pickle one by one and
+    #       store as variable length binaries or jagged arrays.
+
     def __init__(self, orig=None):
         super(Survey, self).__init__(orig=orig)
 

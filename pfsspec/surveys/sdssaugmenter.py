@@ -33,9 +33,9 @@ class SdssAugmenter(RegressionalDatasetAugmenter):
         error = self.get_error(chunk_id, idx)
         flux = self.augment_flux(chunk_id, idx, flux)
 
-        flux = self.cut_lowsnr(flux, error)
-        flux = self.cut_extreme(flux, error)
-        flux = self.apply_mask(flux, error, mask)
+        flux = self.substitute_lowsnr(flux, error)
+        flux = self.substitute_outlier(flux, error)
+        flux = self.substitute_mask(flux, error, mask)
 
         # flux = self.include_wave()
 

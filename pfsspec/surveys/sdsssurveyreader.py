@@ -38,8 +38,8 @@ class SdssSurveyReader(SurveyReader):
         parser.add_argument('--mjd', type=int, default=None, help='Limit to a single MJD')
         # TODO: add more filters
 
-    def parse_args(self, args):
-        super(SdssSurveyReader, self).parse_args(args)
+    def init_from_args(self, args):
+        super(SdssSurveyReader, self).init_from_args(args)
 
         self.user = self.get_arg('user', self.user, args)
         self.token = self.get_arg('token', self.token, args)

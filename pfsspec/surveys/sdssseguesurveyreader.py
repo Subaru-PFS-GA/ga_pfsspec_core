@@ -25,8 +25,8 @@ class SdssSegueSurveyReader(SdssSurveyReader):
         parser.add_argument('--log_g', type=float, nargs=2, default=None, help='Limit log_g')
         parser.add_argument('--a_Fe', type=float, nargs=2, default=None, help='Limit [a/Fe]')
 
-    def parse_args(self, args):
-        super(SdssSegueSurveyReader, self).parse_args(args)
+    def init_from_args(self, args):
+        super(SdssSegueSurveyReader, self).init_from_args(args)
 
         self.Fe_H = self.get_arg('Fe_H', self.Fe_H, args)
         self.T_eff = self.get_arg('T_eff', self.T_eff, args)

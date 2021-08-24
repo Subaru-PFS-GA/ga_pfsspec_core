@@ -4,7 +4,7 @@ from test.test_base import TestBase
 
 from pfsspec.data.dataset import Dataset
 from pfsspec.ml.dnn.keras.densegenerative import DenseGenerative
-from pfsspec.stellarmod.kuruczgenerativeaugmenter import KuruczGenerativeAugmenter
+from pfsspec.stellarmod.modelspectrumgenerativeaugmenter import ModelSpectrumGenerativeAugmenter
 from pfsspec.ml.dnn.keras.losses import *
 
 class TestDenseGenerative(TestBase):
@@ -18,8 +18,8 @@ class TestDenseGenerative(TestBase):
         labels = ['t_eff', 'fe_h', 'log_g', ]
         coeffs = [1000, 1, 1]
 
-        training_augmenter = KuruczGenerativeAugmenter(ts, labels, coeffs, batch_size=200)
-        validation_augmenter = KuruczGenerativeAugmenter(vs, labels, coeffs, batch_size=200)
+        training_augmenter = ModelSpectrumGenerativeAugmenter(ts, labels, coeffs, batch_size=200)
+        validation_augmenter = ModelSpectrumGenerativeAugmenter(vs, labels, coeffs, batch_size=200)
 
         model = DenseGenerative(levels=1, units=32)
         model.loss = 'max_absolute_error'
@@ -40,7 +40,7 @@ class TestDenseGenerative(TestBase):
         labels = ['t_eff', 'fe_h', 'log_g', ]
         coeffs = [1000, 1, 1]
 
-        augmenter = KuruczGenerativeAugmenter(ts, labels, coeffs, batch_size=200, shuffle=True)
+        augmenter = ModelSpectrumGenerativeAugmenter(ts, labels, coeffs, batch_size=200, shuffle=True)
         training_augmenter = type(augmenter)(augmenter)
         validation_augmenter = type(augmenter)(augmenter)
 

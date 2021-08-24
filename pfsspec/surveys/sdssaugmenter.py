@@ -1,6 +1,6 @@
 import numpy as np
 
-from pfsspec.data.regressionaldatasetaugmenter import RegressionalDatasetAugmenter
+from pfsspec.ml.dnn.regressionaldatasetaugmenter import RegressionalDatasetAugmenter
 
 class SdssAugmenter(RegressionalDatasetAugmenter):
     """Implements data augmentation to train on observed SDSS spectra."""

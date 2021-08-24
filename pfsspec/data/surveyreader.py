@@ -3,10 +3,10 @@ import sys
 
 import pfsspec.util as util
 from pfsspec.util.parallel import SmartParallel
-from pfsspec.common.pfsobject import PfsObject
+from pfsspec.data.importer import Importer
 from pfsspec.data.survey import Survey
 
-class SurveyReader(PfsObject):
+class SurveyReader(Importer):
     """
     Implements function to read spectra of a survey.
     """
@@ -30,7 +30,9 @@ class SurveyReader(PfsObject):
     def add_args(self, parser):
         parser.add_argument('--top', type=int, help='Stop after this many items.\n')
 
-    def parse_args(self, args):
+    def init_from_args(self, args):
+        super(SurveyReader, self).init_from_args(args)
+
         # Only allow parallel if random seed is not set
         self.threads = self.get_arg('threads', self.threads, args)
         self.parallel = self.threads is None or self.threads > 1

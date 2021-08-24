@@ -5,7 +5,7 @@ import numpy as np
 import logging, multiprocessing
 
 from pfsspec.ml.dnn.keras.kerasdatagenerator import KerasDataGenerator
-from pfsspec.data.regressionaldatasetaugmenter import RegressionalDatasetAugmenter
+from pfsspec.ml.dnn.regressionaldatasetaugmenter import RegressionalDatasetAugmenter
 from pfsspec.data.dataset import Dataset
 
 class TestDataset(TestBase):

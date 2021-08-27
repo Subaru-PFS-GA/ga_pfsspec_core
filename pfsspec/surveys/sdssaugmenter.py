@@ -14,11 +14,11 @@ class SdssAugmenter(RegressionalDatasetAugmenter):
             pass
 
     @classmethod
-    def from_dataset(cls, dataset, labels, coeffs, weight=None, partitions=None, batch_size=None, shuffle=None, chunk_size=None, seed=None):
+    def from_dataset(cls, dataset, labels, coeffs, weight=None, partitions=None, batch_size=None, shuffle=None, chunk_size=None, random_seed=None):
         d = super(SdssAugmenter, cls).from_dataset(dataset, labels, coeffs, weight,
                                             partitions=partitions,
                                             batch_size=batch_size, shuffle=shuffle, 
-                                            chunk_size=chunk_size, seed=seed)
+                                            chunk_size=chunk_size, random_seed=random_seed)
         return d
 
     def add_args(self, parser):

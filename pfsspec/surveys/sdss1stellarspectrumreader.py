@@ -1,11 +1,11 @@
-from pfsspec.surveys.sdssspectrumreader import SdssSpectrumReader
+from pfsspec.surveys.sdss1spectrumreader import Sdss1SpectrumReader
 from pfsspec.surveys.sdssseguespectrum import SdssSegueSpectrum
 
-class SdssSegueSpectrumReader(SdssSpectrumReader):
+class Sdss1StellarSpectrumReader(Sdss1SpectrumReader):
     def __init__(self, orig=None):
-        super(SdssSegueSpectrumReader, self).__init__(orig=orig)
+        super(Sdss1StellarSpectrumReader, self).__init__(orig=orig)
 
-        if isinstance(orig, SdssSegueSpectrumReader):
+        if isinstance(orig, Sdss1StellarSpectrumReader):
             pass
         else:
             pass
@@ -14,7 +14,7 @@ class SdssSegueSpectrumReader(SdssSpectrumReader):
         return SdssSegueSpectrum()
 
     def read_header(self, hdus, row, spec):
-        super(SdssSegueSpectrumReader, self).read_header(hdus, row, spec)
+        super(Sdss1StellarSpectrumReader, self).read_header(hdus, row, spec)
 
         spec.T_eff = row['T_eff']
         spec.Fe_H = row['Fe_H']

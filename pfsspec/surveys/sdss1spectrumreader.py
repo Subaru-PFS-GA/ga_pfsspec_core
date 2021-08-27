@@ -5,11 +5,11 @@ from astropy.io import fits
 
 from pfsspec.data.spectrumreader import SpectrumReader
 
-class SdssSpectrumReader(SpectrumReader):
+class Sdss1SpectrumReader(SpectrumReader):
     def __init__(self, orig=None):
-        super(SdssSpectrumReader, self).__init__(orig=orig)
+        super(Sdss1SpectrumReader, self).__init__(orig=orig)
 
-        if isinstance(orig, SdssSpectrumReader):
+        if isinstance(orig, Sdss1SpectrumReader):
             self.path = orig.path
         else:
             self.path = None
@@ -44,8 +44,9 @@ class SdssSpectrumReader(SpectrumReader):
         return '{:s}/spectro/{:s}/{:04d}/1d/spSpec-{:5d}-{:04d}-{:03d}.fit'.format(das, ver, int(plate), int(mjd), int(plate), int(fiber))
 
     def load_spectrum(self, index, row):
-        filename = SdssSpectrumReader.get_filename(row['mjd'], row['plate'], row['fiber'])
+        filename = Sdss1SpectrumReader.get_filename(row['mjd'], row['plate'], row['fiber'])
         filename = os.path.join(self.path, filename)
+
         with fits.open(filename, memmap=False) as hdus:
             spec = self.read(hdus)
             spec.index = index

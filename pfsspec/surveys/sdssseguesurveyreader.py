@@ -1,6 +1,9 @@
+import os
+
 from pfsspec.surveys.sdssseguesurvey import SdssSegueSurvey
 from pfsspec.surveys.sdsssurveyreader import SdssSurveyReader
-from pfsspec.surveys.sdssseguespectrumreader import SdssSegueSpectrumReader
+from pfsspec.surveys.sdss1stellarspectrumreader import Sdss1StellarSpectrumReader
+from pfsspec.surveys.sdss4stellarspectrumreader import Sdss4StellarSpectrumReader
 
 class SdssSegueSurveyReader(SdssSurveyReader):
     def __init__(self, orig=None):
@@ -37,9 +40,22 @@ class SdssSegueSurveyReader(SdssSurveyReader):
         return SdssSegueSurvey()
 
     def create_spectrum_reader(self):
-        return SdssSegueSpectrumReader()
+        if self.dr == 'DR7':
+            return Sdss1StellarSpectrumReader()
+        elif self.dr == 'DR16':
+            return Sdss4StellarSpectrumReader()
+        else:
+            raise NotImplementedError()        
 
     def find_objects(self):
+        if self.dr == 'DR7':
+            return self.find_object_SDSS1()
+        elif self.dr == 'DR16':
+            return self.find_objects_SDSS4()
+        else:
+            raise NotImplementedError()
+
+    def find_objects_SDSS1(self, context='DR7'):
         where = ''
         if self.mjd is not None:
             where += "AND s.mjd = {:d} \n".format(self.mjd)
@@ -79,4 +95,58 @@ class SdssSegueSurveyReader(SdssSurveyReader):
         ORDER BY s.mjd, s.plate, s.fiberID
         """.format('' if self.top is None else 'TOP {:d}'.format(self.top), where)
 
-        return self.execute_query(sql)
+        if self.outdir is not None:
+            with open(os.path.join(self.outdir, "sciserver.sql"), "w") as f:
+                f.write(sql)
+
+        return self.execute_query(sql, context=context)
+
+    def find_objects_SDSS4(self, context='DR16'):
+        where = ''
+        if self.mjd is not None:
+            where += "AND s.mjd = {:d} \n".format(self.mjd)
+        if self.plate is not None:
+            where += "AND s.plate = {:d} \n".format(self.plate)
+        if self.Fe_H is not None:
+            where += "AND spp.FEHADOP BETWEEN {:f} AND {:f} \n".format(self.Fe_H[0], self.Fe_H[1])
+        if self.T_eff is not None:
+            where += "AND spp.TEFFADOP BETWEEN {:f} AND {:f} \n".format(self.T_eff[0], self.T_eff[1])
+        if self.log_g is not None:
+            where += "AND spp.LOGGADOP BETWEEN {:f} AND {:f} \n".format(self.log_g[0], self.log_g[1])
+        if self.a_Fe is not None:
+            raise ValueError("Alpha abundance not measured in {}.".format(context))
+
+        sql = \
+        """
+        SELECT {}
+            s.specObjID AS id, s.mjd, s.plate, s.fiberID AS fiber, s.ra AS ra, s.dec AS dec, 
+            s.z AS redshift, s.zErr AS redshift_err, s.snMedian AS snr,
+            spp.FEHADOP AS Fe_H, spp.FEHADOPUNC AS Fe_H_err, 
+            spp.TEFFADOP AS T_eff, spp.TEFFADOPUNC AS T_eff_err,
+            spp.LOGGADOP AS log_g, spp.LOGGADOPUNC AS log_g_err,
+            -9999.0 AS a_Fe, -9999.0 AS a_Fe_err,
+            p.psfMag_r AS mag, p.psfMagErr_r AS mag_err,
+            p.psfMag_u AS mag_u, p.psfMagErr_u AS mag_u_err,
+            p.psfMag_g AS mag_g, p.psfMagErr_g AS mag_g_err,
+            p.psfMag_r AS mag_r, p.psfMagErr_r AS mag_r_err,
+            p.psfMag_i AS mag_i, p.psfMagErr_i AS mag_i_err,
+            p.psfMag_z AS mag_z, p.psfMagErr_z AS mag_z_err,
+            p.extinction_r AS ext,
+            dbo.fGetUrlFitsSpectrum(s.specObjID) AS url
+        FROM SpecObjAll s
+        INNER JOIN sppParams spp ON spp.specobjID = s.specObjID
+        INNER JOIN PhotoObj p ON p.objID = s.bestObjID
+        WHERE class = 'STAR' 
+            AND instrument = 'SDSS'
+            AND p.psfMag_r > 10               -- exclude unmeasured psf mag 
+            {}
+        ORDER BY s.mjd, s.plate, s.fiberID
+        """.format(
+            '' if self.top is None else 'TOP {:d}'.format(self.top),
+            where)
+
+        if self.outdir is not None:
+            with open(os.path.join(self.outdir, "sciserver.sql"), "w") as f:
+                f.write(sql)
+
+        return self.execute_query(sql, context=context)

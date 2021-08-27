@@ -5,7 +5,6 @@ import getpass
 from SciServer import Authentication, CasJobs
 
 from pfsspec.data.surveyreader import SurveyReader
-from pfsspec.surveys.sdssspectrumreader import SdssSpectrumReader
 
 class SdssSurveyReader(SurveyReader):
     def __init__(self, orig=None):
@@ -16,6 +15,8 @@ class SdssSurveyReader(SurveyReader):
             self.token = orig.token
             self.reader = orig.reader
 
+            self.dr = orig.dr
+
             self.plate = orig.plate
             self.mjd = orig.mjd
             # TODO: add more filters
@@ -23,6 +24,8 @@ class SdssSurveyReader(SurveyReader):
             self.user = None
             self.token = None
             self.reader = None
+
+            self.dr = None
 
             self.plate = None
             self.mjd = None
@@ -34,6 +37,8 @@ class SdssSurveyReader(SurveyReader):
         parser.add_argument('--user', type=str, help='SciServer username\n')
         parser.add_argument('--token', type=str, help='SciServer auth token\n')
 
+        parser.add_argument('--dr', type=str, default='DR7', choices=['DR7', 'DR16'], help='Data release')
+
         parser.add_argument('--plate', type=int, default=None, help='Limit to a single plate')
         parser.add_argument('--mjd', type=int, default=None, help='Limit to a single MJD')
         # TODO: add more filters
@@ -43,6 +48,8 @@ class SdssSurveyReader(SurveyReader):
 
         self.user = self.get_arg('user', self.user, args)
         self.token = self.get_arg('token', self.token, args)
+
+        self.dr = self.get_arg('dr', self.dr, args)
 
         self.plate = self.get_arg('plate', self.plate, args)
         self.mjd = self.get_arg('mjd', self.mjd, args)
@@ -82,3 +89,12 @@ class SdssSurveyReader(SurveyReader):
 
         self.logger.info('Start loading spectra from `{}`'.format(self.reader.path))
         self.load_survey(params)
+
+    def execute_notebooks(self, script):
+        super(SdssSurveyReader, self).execute_notebooks(script)
+
+        script.execute_notebook('eval_import_sdss', parameters={
+            'PFSSPEC_ROOT': os.environ['PFSSPEC_ROOT'],
+            'PFSSPEC_DATA': os.environ['PFSSPEC_DATA'],
+            'DATASET_PATH': self.outdir,
+        })

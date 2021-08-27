@@ -20,12 +20,14 @@ class SurveyReader(Importer):
             self.threads = orig.threads
             self.resume = orig.resume
             self.top = orig.top
+            self.outdir = orig.outdir
         else:
             self.verbose = True
             self.parallel = True
             self.threads = None
             self.resume = False
             self.top = None
+            self.outdir = None
 
     def add_args(self, parser):
         parser.add_argument('--top', type=int, help='Stop after this many items.\n')
@@ -33,7 +35,6 @@ class SurveyReader(Importer):
     def init_from_args(self, args):
         super(SurveyReader, self).init_from_args(args)
 
-        # Only allow parallel if random seed is not set
         self.threads = self.get_arg('threads', self.threads, args)
         self.parallel = self.threads is None or self.threads > 1
         if not self.parallel:
@@ -43,6 +44,7 @@ class SurveyReader(Importer):
     def open_data(self, indir, outdir):
         fn = os.path.join(outdir, 'spectra.dat')
 
+        self.outdir = outdir
         self.survey = self.create_survey()
         self.survey.filename = fn
         self.survey.fileformat = 'pickle'
@@ -83,11 +85,15 @@ class SurveyReader(Importer):
         rows = [(index, row) for index, row in params.iterrows()]
         with SmartParallel(verbose=self.verbose, parallel=self.parallel, threads=self.threads) as p:
             self.survey.spectra = [r for r in p.map(self.process_item, rows)]
-        # Parallal will likely shuffle the spectra    
+        
+        # In case errors happened we get Nones
+        self.survey.spectra = list(filter(lambda s: s is not None, self.survey.spectra))
+        
+        # Parallel will likely shuffle the spectra    
         self.survey.spectra.sort(key=lambda s: s.index)
 
     def run(self):
         raise NotImplementedError()
 
-    def execute_notebooks(self):
+    def execute_notebooks(self, script):
         pass

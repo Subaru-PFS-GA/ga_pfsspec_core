@@ -14,7 +14,7 @@ class DatasetBuilder(PfsObject):
     def __init__(self, orig=None, random_seed=None):
         super(DatasetBuilder, self).__init__(orig=orig)
 
-        if orig is not None:
+        if isinstance(orig, PfsObject):
             self.random_seed = random_seed or orig.random_seed
             self.random_state = None
             self.parallel = orig.parallel
@@ -24,7 +24,7 @@ class DatasetBuilder(PfsObject):
             self.top = orig.top
             self.match_params = orig.match_params
             self.pipeline = orig.pipeline
-            self.dataset = orig.dataset if dataset is None else dataset
+            self.dataset = orig.dataset
         else:
             self.random_seed = random_seed
             self.random_state = None

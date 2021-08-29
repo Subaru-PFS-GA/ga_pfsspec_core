@@ -16,11 +16,11 @@ class TestGaussPsf(TestBase):
         sigma = np.linspace(3, 5, 6001)
 
         psf = GaussPsf(wave=wave, sigma=sigma)
-        k = psf.get_kernel(4000, np.linspace(-5, 5, 11))
+        k = psf.get_kernel(4000, dwave=np.linspace(-5, 5, 11))
         self.assertTrue(np.all(~np.isnan(k)))
 
-        k = psf.get_kernel(2500, np.linspace(-5, 5, 11))
+        k = psf.get_kernel(2500, dwave=np.linspace(-5, 5, 11))
         self.assertTrue(np.all(~np.isnan(k)))
 
-        k = psf.get_kernel(9500, np.linspace(-5, 5, 11))
+        k = psf.get_kernel(9500, dwave=np.linspace(-5, 5, 11))
         self.assertTrue(np.all(~np.isnan(k)))

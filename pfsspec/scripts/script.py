@@ -24,6 +24,7 @@ class Script():
         self.debug = False
         self.random_seed = None
         self.log_level = None
+        self.log_dir = None
         self.logging_enabled = logging_enabled
         self.logging_console_handler = None
         self.logging_file_handler = None
@@ -56,6 +57,7 @@ class Script():
         parser.add_argument('--debug', action='store_true', help='Run in debug mode\n')
         parser.add_argument('--threads', type=int, help='Number of processing threads.\n')
         parser.add_argument('--log-level', type=str, default=None, help='Logging level\n')
+        parser.add_argument('--log-dir', type=str, default=None, help='Log directory\n')
         parser.add_argument('--random-seed', type=int, default=None, help='Set random seed\n')
 
     def get_configs(self, args):
@@ -89,14 +91,11 @@ class Script():
                 self.merge_args(command_args, override=True, recursive=False)
 
             # Parse some special but generic arguments
-            if 'debug' in self.args and self.args['debug']:
-                self.debug = True
-            if 'threads' in self.args and self.args['threads'] is not None:
-                self.threads = self.args['threads']
-            if 'log_level' in self.args and self.args['log_level'] is not None:
-                self.log_level = self.args['log_level']
-            if 'random_seed' in self.args and self.args['random_seed'] is not None:
-                self.random_seed = self.args['random_seed']
+            self.debug = self.get_arg('debug', self.debug)
+            self.threads = self.get_arg('threads', self.threads)
+            self.log_level = self.get_arg('log_level', self.log_level)
+            self.log_dir = self.get_arg('log_dir', self.log_dir)
+            self.random_seed = self.get_arg('random_seed', self.random_seed)
 
     def merge_args(self, other_args, override=True, recursive=False):
         if 'config' in other_args and recursive:
@@ -241,6 +240,7 @@ class Script():
             return logging.INFO
 
     def setup_logging(self, logfile=None):
+        # TODO: is this where double logging of multiprocessing comes from?
         if self.logging_enabled:
             multiprocessing.log_to_stderr(self.get_logging_level())
 
@@ -280,7 +280,10 @@ class Script():
             f.write(' '.join(sys.argv))
     
     def init_logging(self, outdir):
-        self.setup_logging(os.path.join(outdir, type(self).__name__.lower() + '.log'))
+        logfile = type(self).__name__.lower() + '.log'
+        logfile = os.path.join(self.log_dir or os.path.join(outdir, 'logs'), logfile)
+        self.setup_logging(logfile)
+
         self.save_command_line(os.path.join(outdir, 'command.sh'))
         self.dump_env(os.path.join(outdir, 'env.sh'))
         self.dump_args_json(os.path.join(outdir, 'args.json'))
@@ -293,8 +296,14 @@ class Script():
     def prepare(self):
         self.create_parser()
         self.parse_args()
+
+        # TODO: fix this by moving all initializations from inherited classes
+        #       to here. This will require testing all scripts.
+        # Turn on logging to the console. This will be re-configured once the
+        # output directory is created
         if self.logging_enabled:
             self.setup_logging()
+
         if self.debug:
             np.seterr(divide='raise', over='raise', invalid='raise')
         if self.random_seed is not None:

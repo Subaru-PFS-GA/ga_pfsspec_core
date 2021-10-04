@@ -25,6 +25,6 @@ class TestDenseRegressional(TestBase):
         model.set_model_shapes(training_augmenter.input_shape, training_augmenter.output_shape)
         model.ensure_model_created()
         model.train(training_augmenter, validation_augmenter)
-        model.load_weights(model.checkpoint_path)      # TODO
+        model.load_weights(model.checkpoint_dir)      # TODO
         model.predict(validation_augmenter)
 

@@ -3,8 +3,8 @@ import numpy as np
 import scipy.stats
 import pandas as pd
 
-from pfsspec.common.pfsobject import PfsObject
-from pfsspec.common.spectrum import Spectrum
+from pfsspec.core.pfsobject import PfsObject
+from pfsspec.core import Spectrum
 
 class Dataset(PfsObject):
     # Implements a class to store preprocessed spectra with parameters stored as

@@ -1,9 +1,8 @@
 import logging
 import numpy as np
 
-from pfsspec.util.interp.rbf import Rbf
-from pfsspec.data.grid import Grid
-from pfsspec.data.gridaxis import GridAxis
+from pfsspec.core.util.interp import Rbf
+from .grid import Grid
 
 class RbfGrid(Grid):
     # Implements a grid that supports interpolation based on RBF. This is not

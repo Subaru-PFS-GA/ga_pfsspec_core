@@ -6,10 +6,8 @@ from scipy import ndimage
 from scipy.interpolate import LinearNDInterpolator, RegularGridInterpolator, CubicSpline
 from scipy.interpolate import interp1d, interpn
 
-from pfsspec.util.interp.rbf import Rbf
-from pfsspec.common.pfsobject import PfsObject
-from pfsspec.data.grid import Grid
-from pfsspec.data.gridaxis import GridAxis
+from .grid import Grid
+from .gridaxis import GridAxis
 
 class ArrayGrid(Grid):
     """Implements a generic grid class to store and interpolate data.
@@ -18,9 +16,6 @@ class ArrayGrid(Grid):
     and multiple value arrays in each grid point. Value arrays must have the same
     leading dimensions as the size of the axes. An index is build on every
     value array which indicated valid/invalid data in a particular grid point.
-
-    Args:
-        PfsObject ([type]): [description]
     """
     def __init__(self, config=None, orig=None):
         super(ArrayGrid, self).__init__(orig=orig)

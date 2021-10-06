@@ -4,7 +4,7 @@ import time
 from tqdm import tqdm
 import multiprocessing
 
-from pfsspec.common.pfsobject import PfsObject
+from pfsspec.core import PfsObject
 
 class GridBuilder(PfsObject):
     def __init__(self, input_grid=None, output_grid=None, orig=None):

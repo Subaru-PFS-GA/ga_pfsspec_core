@@ -1,7 +1,7 @@
 import logging
 import numpy as np
 
-from pfsspec.common.pfsobject import PfsObject
+from pfsspec.core import PfsObject
 
 class PcaGrid(PfsObject):
     # Wraps an ArrayGrid or an RbfGrid and adds PCA decompression support

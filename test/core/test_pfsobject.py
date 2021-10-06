@@ -1,11 +1,11 @@
 import os
-from test.test_base import TestBase
 
-from pfsspec.common.pfsobject import PfsObject
+from test.core import TestBase
+from pfsspec.core import PfsObject
 
-class HelperObject(PfsObject):
+class JsonTestHelperObject(PfsObject):
     def __init__(self):
-        super(HelperObject, self).__init__()
+        super(JsonTestHelperObject, self).__init__()
         self.data1 = 'test1'
         self.data2 = 12
         self.data3 = [0, 1, 2]
@@ -13,8 +13,8 @@ class HelperObject(PfsObject):
 
 class TestPfsObject(TestBase):
     def test_save_json(self):
-        filename = os.path.join(os.environ['PFSSPEC_TEST_PATH'], self.get_filename('.json'))
-        o = HelperObject()
+        filename = self.get_test_filename('.json')
+        o = JsonTestHelperObject()
         o.save_json(filename)
 
         j = \
@@ -52,11 +52,11 @@ class TestPfsObject(TestBase):
     }
 }"""
 
-        filename = os.path.join(os.environ['PFSSPEC_TEST_PATH'], self.get_filename('.json'))
+        filename = self.get_test_filename('.json')
         with open(filename, 'w') as f:
             f.write(j)
 
-        o = HelperObject()
+        o = JsonTestHelperObject()
         o.load_json(filename)
 
         self.assertEqual(o.data1, 'test2')

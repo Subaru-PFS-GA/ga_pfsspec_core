@@ -4,8 +4,8 @@ from sklearn.decomposition import TruncatedSVD
 import logging
 from tqdm import tqdm
 
-from pfsspec.util.timer import Timer
-from pfsspec.data.gridbuilder import GridBuilder
+from pfsspec.core.util.timer import Timer
+from .gridbuilder import GridBuilder
 
 class PcaGridBuilder(GridBuilder):
     def __init__(self, input_grid=None, output_grid=None, orig=None):

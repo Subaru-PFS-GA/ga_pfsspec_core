@@ -4,8 +4,8 @@ import numpy as np
 from tqdm import tqdm
 import multiprocessing
 
-from pfsspec.util.parallel import SmartParallel
-from pfsspec.data.importer import Importer
+from pfsspec.core.util.smartparallel import SmartParallel
+from pfsspec.core.io import Importer
 
 class GridReader(Importer):
     class EnumAxesGenerator():

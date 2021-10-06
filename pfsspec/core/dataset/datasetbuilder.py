@@ -5,10 +5,10 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from pfsspec.util.parallel import SmartParallel, prll_map
-from pfsspec.common.pfsobject import PfsObject
-from pfsspec.data.dataset import Dataset
-import pfsspec.util as util
+import pfsspec.core.util as util
+from pfsspec.core.util.smartparallel import SmartParallel
+from pfsspec.core import PfsObject
+from .dataset import Dataset
 
 class DatasetBuilder(PfsObject):
     def __init__(self, orig=None, random_seed=None):

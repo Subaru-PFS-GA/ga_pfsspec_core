@@ -4,11 +4,11 @@ from scipy import linalg
 from sklearn.metrics import pairwise_distances
 from scipy.special import xlogy
 
-from pfsspec.util.linalg.nnls import nnls as nnls
+from pfsspec.core.util.linalg.nnls import nnls as nnls
 # from pfsspec.util.linalg.tntnn import tntnn
 
-from pfsspec.util.name import func_fullname
-from pfsspec.util.timer import Timer
+from pfsspec.core.util.name import func_fullname
+from pfsspec.core.util.timer import Timer
 
 class Rbf():
     # This is a modified version of the original SciPy RBF that supports

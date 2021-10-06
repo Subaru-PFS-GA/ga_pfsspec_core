@@ -9,12 +9,12 @@ import pysynphot.binning
 import pysynphot.spectrum
 import pysynphot.reddening
 
-from pfsspec.util.physics import Physics
-from pfsspec.constants import Constants
-from pfsspec.common.pfsobject import PfsObject
-from pfsspec.obsmod.psf import Psf
-from pfsspec.obsmod.pcapsf import PcaPsf
-from pfsspec.obsmod.gausspsf import GaussPsf
+from pfsspec.core.pfsobject import PfsObject
+from .physics import Physics
+from .constants import Constants
+# from pfsspec.obsmod.psf import Psf
+# from pfsspec.obsmod.pcapsf import PcaPsf
+# from pfsspec.obsmod.gausspsf import GaussPsf
 
 class Spectrum(PfsObject):
     def __init__(self, orig=None):

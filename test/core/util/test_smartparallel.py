@@ -1,7 +1,7 @@
 import os
-from test.test_base import TestBase
 
-from pfsspec.util.parallel import SmartParallel
+from test.core import TestBase
+from pfsspec.core.util.smartparallel import SmartParallel
 
 class TestSmartParallel(TestBase):
     def initializer(self):

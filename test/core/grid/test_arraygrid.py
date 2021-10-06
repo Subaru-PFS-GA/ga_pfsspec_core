@@ -1,11 +1,11 @@
-from test.test_base import TestBase
 import os
 import numpy as np
 from numpy.testing import assert_array_equal
 import h5py
 
-from pfsspec.data.arraygrid import ArrayGrid
-from pfsspec.data.gridaxis import GridAxis
+from test.core import TestBase
+from pfsspec.core.grid import ArrayGrid
+from pfsspec.core.grid import GridAxis
 
 class TestArrayGrid(TestBase):
     def create_new_grid(self, preload_arrays=True):

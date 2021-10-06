@@ -4,9 +4,9 @@ import numpy as np
 import time
 from tqdm import tqdm
 
-from pfsspec.data.gridbuilder import GridBuilder
-from pfsspec.util.interp.rbf import Rbf
-from pfsspec.data.arraygrid import ArrayGrid
+from pfsspec.core.util.interp import Rbf
+from .gridbuilder import GridBuilder
+from .arraygrid import ArrayGrid
 
 class RbfGridBuilder(GridBuilder):
     def __init__(self, input_grid=None, output_grid=None, orig=None):

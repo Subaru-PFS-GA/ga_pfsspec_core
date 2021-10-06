@@ -1,7 +1,7 @@
-from test.test_base import TestBase
 import numpy as np
 
-from pfsspec.util.interp.rbf import Rbf
+from test.core import TestBase
+from pfsspec.core.util.interp import Rbf
 
 class TestRbf(TestBase):
 

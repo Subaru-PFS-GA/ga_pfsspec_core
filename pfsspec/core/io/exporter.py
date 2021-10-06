@@ -1,8 +1,8 @@
-from pfsspec.common.pfsobject import PfsObject
+from pfsspec.core import PfsObject
 
 class Exporter(PfsObject):
     def __init__(self, orig=None):
-        super(Importer, self).__init__()
+        super(Exporter, self).__init__()
 
     def add_args(self, parser):
         pass

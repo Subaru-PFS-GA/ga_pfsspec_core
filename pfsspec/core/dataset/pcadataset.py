@@ -3,8 +3,7 @@ import numpy as np
 import scipy.stats
 import pandas as pd
 
-from pfsspec.data.dataset import Dataset
-from pfsspec.common.spectrum import Spectrum
+from .dataset import Dataset
 
 class PcaDataset(Dataset):
     def __init__(self, orig=None, preload_arrays=False):

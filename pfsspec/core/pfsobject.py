@@ -11,14 +11,22 @@ import multiprocessing
 import numbers
 from collections import Iterable
 
-from pfsspec.constants import Constants
-import pfsspec.util as util
+from .constants import Constants
+from pfsspec.core.util.args import get_arg, is_arg
 
 class PfsObject():
+    """
+    Implements basic functions to serialize/deserialize object and save/load
+    array data and pandas data frames.
+    """
+
     def __setstate__(self, state):
         self.__dict__ = state
 
         # When a child process is starting use multiprocessing logger
+        # This might be needed but right now getLogger should return the
+        # proper logger object, even when multiprocessing
+        #
         # if multiprocessing.current_process()._inheriting:
         #    self.logger = multiprocessing.get_logger()
 
@@ -48,14 +56,38 @@ class PfsObject():
             self.filedata = None
 
     def get_arg(self, name, old_value, args=None):
+        """
+        Reads a command-line argument if specified, otherwise uses a default value.
+
+        :param name: Name of the argument.
+        :param old_value: Default value of the argument in case in doesn't exist in args.
+        :param args: Argument dictionary. If None, self.args will be used.
+        :return: The parsed command-line argument.
+        """
+
         args = args or self.args
-        return util.get_arg(name, old_value, args)
+        return get_arg(name, old_value, args)
 
     def is_arg(self, name, args=None):
+        """
+        Checks if an (optional) command-line argument is specified.
+
+        :param name: Name of the argument.
+        :param args: Argument dictionary. If None, self.args will be used.
+        :return: True if the optional command-line argument is specified.
+        """
+
         args = args or self.args
-        return util.is_arg(name, args)
+        return is_arg(name, args)
 
     def get_format(self, filename):
+        """
+        Returns a format string based on a file extension.
+
+        :param filename: Name of the file including the extension.
+        :return: Format string
+        """
+
         fn, ext = os.path.splitext(filename)
         if ext == '.h5':
             return 'h5'
@@ -73,6 +105,12 @@ class PfsObject():
             raise NotImplementedError()
 
     def save_json(self, filename):
+        """
+        Serialize the object into a JSON file.
+
+        :param filename: Name of file.
+        """
+
         d = self.__dict__.copy()
         for k in self.jsonomit:
             if k in d:
@@ -84,6 +122,12 @@ class PfsObject():
         return None
 
     def load_json(self, filename):
+        """
+        Loads the object from a JSON file.
+
+        :param filename: Name of file.
+        """
+
         with open(filename, 'r') as f:
             d = json.loads(f.read())
             for k in d:
@@ -91,6 +135,14 @@ class PfsObject():
                     self.__dict__[k] = d[k]
 
     def save(self, filename, format='pickle', save_items_func=None):
+        """
+        Serializes the data items of the object in the specified format.
+
+        :param filename: Name of the target file.
+        :param format: Serialization format.
+        :param save_items_func: Function that calls save_item for each data item.
+        """
+
         self.logger.info("Saving {} to file {}...".format(type(self).__name__, filename))
 
         save_items_func = save_items_func or self.save_items
@@ -116,9 +168,22 @@ class PfsObject():
         self.logger.info("Saved {} to file {}.".format(type(self).__name__, filename))
 
     def save_items(self):
+        """
+        When implemented in derived classes, saves each data item.
+        """
+
         raise NotImplementedError()
 
     def allocate_item(self, name, shape, dtype=np.float):
+        """
+        Allocates the storage space for a data item. Preallocation is supported
+        in HDF5 only.
+
+        :param name: Name or path of the data item.
+        :param shape: Array shape.
+        :param dtype: Array base type.
+        """
+
         if self.fileformat != 'h5':
             raise NotImplementedError()
 
@@ -129,6 +194,15 @@ class PfsObject():
                     return f.create_dataset(name, shape=shape, dtype=dtype, chunks=chunks)
 
     def save_item(self, name, item, s=None, min_string_length=None):
+        """
+        Saves a data item which can be a simple type, array or pandas data frame.
+
+        :param name: Name or path of the data item.
+        :param item: The data item.
+        :param s: Optional target slice. Only supported with HDF5.
+        :param min_string_length: Dictionary of minimum length of pandas string columns.
+        """
+
         self.logger.debug('Saving item {} with type {}'.format(name, type(item).__name__))
 
         if self.fileformat != 'h5' and s is not None:
@@ -146,6 +220,15 @@ class PfsObject():
             raise NotImplementedError()
 
     def save_item_hdf5(self, name, item, s=None, min_string_length=None):
+        """
+        Saves an item into an HDF5 file. Supports partial updates.
+
+        :param name: Name or path of the dataset.
+        :param item: Data item.
+        :param s: Optional target slice, defaults to None.
+        :param min_string_length: Dictionary of minimum length of pandas string columns.
+        """
+
         def open_hdf5():
             if self.file is None:
                 return h5py.File(self.filename, 'a')
@@ -201,6 +284,15 @@ class PfsObject():
         close_hdf5(f)
 
     def get_chunks(self, name, shape, s=None):
+        """
+        Calculates the optimal chunk size for an array. It is often overriden in
+        derived classes to support optimized storage of various data objects.
+
+        :param name: Name of the data item. Optimal chunking might depend on it.
+        :param shape: Full shape of the data time.
+        :param s: Target slice.
+        """
+
         needchunk = False
         size = 1
         for s in shape:
@@ -227,6 +319,15 @@ class PfsObject():
             return None
 
     def load(self, filename, s=None, format=None, load_items_func=None):
+        """
+        Deserializes the data items of the object from the specified format.
+
+        :param filename: Name of the source file.
+        :param s: Source slice.
+        :param format: Serialization format.
+        :param load_items_func: Function that calls load_item for each data item.
+        """
+
         self.logger.info("Loading {} from file {} with slices {}...".format(type(self).__name__, filename, slice))
 
         load_items_func = load_items_func or self.load_items
@@ -253,9 +354,21 @@ class PfsObject():
         self.logger.info("Loaded {} from file {}.".format(type(self).__name__, filename))
 
     def load_items(self, s=None):
+        """
+        When implemented in derived classes, saves each data item.
+        """
+
         raise NotImplementedError()
 
     def load_item(self, name, type, s=None):
+        """
+        Loads a data item which can be a simple type, array or pandas data frame.
+
+        :param name: Name or path of the data item.
+        :param type: Type of the data item. Numpy ndarray, scalars, str and DataFrame are supported.
+        :param s: Optional source slice.
+        """
+
         # self.logger.debug('Loading item {} with type {} and slices {}'.format(name, type.__name__, s))
 
         if self.fileformat == 'numpy':
@@ -287,10 +400,19 @@ class PfsObject():
             raise NotImplementedError()
 
     def get_hdf5_group(self, f, name, create=False):
-        # If name contains /, split and dig down in the hierarchy
+        """
+        Get the group and dataset name from an HDF5 path.
+
+        :param f: An open HDF5 file object.
+        :param name: Name of path of the dataset.
+        :param create: If True, the data groups are created if don't exists.
+        """
+
+        # If name contains '/' split and dig down in the hierarchy.
         parts = name.split('/')
         g = f
         for part in parts[:-1]:
+            # Create group if doesn't exist
             if create and part not in g:
                 g = g.create_group(part)
             elif part not in g:
@@ -300,6 +422,25 @@ class PfsObject():
         return g, parts[-1]
 
     def load_item_hdf5(self, name, type, s=None):
+        """
+        Loads an item from an HDF5 file. Supports partial arrays.
+
+        :param name: Name or path of the dataset.
+        :param type: Type of the data item. Numpy ndarray, scalars, str and DataFrame are supported.
+        :param s: Optional source slice, defaults to None.
+        """
+
+        # The supported types and operation
+        # - pandas DataFrame: Read from HDF5 using pf.read_hdf, start and stop records can
+        #   be specified. Throws error if dataset does not exist.
+        # - numpy ndarray: Read using standard HDF5 smart indexing mechanism. Returns None
+        #   if dataset does not exist.
+        # - scalar float and int: Try reading it from an attribute and if not found, read
+        #   using standard HDF5 smart indexing from a dataset. Returns None if neither the
+        #   attributed, nor the dataset exists.
+        # - str: Read from an attribute instead of a dataset. Returns None if the attribute
+        #   doesn't exist.
+
         if type == pd.DataFrame:
             if s is not None:
                 return pd.read_hdf(self.filename, name, start=s.start, stop=s.stop)
@@ -309,13 +450,6 @@ class PfsObject():
             with h5py.File(self.filename, 'r') as f:
                 g, name = self.get_hdf5_group(f, name, create=False)
                 if g is not None and name in g:
-                    #a = np.empty(g[name].shape, dtype=g[name].dtype)
-                    #if slice is not None:
-                    #    g[name].read_direct(a, source_sel=slice, dest_sel=slice)
-                    #else:
-                    #    g[name].read_direct(a)
-                    #return a
-
                     # Do some smart indexing magic here because index arrays are not supported by h5py
                     # This is not full fancy indexing!
                     shape = None
@@ -361,16 +495,21 @@ class PfsObject():
                         data = g[name][s]
                     else:
                         data = g[name][:]
+
+                    # If data is a scalar, wrap it into an array.
                     if not isinstance(data, np.ndarray):
                         data = np.ndarray(data)
+
                     return data
                 else:
                     return None
         elif type == np.float or type == np.int:
-            # TODO: rewrite this to use attributes
+            # Try attributes first, then dataset, otherwise return None
             with h5py.File(self.filename, 'r') as f:
                 g, name = self.get_hdf5_group(f, name, create=False)
-                if g is not None and name in g:
+                if g is not None and name in g.attrs:
+                    return g.attrs[name]
+                elif g is not None and name in g:
                     data = g[name][()]
                     return data
                 else:
@@ -386,12 +525,26 @@ class PfsObject():
             raise NotImplementedError()
 
     def load_none_array(self, data):
+        """
+        Converts empty arrays to None.
+
+        :param data: Value to convert.
+        :return: None if the array is empty, i.e. has the shape of ().
+        """
+
         if isinstance(data, np.ndarray) and data.shape == ():
             return None
         else:
             return data
 
     def has_item(self, name):
+        """
+        Checks if a dataset exists in an HDF5 file.
+
+        :param name: Name or path of the dataset.
+        :return: True if the dataset exists.
+        """
+
         if self.fileformat == 'h5':
             with h5py.File(self.filename, 'r') as f:
                 g, name = self.get_hdf5_group(f, name, create=False)
@@ -400,6 +553,13 @@ class PfsObject():
             raise NotImplementedError()
 
     def get_item_shape(self, name):
+        """
+        Gets the shape of an HDF5 dataset. Returns None if the dataset doesn't exist.
+
+        :param name: Name or path of the dataset.
+        :return: The shape if the dataset exists, otherwise None.
+        """
+
         if self.fileformat == 'h5':
             with h5py.File(self.filename, 'r') as f:
                 g, name = self.get_hdf5_group(f, name, create=False)

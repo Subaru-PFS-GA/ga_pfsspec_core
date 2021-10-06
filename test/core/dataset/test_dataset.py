@@ -1,9 +1,9 @@
-from test.test_base import TestBase
 import h5py as h5
 import os
 import numpy as np
 
-from pfsspec.data.dataset import Dataset
+from test.core import TestBase
+from pfsspec.core.dataset import Dataset
 
 class TestDataset(TestBase):
     def get_test_dataset(self):

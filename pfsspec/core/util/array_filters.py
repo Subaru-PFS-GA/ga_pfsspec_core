@@ -3,7 +3,7 @@ from scipy.interpolate import interp1d, interpn
 from scipy import ndimage
 from scipy.interpolate import LinearNDInterpolator, RegularGridInterpolator, CubicSpline
 
-from pfsspec.data.arraygrid import ArrayGrid
+from pfsspec.core.grid import ArrayGrid
 
 # def get_value_padded(self, name, interpolation='ijk', s=None, fill_holes=False, filter=np.nanmean):
 #     """Returns a slice of the grid and pads with a single item in every direction using linearNd extrapolation.

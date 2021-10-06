@@ -1,4 +1,4 @@
-from pfsspec.common.pfsobject import PfsObject
+from pfsspec.core import PfsObject
 
 class Importer(PfsObject):
     def __init__(self, orig=None):

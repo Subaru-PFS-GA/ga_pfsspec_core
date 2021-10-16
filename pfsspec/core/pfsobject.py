@@ -80,7 +80,8 @@ class PfsObject():
         args = args or self.args
         return is_arg(name, args)
 
-    def get_format(self, filename):
+    @staticmethod
+    def get_format(filename):
         """
         Returns a format string based on a file extension.
 
@@ -101,6 +102,26 @@ class PfsObject():
                 return 'pickle'
             else:
                 raise NotImplementedError()
+        else:
+            raise NotImplementedError()
+
+    @staticmethod
+    def get_extension(format):
+        """
+        Returns the default extension based on the format string.
+
+        :param format: Format string
+        :return: Default extension.
+        """
+
+        if format == 'h5':
+            return '.h5'
+        elif format == 'npz':
+            return '.npz'
+        elif format == 'numpy':
+            return 'npy.gz'
+        elif format == 'pickle':
+            return 'dat.gz'
         else:
             raise NotImplementedError()
 
@@ -190,7 +211,7 @@ class PfsObject():
         if self.fileformat == 'h5':
             with h5py.File(self.filename, 'a') as f:
                 if name not in f.keys():
-                    chunks = self.get_chunks(name, shape, None)
+                    chunks = self.get_chunk_shape(name, shape, None)
                     return f.create_dataset(name, shape=shape, dtype=dtype, chunks=chunks)
 
     def save_item(self, name, item, s=None, min_string_length=None):
@@ -254,8 +275,10 @@ class PfsObject():
             #       appending them.
 
             if s is None:
-                item.to_hdf(self.filename, name, mode='a', min_itemsize=min_string_length)
+                item.to_hdf(self.filename, name, mode='a', format='table', min_itemsize=min_string_length)
             else:
+                # TODO: this throws an error
+                # TODO: verify if s is at the end of table
                 item.to_hdf(self.filename, name, mode='a', format='table', append=True, min_itemsize=min_string_length)
         elif isinstance(item, np.ndarray):
             if s is not None:
@@ -264,7 +287,7 @@ class PfsObject():
             else:
                 if name in g.keys():
                     del g[name]
-                chunks = self.get_chunks(name, item.shape, s=s)
+                chunks = self.get_chunk_shape(name, item.shape, s=s)
                 if chunks is not None:
                     g.create_dataset(name, data=item, chunks=chunks)
                     self.logger.debug('Saving item {} with chunks {}'.format(name, chunks))
@@ -283,7 +306,7 @@ class PfsObject():
 
         close_hdf5(f)
 
-    def get_chunks(self, name, shape, s=None):
+    def get_chunk_shape(self, name, shape, s=None):
         """
         Calculates the optimal chunk size for an array. It is often overriden in
         derived classes to support optimized storage of various data objects.
@@ -331,7 +354,7 @@ class PfsObject():
         self.logger.info("Loading {} from file {} with slices {}...".format(type(self).__name__, filename, slice))
 
         load_items_func = load_items_func or self.load_items
-        format = format or self.get_format(filename)
+        format = format or PfsObject.get_format(filename)
 
         self.filename = filename
         self.fileformat = format
@@ -567,6 +590,43 @@ class PfsObject():
                     return None
                 else:
                     return g[name].shape
+        else:
+            raise NotImplementedError()
+
+    def get_item_dtype(self, name):
+        """
+        Gets the dtype of an HDF5 dataset. Returns None if the dataset doesn't exist.
+
+        :param name: Name or path of the dataset.
+        :return: The dtype if the dataset exists, otherwise None.
+        """
+        
+        if self.fileformat == 'h5':
+            with h5py.File(self.filename, 'r') as f:
+                g, name = self.get_hdf5_group(f, name, create=False)
+                if (g is None) or (name not in g):
+                    return None
+                else:
+                    return g[name].dtype
+        else:
+            raise NotImplementedError()
+    
+
+    @staticmethod
+    def get_dtype_default_value(dtype):
+        if dtype == np.int:
+            return 0
+        elif dtype == np.float:
+            return 0.0
+        else:
+            raise NotImplementedError()
+
+    @staticmethod
+    def get_dtype_invalid_value(dtype):
+        if dtype == np.int:
+            return -1
+        elif dtype == np.float:
+            return np.nan
         else:
             raise NotImplementedError()
 

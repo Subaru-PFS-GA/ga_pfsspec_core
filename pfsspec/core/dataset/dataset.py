@@ -1,107 +1,253 @@
-import logging
 import numpy as np
-import scipy.stats
 import pandas as pd
 
 from pfsspec.core.pfsobject import PfsObject
-from pfsspec.core import Spectrum
 
 class Dataset(PfsObject):
-    # Implements a class to store preprocessed spectra with parameters stored as
-    # a pandas DataFrame. Spectra can be on the same or diffent wave grid but
-    # if wavelength are different the number of bins should still be the same as
-    # flux values are stored as large arrays.
+    """
+    Implements a class to store data vectors as arrays with additional parameters
+    stored as a pandas DataFrame. The class supports chunked reads and writes when
+    the dataset is stored in the HDF5 format.
 
-    def __init__(self, preload_arrays=None, orig=None):
+    Since `params` can be read directly from the disk, or read and written in
+    chunks, it's not always available in memory. We keep track of the number
+    of records in `row_count`
+    """
+
+    def __init__(self, config=None, preload_arrays=None, orig=None):
+        """
+        Instantiates a new Dataset object.
+
+        :param config: Configuration class inherited from 
+        :param preload_arrays: When True, loads arrays (wave, flux etc.) into
+            memory when the dataset is loaded. This speeds up access but can lead
+            to high memory use.
+        :param orig: Optionally, copy everything from an existing Dataset.
+        """
+        
         super(Dataset, self).__init__(orig=orig)
 
-        # TODO: we now have wave and three data arrays for flux, error and mask
-        #       this is usually enough for training but also consider making it
-        #       more generic to support continuum, etc. or entirely different types
-        #       of datasets, like the implementation of grid.
-        #       This could be done based on the function get_item and set_item
-
         if isinstance(orig, Dataset):
+            self.config = config if config is not None else orig.config
             self.preload_arrays = preload_arrays or orig.preload_arrays
-            self.constant_wave = orig.constant_wave
-            self.shape = orig.shape
 
             self.params = orig.params.copy()
-            self.wave = orig.wave
-            self.flux = orig.flux
-            self.error = orig.error
-            self.mask = orig.mask
+            self.row_count = orig.row_count
+            self.constants = orig.constants
+            self.values = orig.values
+            self.value_shapes = orig.value_shapes
+            self.value_dtypes = orig.value_dtypes
 
             self.cache_chunk_id = orig.cache_chunk_id
             self.cache_chunk_size = orig.cache_chunk_size
             self.cache_dirty = orig.cache_dirty
         else:
+            self.config = config            # Dataset configuration class
             self.preload_arrays = preload_arrays or False
-            self.constant_wave = True
-            self.shape = None
 
-            self.params = None
-            self.wave = None
-            self.flux = None
-            self.error = None
-            self.mask = None
+            self.params = None              # Dataset item parameters
+            self.row_count = None           # Number of rows in params
+            self.constants = {}             # Global constants
+            self.values = {}                # Dictionary of value arrays
+            self.value_shapes = {}          # Dictionary of value array shapes
+            self.value_dtypes = {}          # Dictionary of value dtypes
 
             self.cache_chunk_id = None
             self.cache_chunk_size = None
             self.cache_dirty = False
 
+            self.init_values()
+
     #region Counts and chunks
 
     def get_count(self):
-        return self.params.shape[0]
+        """
+        Gets the number of dataset items.
+
+        :return: The number of dataset items.
+        """
+
+        return self.row_count
 
     def get_chunk_id(self, i, chunk_size):
+        """
+        Based on the index of a dataset item, it retuns the containing chunk's id.
+
+        :param i: Index of the dataset item.
+        :param chunk_size: Chunk size.
+        :return: Index of the chunk.
+        """
+
         return i // chunk_size, i % chunk_size
 
     def get_chunk_count(self, chunk_size):
+        """
+        Based on the chunk size, it returns the number of chunks. The last chunk is
+        potentially partial.
+
+        :param chunk_size: Size of the chunks.
+        :return: The number of chunks.
+        """
+
         return np.int32(np.ceil(self.get_count() / chunk_size))
 
     def get_chunk_slice(self, chunk_size, chunk_id):
+        """
+        Gets the slice selecting a particular chunk from the entire dataset.
+        It applies to the params DataFrame only as the arrays are loaded partially
+        when chunking is used, hence data arrays must be indexed with relative indexing.
+
+        :param chunk_size: Size of the chunks.
+        :param chunk_id: ID of the chunk. The last one will be partial.
+        """
+
         if chunk_id is None:
             return np.s_[()]
         else:
             fr = chunk_id * chunk_size
-            to = min((chunk_id + 1) * chunk_size, self.shape[0])
+            to = min((chunk_id + 1) * chunk_size, self.row_count)
             return np.s_[fr:to]
+
+    def get_shape(self):
+        """
+        Gets the shape of the dataset, i.e. the number of dataset items.
+        """
+
+        return (self.row_count,)
+
+    def get_value_shape(self, name):
+        """
+        Gets the shape of a value item, i.e. the number of dataset items times
+        the shape of the value array.
+        """
+
+        shape = self.get_shape() + self.value_shapes[name]
+        return shape
             
     #endregion
+
+    def init_values(self, row_count=None):
+        """
+        Initializes value arrays by calling `Dataset.init_value` for each value
+        array defined in the DatasetConfig.
+        """
+
+        self.row_count = None
+        
+        if self.config is not None:
+            self.config.init_values(self)
+
+    def allocate_values(self, row_count):
+        """
+        Allocates memory or disk space for value arrays by calling 
+        `Dataset.allocate_value` for each value array defined in the DatasetConfig.
+        """
+
+        self.row_count = row_count
+
+        if self.config is not None:
+            self.config.allocate_values(self, row_count)
+
+    def init_value(self, name, shape=None, dtype=np.float, **kwargs):
+        """
+        Initializes a value array. When shape is not None, the array is
+        allocated in memory or on the disk, depending on the storage model
+        defined by preload_arrays.
+
+        :param name: Name of the value array.
+        :param shape: Shape of the value array, not including number of records.
+        :param dtype: Type of the value array, defaults to `float`.
+        """
+
+        if shape is None:
+            # We don't know the shape but at least we know that there is a value
+            # array by the name.
+            self.values[name] = None
+            self.value_shapes[name] = None
+            self.value_dtypes[name] = dtype
+        else:
+            # We know the shape, allocate the array
+            if isinstance(shape, int):
+                shape = (shape,)
+            full_shape = (self.row_count,) + shape
+
+            self.value_shapes[name] = shape
+            self.value_dtypes[name] = dtype
+          
+            if self.preload_arrays:
+                self.logger.info('Initializing memory for dataset value array "{}" of size {}...'.format(name, full_shape))
+                self.values[name] = np.full(full_shape, self.get_dtype_invalid_value(dtype))
+                self.logger.info('Initialized memory for dataset value array "{}" of size {}.'.format(name, full_shape))
+            else:
+                self.values[name] = None
+
+                self.logger.info('Initializing data file for dataset value array "{}" of size {}...'.format(name, full_shape))
+                if not self.has_item(name):
+                    self.allocate_item(name, full_shape, dtype=dtype)
+                self.logger.info('Skipped memory initialization for dataset value array "{}". Will read random slices from storage.'.format(name))
+
+    def allocate_value(self, name, shape=None, dtype=None, **kwargs):
+        """
+        Allocates the necessary memory or disk space for a value array. When shape
+        or dtype are None, the values are looked up from pre-defined values so
+        the value array must have already been initialized (with or without
+        shape information).
+
+        :param name: Name of the value array.
+        :param shape: Shape of the value array without the number of records.
+            If None, the value from `value_shapes` will be used.
+        :param dtype: Type of the value array. If None, the value from `value_dtypes`
+            will be used.
+        """
+
+        if name not in self.values:
+            raise KeyError()
+
+        if shape is not None:
+            self.value_shapes[name] = shape
+        if dtype is not None:
+            self.value_dtypes[name] = dtype
+        self.init_value(name, shape=self.value_shapes[name], dtype=self.value_dtypes[name])
+
+    def get_chunk_shape(self, name, shape, s=None):
+        """
+        Calculates the optimal chunk size for an array. If a dataset configuration
+        is used, it hooks into the config class.
+
+        :param name: Name of the value array.
+        :param shape: Full shape of the value array, including record count.
+        :param s: Optional slicing, reserved, not used.
+        """
+
+        if self.config is not None:
+            chunks = self.config.get_chunk_shape(self, name, shape, s=s)
+        else:
+            chunks = None
+
+        if chunks is None:
+            chunks = super(Dataset, self).get_chunk_shape(name, shape, s=s)
+
+        return chunks
+
+    def get_min_string_length(self):
+        msl = {}
+        for col in self.params:
+            if self.params[col].dtype == str:
+                msl[col] = 50           # TODO: how to make it a param?
+
+        return msl
+
     #region Load and save
 
-    def init_storage(self, wcount, scount, constant_wave=True):
-        self.constant_wave = constant_wave
-        if self.preload_arrays:
-            self.logger.debug('Initializing memory for dataset of size {}.'.format((scount, wcount)))
-
-            if constant_wave:
-                self.wave = np.empty(wcount)
-            else:
-                self.wave = np.empty((scount, wcount))
-            self.flux = np.empty((scount, wcount))
-            self.error = np.empty((scount, wcount))
-            self.mask = np.empty((scount, wcount))
-
-            self.logger.debug('Initialized memory for dataset of size {}.'.format((scount, wcount)))
-        else:
-            self.logger.debug('Allocating disk storage for dataset of size {}.'.format((scount, wcount)))
-
-            if constant_wave:
-                self.allocate_item('wave', (wcount,), np.float)
-            else:
-                self.allocate_item('wave', (scount, wcount), np.float)
-            self.allocate_item('flux', (scount, wcount), np.float)
-            self.allocate_item('error', (scount, wcount), np.float)
-            self.allocate_item('mask', (scount, wcount), np.int32)
-
-            self.logger.debug('Allocated disk storage for dataset of size {}.'.format((scount, wcount)))
-
-        self.shape = (scount, wcount)
-
     def load(self, filename, format='h5', s=None):
+        """
+        Loads a dataset from a file.
+
+        :param filename: Path to the file.
+        :param format: Format string, defaults to 'h5'.
+        :param s: Optional slice.
+        """
+
         super(Dataset, self).load(filename, format=format, s=s)
 
         self.logger.info("Loaded dataset with shapes:")
@@ -109,157 +255,204 @@ class Dataset(PfsObject):
         self.logger.info("  columns: {}".format(self.params.columns))
 
     def load_items(self, s=None):
+        """
+        Loads dataset items (parameters, constants, value arrays) from a file.
+
+        :param s: Optional slice.
+        """
+
         self.params = self.load_item('params', pd.DataFrame, s=s)
-        if self.preload_arrays or len(self.get_item_shape('wave')) == 1:
-            # Single wave vector or preloading is requested
-            self.wave = self.load_item('wave', np.ndarray)
-            self.constant_wave = (len(self.wave.shape) == 1)
-        else:
-            self.wave = None
-            self.constant_wave = (len(self.get_item_shape('wave')) == 1)
+        self.row_count = self.params.shape[0]
+        self.load_constants()
+        self.load_values(s=s)
 
-        if self.preload_arrays:
-            self.flux = self.load_item('flux', np.ndarray, s=s)
-            self.error = self.load_item('error', np.ndarray, s=s)
-            if self.error is not None and np.any(np.isnan(self.error)):
-                self.error = None
-            self.mask = self.load_item('mask', np.ndarray, s=s)
+    def load_constants(self):
+        """
+        Loads dataset constants from a file.
+        """
 
-            self.shape = self.flux.shape
-        else:
-            self.flux = None
-            self.error = None
-            self.mask = None
+        constants = {}
+        for p in self.constants:
+            if self.has_item(p):
+                constants[p] = self.load_item(p, np.ndarray)
+        self.constants = constants
 
-            self.shape = self.get_item_shape('flux')
+    def load_values(self, s=None):
+        """
+        Loads dataset value arrays from a file. When `preload_arrays` is True,
+        the values are loaded into memory. When False, only metadata are loaded
+        and subsequent calls to `get_value` will read directly from the file.
+
+        :param s: Optional slice.
+        """
+
+        for name in self.values:
+            if self.preload_arrays:
+                if s is not None:
+                    self.logger.info('Loading dataset value array "{}" of size {}'.format(name, s))
+                    self.values[name][s] = self.load_item(name, np.ndarray, s=s)
+                    self.logger.info('Loaded dataset value array "{}" of size {}'.format(name, s))
+                else:
+                    self.logger.info('Loading dataset value array "{}" of size {}'.format(name, self.value_shapes[name]))
+                    self.values[name] = self.load_item(name, np.ndarray)
+                    self.logger.info('Loaded dataset value array "{}" of size {}'.format(name, self.value_shapes[name]))
+                self.value_shapes[name] = self.values[name].shape[1:]
+                self.value_dtypes[name] = self.values[name].dtype
+            else:
+                # When lazy-loading, we simply ignore the slice
+                shape = self.get_item_shape(name)
+                if shape is not None:
+                    self.value_shapes[name] = shape[1:]
+                else:
+                    self.value_shapes[name] = None
+                self.value_dtypes[name] = self.get_item_dtype(name)
+                
+                self.logger.info('Skipped loading dataset value array "{}". Will read directly from storage.'.format(name))
 
     def save(self, filename, format='h5'):
+        """
+        Saves the dataset to a file.
+
+        :param filename: Path to the file.
+        :param format: Format string, defaults to 'h5'.
+        """
+
         super(Dataset, self).save(filename, format=format)
 
         self.logger.info("Saved dataset with shapes:")
-        self.logger.info("  arrays:  {}".format(self.shape))
         if self.params is not None:
             self.logger.info("  params:  {}".format(self.params.shape))
             self.logger.info("  columns: {}".format(self.params.columns))
 
     def save_items(self):
-        if self.preload_arrays:
-            self.save_item('wave', self.wave)
-            self.save_item('flux', self.flux)
-            self.save_item('error', self.error)
-            self.save_item('mask', self.error)
-            self.save_item('params', self.params)
-        else:
-            if self.constant_wave:
-                self.save_item('wave', self.wave)
+        """
+        Saves dataset items (parameters, constants, value arrays) to a file.
+        """
 
-            # Flushing the chunk cache sets the params to None so if params
-            # is not None, it means that we have to save it now
-            if self.params is not None:
-                self.save_item('params', self.params)
+        msl = self.get_min_string_length()
+        self.save_item('params', self.params, min_string_length=msl)
+        self.save_constants()
+        self.save_values()
 
-            # Everything else is written to the disk lazyly
+    def save_constants(self):
+        """
+        Saves dataset constants to a file.
+        """
+
+        for p in self.constants:
+            self.save_item(p, self.constants[p])
+
+    def save_values(self):
+        """
+        Saves dataset value arrays to a file. When `preload_arrays` is True,
+        the arrays must already be allocated in memory and are written to the
+        file entirely. When False, new space for the value arrays are allocated
+        in the target file and subsequent calls to `set_value` will write the
+        values in chunks.
+        """
+
+        for name in self.values:
+            if self.values[name] is not None:
+                if self.preload_arrays:
+                    self.logger.info('Saving dataset value array "{}" of size {}'.format(name, self.values[name].shape))
+                    self.save_item(name, self.values[name])
+                    self.logger.info('Saved dataset value array "{}" of size {}'.format(name, self.values[name].shape))
+                else:
+                    shape = self.get_value_shape(name)
+                    self.logger.info('Allocating dataset value array "{}" with size {}...'.format(name, shape))
+                    self.allocate_item(name, shape, self.value_dtypes[name])
+                    self.logger.info('Allocated dataset value array "{}" with size {}. Will write directly to storage.'.format(name, shape))
 
     #endregion
     #region Params access
 
-    def get_params(self, labels, idx=None, chunk_size=None, chunk_id=None):
+    def get_params(self, names, idx=None, chunk_size=None, chunk_id=None):
+        """
+        Returns an indexed part of the parameters DataFrame. When `chunk_size` 
+        and `chunk_id` are defined, `idx` is assumed to be relative to the chunk,
+        otherwise absolute.
+
+        :param names: List of names columns to return. When None, all columns are
+            returned.          
+        :param idx: Row indexes to be returned. When None, all rows are returned.
+            When chunking, indexes must be relative to the chunk and when None,
+            the entire chunk is returned.
+        :param chunk_size: Chunk size.
+        :param chunk_id: Chunk index, the last one might point to a partial chunk.
+        """
+
         # Here we assume that the params DataFrame is already in memory
         if chunk_id is None:
-            if labels is None:
+            if names is None:
                 return self.params.iloc[idx]
             else:
-                return self.params[labels].iloc[idx]
+                return self.params[names].iloc[idx]
         else:
             s = self.get_chunk_slice(chunk_size, chunk_id)
-            if labels is None:
+            if names is None:
                 return self.params.iloc[s].iloc[idx if idx is not None else slice(None)]
             else:
-                return self.params[labels].iloc[s].iloc[idx if idx is not None else slice(None)]
+                return self.params[names].iloc[s].iloc[idx if idx is not None else slice(None)]
 
-    def set_params(self, labels, values, idx=None, chunk_size=None, chunk_id=None):
-        # Append the new row to the DataFrame
-        for i, label in enumerate(labels):
-            if label not in self.params.columns:
-                self.params.loc[:, label] = np.zeros((), dtype=values.dtype)
+    def set_params(self, names, values, idx=None, chunk_size=None, chunk_id=None):
+        """
+        Sets the values of the parameters DataFrame based on a numpy array. 
+
+        :param names: Names of columns to be updated.
+        :param values: Value array containing the updates. Column index must be
+            the last.
+        :param idx: Optional integer array indexing the rows. When chunking is used,
+            indexes must be relative to the chunk, otherwise absolute.
+        :param chunk_size: Chunk size.
+        :param chunk_id: Chunk index, the last one might point to a partial chunk.
+        """
+        
+        if idx is None:
+            idx = np.arange(0, values.shape[0], dtype=np.int)
+        
+        # Update the rows of the DataFrame
+        for i, name in enumerate(names):
+            if name not in self.params.columns:
+                self.params.loc[:, name] = np.zeros((), dtype=values.dtype)
             
             if chunk_id is None:
-                self.params[label].iloc[idx] = values[..., i]
+                self.params[name].iloc[idx] = values[..., i]
             else:
-                self.params[label].iloc[chunk_id * chunk_size + idx] = values[..., i]
+                self.params[name].iloc[chunk_id * chunk_size + idx] = values[..., i]
 
-    def set_params_row(self, row):
+    def append_params_row(self, row, id_key='id'):
+        """
+        Appends a row to the params DataFrame. If the params DataFrame is None,
+        it will consists of a single row.
+
+        :param row: A dictionary of values to be appended.
+        :param id_key: The dictionary item to be used as index. Defaults to "id".
+        """
+
         if self.params is None:
-            self.params = pd.DataFrame(row, index=[row['id']])
+            self.params = pd.DataFrame(row, index=[row[id_key]])
         else:
-            self.params = self.params.append(pd.Series(row, index=self.params.columns, name=row['id']))
+            self.params = self.params.append(pd.Series(row, index=self.params.columns, name=row[id_key]))
 
     #endregion
-    #region Array access
+    #region Array access with chunking and caching support
 
-    def read_cache(self, name, chunk_size, chunk_id):
-        # Reset cache if necessary
-        if self.cache_dirty and (self.cache_chunk_id != chunk_id or self.cache_chunk_size != chunk_size):
-            self.flush_cache_all(chunk_size, chunk_id)
-        elif self.cache_chunk_id is None or self.cache_chunk_id != chunk_id or self.cache_chunk_size != chunk_size:
-            self.reset_cache_all(chunk_size, chunk_id)
+    def get_value(self, name, idx=None, chunk_size=None, chunk_id=None):
+        """
+        Gets an indexed slice of a value array with optional chunking and data
+        caching, if the array are stored on the disk, i.e. `preload_arrays` is False.
 
-        # Load and cache current
-        data = getattr(self, name)
-        if data is None:
-            self.logger.debug('Reading dataset chunk `{}:{}` from disk.'.format(name, chunk_id))
-            s = self.get_chunk_slice(chunk_size, chunk_id)
-            data = self.load_item(name, np.ndarray, s=s)
-            self.cache_dirty = False
-        
-        setattr(self, name, data)
+        :param name: Name of the value array.
+        :param idx: Integer index array or slice into the value array. When chunking
+            is used it must be relative to the chunk, otherwise absolute.
+        :param chunk_size: Size of the chunks.
+        :param chunk_id: ID of the chunk. The last one might be partial.
+        """
 
-    def reset_cache_all(self, chunk_size, chunk_id):
-        if not self.constant_wave:
-            self.wave = None
-        self.flux = None
-        self.error = None
-        self.mask = None
-
-        self.cache_chunk_id = chunk_id
-        self.cache_chunk_size = chunk_size
-        self.cache_dirty = False
-
-    def flush_cache_item(self, name):
-        s = self.get_chunk_slice(self.cache_chunk_size, self.cache_chunk_id)
-        data = getattr(self, name)
-        if data is not None:
-            self.save_item(name, data, s=s)
-        setattr(self, name, None)
-
-    def flush_cache_all(self, chunk_size, chunk_id):
-        self.logger.debug('Flushing dataset chunk `:{}` to disk.'.format(self.cache_chunk_id))
-
-        if not self.constant_wave:
-            self.flush_cache_item('wave')
-        self.flush_cache_item('flux')
-        self.flush_cache_item('error')
-        self.flush_cache_item('mask')
-
-        # Sort and save the last chunk of the parameters
-        if self.params is not None:
-            self.params.sort_values('id', inplace=True)
-        min_string_length = { 'interp_param': 15 }
-        s = self.get_chunk_slice(self.cache_chunk_size, self.cache_chunk_id)
-        self.save_item('params', self.params, s=s, min_string_length=min_string_length)
-
-        # TODO: The issue with merging new chunks into an existing DataFrame is that
-        #       the index is rebuilt repeadately, causing an even increasing processing
-        #       time. To prevent this, we reset the params DataFrame here but it should
-        #       only happen during building a dataset. Figure out a better solution to this.
-        self.params = None
-
-        self.logger.debug('Flushed dataset chunk {} to disk.'.format(self.cache_chunk_id))
-
-        self.reset_cache_all(chunk_size, chunk_id)
-
-    def get_item(self, name, idx=None, chunk_size=None, chunk_id=None):
-        if not self.preload_arrays:
+        if self.preload_arrays:
+            if chunk_size is not None or chunk_id is not None:
+                raise NotImplementedError()
+        else:
             if chunk_size is None:
                 # No chunking, load directly from storage
                 # Assume idx is absolute within file and not relative to chunk
@@ -278,106 +471,178 @@ class Dataset(PfsObject):
                 # Chunked lazy loading, use cache
                 # Assume idx is relative to chunk
                 self.read_cache(name, chunk_size, chunk_id)
-        # Return slice from cache
-        return getattr(self, name)[idx if idx is not None else ()]
+        
+        # Return slice from cache (or preloaded array)
+        return self.values[name][idx if idx is not None else ()]
 
-    def set_item(self, name, data, idx=None, chunk_size=None, chunk_id=None):
-        if not self.preload_arrays:
+    def set_value(self, name, data, idx=None, chunk_size=None, chunk_id=None):
+        """
+        Sets an indexed slice of a value array with optional chunking and data
+        caching, if the array are stored on the disk, i.e. `preload_arrays` is False.
+
+        :param name: Name of the value array.
+        :param data: Updates to the value array.
+        :param idx: Integer index array or slice into the value array. When chunking
+            is used it must be relative to the chunk, otherwise absolute.
+        :param chunk_size: Size of the chunks.
+        :param chunk_id: ID of the chunk. The last one might be partial.
+        """
+
+        if self.preload_arrays:
+            self.values[name][idx if idx is not None else ()] = data
+        else:
             if chunk_size is None:
                 # No chunking, write directly to storage
                 # Assume idx is absolute within file and not relative to chunk
-                self.save_item(name, data, s=idx)
-                return
+
+                # HDF file doesn't support fancy indexing with unsorted arrays
+                # so sort and reshuffle here
+                if isinstance(idx, np.ndarray):
+                    srt = np.argsort(idx)
+                    self.save_item(name, data[srt], s=idx[srt])
+                else:
+                    self.save_item(name, data, s=idx)
             else:
                 self.read_cache(name, chunk_size, chunk_id)
+                self.values[name][idx if idx is not None else ()] = data
                 self.cache_dirty = True
-
-        getattr(self, name)[idx if idx is not None else ()] = data
-
+      
     def has_item(self, name):
         if self.preload_arrays:
             return getattr(self, name) is not None
         else:
             return super(Dataset, self).has_item(name)
 
-    def get_wave(self, idx=None, chunk_size=None, chunk_id=None):
-        if self.constant_wave:
-            return self.wave
-        else:
-            return self.get_item('wave', idx, chunk_size, chunk_id)
+    def read_cache(self, name, chunk_size, chunk_id):
+        """
+        Reads a chunk from the cache, if available. Otherwise loads from the disk.
+        Flushes the cache first, if dirty.
 
-    def set_wave(self, wave, idx=None, chunk_size=None, chunk_id=None):
-        if self.constant_wave:
-            self.wave = wave
-            if not self.preload_arrays:
-                self.save_item('wave', wave)
-        else:
-            self.set_item('wave', wave, idx, chunk_size, chunk_id)
+        :param name: Name of the value array.
+        :param chunk_size: Size of the chunks.
+        :param chunk_id: ID of the chunk. The last one might be partial.
+        """
 
-    def get_flux(self, idx=None, chunk_size=None, chunk_id=None):
-        return self.get_item('flux', idx, chunk_size, chunk_id)
+        # Flush or reset cache if necessary
+        if self.cache_dirty and (self.cache_chunk_id != chunk_id or self.cache_chunk_size != chunk_size):
+            self.flush_cache_all(chunk_size, chunk_id)
+        elif self.cache_chunk_id is None or self.cache_chunk_id != chunk_id or self.cache_chunk_size != chunk_size:
+            self.reset_cache_all(chunk_size, chunk_id)
 
-    def set_flux(self, flux, idx=None, chunk_size=None, chunk_id=None):
-        self.set_item('flux', flux, idx, chunk_size, chunk_id)
+        # Load and cache current
+        data = self.values[name]
+        if data is None:
+            self.logger.debug('Reading dataset chunk `{}:{}` from disk.'.format(name, chunk_id))
+            s = self.get_chunk_slice(chunk_size, chunk_id)
+            data = self.load_item(name, np.ndarray, s=s)
+            self.cache_dirty = False
+        
+        self.values[name] = data
 
-    def has_error(self):
-        return self.has_item('error')
+    def reset_cache_all(self, chunk_size, chunk_id):
+        """
+        Resets the cache for all values. Sets new chunking.
 
-    def get_error(self, idx=None, chunk_size=None, chunk_id=None):
-        return self.get_item('error', idx, chunk_size, chunk_id)
+        :param chunk_size: Size of the chunks.
+        :param chunk_id: ID of the chunk. The last one might be partial.
+        """
+        for name in self.values:
+            self.values[name] = None
+        
+        self.cache_chunk_id = chunk_id
+        self.cache_chunk_size = chunk_size
+        self.cache_dirty = False
 
-    def set_error(self, error, idx=None, chunk_size=None, chunk_id=None):
-        self.set_item('error', error, idx, chunk_size, chunk_id)
+    def flush_cache_item(self, name):
+        """
+        Flush the contents of a value array to the disk.
 
-    def has_mask(self):
-        return self.has_item('mask')
+        :param name: Name of the value array
+        """
 
-    def get_mask(self, idx=None, chunk_size=None, chunk_id=None):
-        return self.get_item('mask', idx, chunk_size, chunk_id)
+        s = self.get_chunk_slice(self.cache_chunk_size, self.cache_chunk_id)
+        data = self.values[name]
+        if data is not None:
+            self.save_item(name, data, s=s)
+        self.values[name] = None
 
-    def set_mask(self, mask, idx=None, chunk_size=None, chunk_id=None):
-        self.set_item('mask', mask, idx, chunk_size, chunk_id)
+    def flush_cache_all(self, chunk_size, chunk_id, id_key='id'):
+        """
+        Flush the contents of the value array cache to the disk. Also save the
+        corresponding rows from the params DataFrame, even though it's kept in
+        memory. This is to ensure consistency.
+
+        :param chunk_size: Size of the chunks.
+        :param chunk_id: ID of the chunk. The last one might be partial.
+        :param id_key: The dictionary item to be used as index. Defaults to "id".
+        """
+
+        self.logger.debug('Flushing dataset chunk `:{}` to disk.'.format(self.cache_chunk_id))
+
+        for name in self.values:
+            self.flush_cache_item(name)
+
+        # TODO: move to merge
+        # # Sort and save the last chunk of the parameters
+        # if self.params is not None:
+        #     self.params.sort_values(id_key, inplace=True)
+        # msl = self.get_min_string_length()
+        # s = self.get_chunk_slice(self.cache_chunk_size, self.cache_chunk_id)
+        # self.save_item('params', self.params, s=s, min_string_length=msl)
+
+        # # TODO: The issue with merging new chunks into an existing DataFrame is that
+        # #       the index is rebuilt repeadately, causing an ever increasing processing
+        # #       time. To prevent this, we reset the params DataFrame here but it should
+        # #       only happen during building a dataset. Figure out a better solution to this.
+        # self.params = None
+
+        self.logger.debug('Flushed dataset chunk {} to disk.'.format(self.cache_chunk_id))
+
+        self.reset_cache_all(chunk_size, chunk_id)
 
     #endregion
-
-    def create_spectrum(self):
-        # Override this function to return a specific kind of class derived from Spectrum.
-        return Spectrum()
-
-    def get_spectrum(self, i):
-        spec = self.create_spectrum()
-
-        if self.constant_wave:
-            spec.wave = self.get_wave()
-        else:
-            spec.wave = self.get_wave(idx=i)
-        spec.flux = self.get_flux(idx=i)
-        spec.flux_err = self.get_error(idx=i)
-        spec.mask = self.get_mask(idx=i)
-
-        params = self.params.loc[i].to_dict()
-        for p in params:
-            if hasattr(spec, p):
-                setattr(spec, p, params[p])
-
-        return spec
-
-    ###
-    # TODO: rewrite these to work with la
+    #region Split, merge and filter
 
     def reset_index(self, df):
+        """
+        Resets the index of a dataframe to be continuos and incremental.
+
+        :param df: The DataFrame.
+        """
+
         df.index = pd.RangeIndex(len(df.index))
 
     def get_split_index(self, split_value):
+        """
+        Returns the index where the dataset should be split given a
+        split value.
+
+        :param split_value: Split value (float between 0.0 and 1.0).
+        """
+
         split_index = int((1 - split_value) *  self.get_count())
         return split_index
 
     def get_split_ranges(self, split_index):
+        """
+        Returns two pandas Series that mask the two parts of the dataset
+        when split at `split_index`.
+
+        :param split_index: The index where the dataset is split at.
+        """
+
         a_range = pd.Series(split_index * [True] + (self.get_count() - split_index) * [False])
         b_range = ~a_range
         return a_range, b_range
 
     def split(self, split_value):
+        """
+        Splits the dataset into two at a given split value.
+
+        :param split_value: Split value (float between 0.0 and 1.0).
+        :return: split_index, dataset A and dataset B.
+        """
+
         split_index = self.get_split_index(split_value)
         a_range, b_range = self.get_split_ranges(split_index)
 
@@ -387,6 +652,14 @@ class Dataset(PfsObject):
         return split_index, a, b
 
     def where(self, f):
+        """
+        Filters the dataset by a filder specified as a boolean array or
+        pandas Serier.
+
+        :param f: Filter array or Series
+        :return: Filtered dataset
+        """
+
         if f is None:
             ds = type(self)(orig=self)
             return ds
@@ -417,6 +690,10 @@ class Dataset(PfsObject):
             return ds
 
     def merge(self, b):
+        """
+        Merges another dataset into the current one.
+        """
+
         if self.preload_arrays and b.preload_arrays:
             ds = Dataset()
 
@@ -440,8 +717,8 @@ class Dataset(PfsObject):
         # We assume that chunk sizes are compatible and the destination dataset (self)
         # is properly preallocated
         def copy_item(name):
-            data = b.get_item(name, chunk_size=chunk_size, chunk_id=chunk_id)
-            self.set_item(name, data, chunk_size=chunk_size, chunk_id=chunk_offset + chunk_id)
+            data = b.get_value(name, chunk_size=chunk_size, chunk_id=chunk_id)
+            self.set_value(name, data, chunk_size=chunk_size, chunk_id=chunk_offset + chunk_id)
         
         if self.constant_wave:
             self.wave = b.wave
@@ -458,21 +735,6 @@ class Dataset(PfsObject):
 
         pass
 
-    ###
+    #endregion
 
-    def add_predictions(self, labels, prediction):
-        i = 0
-        for l in labels:
-            if prediction.shape[2] == 1:
-                self.params[l + '_pred'] = prediction[:,i,0]
-            else:
-                self.params[l + '_pred'] = np.mean(prediction[:,i,:], axis=-1)
-                self.params[l + '_std'] = np.std(prediction[:,i,:], axis=-1)
-                self.params[l + '_skew'] = scipy.stats.skew(prediction[:,i,:], axis=-1)
-                self.params[l + '_median'] = np.median(prediction[:,i,:], axis=-1)
-
-                # TODO: how to get the mode?
-                # TODO: add quantiles?
-
-            i += 1
-
+    

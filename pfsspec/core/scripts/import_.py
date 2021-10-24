@@ -1,12 +1,18 @@
 import os
 import logging
 
-from pfsspec.scripts.configurations import IMPORT_CONFIGURATIONS
-from pfsspec.scripts.script import Script
+#from pfsspec.scripts.configurations import IMPORT_CONFIGURATIONS
+from .script import Script
 
 class Import(Script):
+
+    CONFIG_NAME = 'IMPORT_CONFIGURATIONS'
+
     def __init__(self):
         super(Import, self).__init__()
+
+        self.config_name = None
+
         self.path = None
         self.outdir = None
         self.resume = False
@@ -15,13 +21,13 @@ class Import(Script):
 
     def add_subparsers(self, parser):
         tps = parser.add_subparsers(dest='type')
-        for t in IMPORT_CONFIGURATIONS:
+        for t in self.parser_configurations:
             tp = tps.add_parser(t)
             sps = tp.add_subparsers(dest='source')
-            for s in IMPORT_CONFIGURATIONS[t]:
+            for s in self.parser_configurations[t]:
                 sp = sps.add_parser(s)
                 self.add_args(sp)
-                rr = IMPORT_CONFIGURATIONS[t][s]()
+                rr = self.parser_configurations[t][s]()
                 rr.add_args(sp)
 
     def add_args(self, parser):
@@ -36,7 +42,7 @@ class Import(Script):
         self.resume = self.get_arg('resume', self.resume)
 
     def create_importer(self):
-        self.importer = IMPORT_CONFIGURATIONS[self.args['type']][self.args['source']]()
+        self.importer = self.parser_configurations[self.args['type']][self.args['source']]()
         self.importer.parallel = self.threads != 1
         self.importer.threads = self.threads
         self.importer.resume = self.resume
@@ -50,13 +56,12 @@ class Import(Script):
         
         self.outdir = self.args['out']
         self.create_output_dir(self.outdir, resume=self.resume)
-        self.save_command_line(os.path.join(self.outdir, 'command.sh'))
+        self.init_logging(self.outdir)
 
         self.create_importer()
         self.open_data()
 
     def run(self):
-        self.init_logging(self.outdir)
         self.importer.run()
         self.importer.save_data()
 

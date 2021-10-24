@@ -1,5 +1,6 @@
 from .grid import Grid
 from .gridaxis import GridAxis
+from .gridconfig import GridConfig
 from .arraygrid import ArrayGrid
 from .gridbuilder import GridBuilder
 from .pcagrid import PcaGrid

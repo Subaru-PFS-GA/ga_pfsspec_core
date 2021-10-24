@@ -43,7 +43,6 @@ class Export(Script):
         self.outdir = self.args['out']
         self.create_output_dir(self.outdir)
         self.init_logging(self.outdir)
-        self.save_command_line(os.path.join(self.outdir, 'command.sh'))
 
         self.load_data()
 

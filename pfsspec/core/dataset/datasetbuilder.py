@@ -39,11 +39,11 @@ class DatasetBuilder(PfsObject):
 
     def get_arg(self, name, old_value, args=None):
         args = args or self.args
-        return util.get_arg(name, old_value, args)
+        return util.args.get_arg(name, old_value, args)
 
     def is_arg(self, name, args=None):
         args = args or self.args
-        return util.is_arg(name, args)
+        return util.args.is_arg(name, args)
 
     def add_args(self, parser):
         parser.add_argument('--chunk-size', type=int, help='Dataset chunk size.\n')
@@ -116,7 +116,7 @@ class DatasetBuilder(PfsObject):
 
         # TODO: chunking here
         row = spec.get_params_as_datarow()
-        self.dataset.set_params_row(row)
+        self.dataset.append_params_row(row)
 
     def process_and_store_item(self, i):
         spec = self.process_item(i)

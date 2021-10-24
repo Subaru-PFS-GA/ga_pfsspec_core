@@ -35,11 +35,11 @@ class DatasetMerger():
 
     def get_arg(self, name, old_value, args=None):
         args = args or self.args
-        return util.get_arg(name, old_value, args)
+        return util.args.get_arg(name, old_value, args)
 
     def is_arg(self, name, args=None):
         args = args or self.args
-        return util.is_arg(name, args)
+        return util.args.is_arg(name, args)
 
     def add_args(self, parser):
         parser.add_argument('--preload-arrays', action='store_true', help='Preload flux arrays into memory.\n')

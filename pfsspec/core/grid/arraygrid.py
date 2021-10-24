@@ -9,6 +9,7 @@ from scipy.interpolate import interp1d, interpn
 from .grid import Grid
 from .gridaxis import GridAxis
 
+# TODO: add support for value dtype as in Dataset
 class ArrayGrid(Grid):
     """Implements a generic grid class to store and interpolate data.
 
@@ -27,11 +28,11 @@ class ArrayGrid(Grid):
             self.value_indexes = orig.value_indexes
             self.slice = orig.slice
         else:
-            self.config = config
-            self.values = {}
-            self.value_shapes = {}
-            self.value_indexes = {}
-            self.slice = None
+            self.config = config        # Grid configuration class
+            self.values = {}            # Dictionary of value arrays
+            self.value_shapes = {}      # Dictionary of value array shapes (excl. grid shape)
+            self.value_indexes = {}     # Dictionary of index array indicating existing grid points
+            self.slice = None           # Global mask defined as a slice
 
             self.init_values()
 
@@ -104,6 +105,7 @@ class ArrayGrid(Grid):
         shape = self.get_shape() + self.value_shapes[name]
         return shape
 
+    # TODO: add support for dtype
     def init_value(self, name, shape=None, **kwargs):
         if shape is None:
             self.values[name] = None
@@ -249,11 +251,11 @@ class ArrayGrid(Grid):
             mask = np.full(self.get_shape(), True)
         return mask
 
-    def get_chunks(self, name, shape, s=None):
+    def get_chunk_shape(self, name, shape, s=None):
         if self.config is not None:
-            self.config.get_chunks(self, name, shape, s=s)
+            self.config.get_chunk_shape(self, name, shape, s=s)
         else:
-            super(ArrayGrid, self).get_chunks(name, shape, s=s)
+            super(ArrayGrid, self).get_chunk_shape(name, shape, s=s)
 
     def has_value(self, name):
         if self.preload_arrays:

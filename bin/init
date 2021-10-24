@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Verify if file is being sourced
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    echo "The init script must be sourced!"
+    exit
+fi
+
 echo "Sourcing .bashrc"
 source ~/.bashrc
 

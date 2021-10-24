@@ -1,5 +1,5 @@
 #!/bin/bash
 
 set -o noglob
-./scripts/run.sh "-m pfsspec.core.scripts.import_" $@
+./bin/run "-m pfsspec.core.scripts.import_" $@
 set +o noglob

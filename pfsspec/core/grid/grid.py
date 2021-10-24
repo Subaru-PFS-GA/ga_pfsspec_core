@@ -7,6 +7,11 @@ from pfsspec.core.pfsobject import PfsObject
 from .gridaxis import GridAxis
 
 class Grid(PfsObject):
+    """
+    Implements a base class to provide multidimensional grid capabilities to store and interpolate
+    data vectors of any kind, including model spectra.
+    """
+
     def __init__(self, orig=None):
         super(Grid, self).__init__(orig=orig)
 

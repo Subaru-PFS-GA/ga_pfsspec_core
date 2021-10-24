@@ -1,5 +1,6 @@
 import os
 import sys
+import pkgutil, importlib
 import json
 import yaml
 import logging
@@ -10,10 +11,14 @@ from multiprocessing import set_start_method
 import socket
 from collections.abc import Iterable
 
+import pfsspec
 import pfsspec.core.util as util
 from pfsspec.core.util.notebookrunner import NotebookRunner
 
 class Script():
+
+    CONFIG_NAME = None
+
     def __init__(self, logging_enabled=True):
 
         # Spawning worker processes is slower but might help with deadlocks
@@ -35,6 +40,23 @@ class Script():
             self.threads = int(os.environ['SLURM_CPUS_PER_TASK'])
         else:
             self.threads = multiprocessing.cpu_count() // 2
+        
+    def find_configurations(self):
+        """
+        Returns a list of configuration dictionaries found in a list of
+        modules. The list is used to create a combined configuration to
+        initialize the parser modules.
+        """
+
+        merged_config = {}
+
+        for m in pkgutil.iter_modules(pfsspec.__path__):
+            module = importlib.import_module('pfsspec.{}.configurations'.format(m.name))
+            if hasattr(module, self.CONFIG_NAME):
+                config = getattr(module, self.CONFIG_NAME)
+                merged_config.update(config)
+
+        self.parser_configurations = merged_config
 
     def create_parser(self):
         self.parser = argparse.ArgumentParser()
@@ -46,11 +68,11 @@ class Script():
 
     def get_arg(self, name, old_value, args=None):
         args = args or self.args
-        return util.get_arg(name, old_value, args)
+        return util.args.get_arg(name, old_value, args)
 
     def is_arg(self, name, args=None):
         args = args or self.args
-        return util.is_arg(name, args)
+        return util.args.is_arg(name, args)
 
     def add_args(self, parser):
         parser.add_argument('--config', type=str, nargs='+', help='Load config from json file.')
@@ -280,8 +302,11 @@ class Script():
             f.write(' '.join(sys.argv))
     
     def init_logging(self, outdir):
+        logdir = self.log_dir or os.path.join(outdir, 'logs')
+        os.makedirs(logdir)
+
         logfile = type(self).__name__.lower() + '.log'
-        logfile = os.path.join(self.log_dir or os.path.join(outdir, 'logs'), logfile)
+        logfile = os.path.join(logdir, logfile)
         self.setup_logging(logfile)
 
         self.save_command_line(os.path.join(outdir, 'command.sh'))
@@ -294,6 +319,7 @@ class Script():
         self.finish()
 
     def prepare(self):
+        self.find_configurations()
         self.create_parser()
         self.parse_args()
 

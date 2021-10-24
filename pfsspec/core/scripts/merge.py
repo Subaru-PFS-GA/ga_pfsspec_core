@@ -50,11 +50,9 @@ class Merge(Script):
         super(Merge, self).prepare()
         self.outdir = self.args['out']
         self.create_output_dir(self.outdir, resume=False)
-        self.save_command_line(os.path.join(self.outdir, 'command.sh'))
-
-    def run(self):
         self.init_logging(self.outdir)
 
+    def run(self):
         self.init_merger()
         self.merger.merge()
 

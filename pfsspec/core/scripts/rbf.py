@@ -47,13 +47,13 @@ class Rbf(Script):
 
         self.outdir = self.args['out']
         self.create_output_dir(self.outdir, resume=False)
-        self.save_command_line(os.path.join(self.outdir, 'command.sh'))
+        self.init_logging(self.outdir)
 
         self.create_rbf()
         self.open_data()
 
     def run(self):
-        self.init_logging(self.outdir)
+        
         self.rbf.run()
         self.save_data()
 

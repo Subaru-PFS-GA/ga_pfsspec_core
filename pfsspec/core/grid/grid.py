@@ -1,3 +1,4 @@
+import os
 import logging
 import numbers
 import numpy as np
@@ -11,6 +12,10 @@ class Grid(PfsObject):
     Implements a base class to provide multidimensional grid capabilities to store and interpolate
     data vectors of any kind, including model spectra.
     """
+
+    PREFIX_GRID = 'grid'
+    PREFIX_CONST = 'const'
+    PREFIX_AXIS = 'axes'
 
     def __init__(self, orig=None):
         super(Grid, self).__init__(orig=orig)
@@ -65,6 +70,14 @@ class Grid(PfsObject):
                 axes[k] = self.axes[k]
         return axes
 
+    def save_params(self):
+        self.save_item(os.path.join(self.PREFIX_GRID, 'type'), type(self).__name__)
+
+    def load_params(self):
+        type = self.load_item(os.path.join(self.PREFIX_GRID, 'type'), str)
+        if type != type(self).__name__:
+            Exception("Trying to load grid of the wrong type.")
+
     def init_constants(self):
         pass
 
@@ -82,13 +95,15 @@ class Grid(PfsObject):
 
     def save_constants(self):
         for p in self.constants:
-            self.save_item(p, self.constants[p])
+            path = os.path.join(self.PREFIX_GRID, self.PREFIX_CONST, p)
+            self.save_item(path, self.constants[p])
 
     def load_constants(self):
         constants = {}
         for p in self.constants:
-            if self.has_item(p):
-                constants[p] = self.load_item(p, np.ndarray)
+            path = os.path.join(self.PREFIX_GRID, self.PREFIX_CONST, p)
+            if self.has_item(path):
+                constants[p] = self.load_item(path, np.ndarray)
         self.constants = constants
 
     def init_values(self):
@@ -115,7 +130,8 @@ class Grid(PfsObject):
 
     def save_axes(self):
         for p in self.axes:
-            self.save_item(p, self.axes[p].values)
+            path = os.path.join(self.PREFIX_GRID, self.PREFIX_AXIS, p)
+            self.save_item(path, self.axes[p].values)
 
     def load_axes(self):
         # TODO: This might not be the best solution
@@ -123,13 +139,15 @@ class Grid(PfsObject):
         # that the grid was squeezed during transformation
         axes = {}
         for p in self.axes:
-            if self.has_item(p):
-                self.axes[p].values = self.load_item(p, np.ndarray)
+            path = os.path.join(self.PREFIX_GRID, self.PREFIX_AXIS, p)
+            if self.has_item(path):
+                self.axes[p].values = self.load_item(path, np.ndarray)
                 axes[p] = self.axes[p]
         self.axes = axes
         self.build_axis_indexes()
 
     def save_items(self):
+        self.save_params()
         self.save_axes()
         self.save_constants()
 
@@ -138,6 +156,7 @@ class Grid(PfsObject):
         self.build_axis_indexes()
 
     def load_items(self, s=None):
+        self.load_params()
         self.load_axes()
         self.load_constants()
 

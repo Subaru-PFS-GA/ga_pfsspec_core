@@ -4,75 +4,11 @@ import numpy as np
 from tqdm import tqdm
 import multiprocessing
 
+from pfsspec.core.grid import GridEnumerator
 from pfsspec.core.util.smartparallel import SmartParallel
 from pfsspec.core.io import Importer
 
 class GridReader(Importer):
-    class EnumAxesGenerator():
-        def __init__(self, grid=None, top=None, resume=False):
-            self.grid = grid
-            self.axes = grid.get_axes()
-            self.limits = [self.axes[p].values.shape[0] for p in self.axes]
-            self.i = 0
-            self.top = top
-            self.current = [0 for p in self.axes]
-            self.stop = False
-            self.resume = resume
-
-        def __iter__(self):
-            return self
-
-        def __len__(self):
-            if self.top is not None:
-                return self.top
-            else:
-                s = 1
-                for p in self.axes:
-                    s *= self.axes[p].values.shape[0]
-                return s
-
-        def __next__(self):
-            if self.stop:
-                raise StopIteration()
-            else:
-                # If in continue mode, we need to skip item that are already in the grid
-                while True:
-                    ci = self.current.copy()
-                    cr = {p: self.axes[p].values[self.current[i]] for i, p in enumerate(self.axes)}
-
-                    k = len(self.limits) - 1
-                    while k >= 0:
-                        self.current[k] += 1
-                        if self.current[k] == self.limits[k]:
-                            self.current[k] = 0
-                            k -= 1
-                            continue
-                        else:
-                            break
-
-                    if k == -1 or self.i == self.top:
-                        self.stop = True
-
-                    self.i += 1
-
-                    if self.resume:
-                        # Test if item is already in the grid
-                        mask = None
-                        for name in self.grid.value_indexes:
-                            m = self.grid.has_value_at(name, ci)
-                            if mask is None:
-                                mask = m
-                            else:
-                                mask |= m
-
-                        if not mask:
-                            # Item does not exist
-                            break
-                    else:
-                        break
-
-                return ci, cr
-
     def __init__(self, grid=None, orig=None):
         super(GridReader, self).__init__(orig=orig)
 
@@ -109,6 +45,9 @@ class GridReader(Importer):
     def create_grid(self):
         raise NotImplementedError()
 
+    def get_array_grid(self):
+        return self.grid
+
     def save_data(self):
         raise NotImplementedError()
 
@@ -121,7 +60,7 @@ class GridReader(Importer):
         if self.top is not None:
             self.logger.info("Reading grid will stop after {} items.".format(self.top))
 
-        g = GridReader.EnumAxesGenerator(self.grid, top=self.top, resume=resume)
+        g = GridEnumerator(self.get_array_grid(), top=self.top, resume=resume)
         t = tqdm(total=len(g))
         with SmartParallel(verbose=False, parallel=self.parallel, threads=self.threads) as p:
             for res in p.map(self.process_item, g):

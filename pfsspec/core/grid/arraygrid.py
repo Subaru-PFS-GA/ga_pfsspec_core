@@ -1,3 +1,4 @@
+import os
 import logging
 import numpy as np
 import itertools
@@ -18,6 +19,11 @@ class ArrayGrid(Grid):
     leading dimensions as the size of the axes. An index is build on every
     value array which indicated valid/invalid data in a particular grid point.
     """
+
+    PREFIX_ARRAY = 'arrays'
+    POSTFIX_VALUE = 'value'
+    POSTFIX_INDEX = 'index'
+
     def __init__(self, config=None, orig=None):
         super(ArrayGrid, self).__init__(orig=orig)
 
@@ -97,6 +103,12 @@ class ArrayGrid(Grid):
     def get_shape_unsliced(self):
         return super(ArrayGrid, self).get_shape()
 
+    def get_value_path(self, name):
+        return os.path.join(self.PREFIX_GRID, self.PREFIX_ARRAY, name, self.POSTFIX_VALUE)
+
+    def get_index_path(self, name):
+        return os.path.join(self.PREFIX_GRID, self.PREFIX_ARRAY, name, self.POSTFIX_INDEX)
+
 #endregion
 
     def get_value_shape(self, name):
@@ -129,9 +141,9 @@ class ArrayGrid(Grid):
                 self.values[name] = None
                 self.value_indexes[name] = None
                 self.logger.info('Initializing data file for grid "{}" of size {}...'.format(name, valueshape))
-                if not self.has_item(name):
-                    self.allocate_item(name, valueshape, dtype=np.float)
-                    self.allocate_item(name + '_idx', gridshape, dtype=np.bool)
+                if not self.has_item(self.get_value_path(name)):
+                    self.allocate_item(self.get_value_path(name), valueshape, dtype=np.float)
+                    self.allocate_item(self.get_index_path(name), gridshape, dtype=np.bool)
                 self.logger.info('Skipped memory initialization for grid "{}". Will read random slices from storage.'.format(name))
 
     def allocate_value(self, name, shape=None):
@@ -220,7 +232,7 @@ class ArrayGrid(Grid):
             return self.value_indexes is not None and \
                    name in self.value_indexes and self.value_indexes[name] is not None
         else:
-            return name in self.value_indexes and self.has_item(name + '_idx')
+            return name in self.value_indexes and self.has_item(self.get_index_path(name))
 
     def get_value_index(self, name):
         if self.has_value_index(name):
@@ -300,13 +312,13 @@ class ArrayGrid(Grid):
             if self.preload_arrays:
                 self.value_indexes[name][idx] = valid
             else:
-                self.save_item(name + '_idx', np.array(valid), s=idx)
+                self.save_item(self.get_index_path(name), np.array(valid), s=idx)
 
         idx = Grid.rectify_index(idx, s)
         if self.preload_arrays:
             self.values[name][idx] = value
         else:
-            self.save_item(name, value, idx)
+            self.save_item(self.get_value_path(name), value, idx)
 
     def get_values(self, s=None, names=None, **kwargs):
         idx = self.get_index(**kwargs)
@@ -340,7 +352,7 @@ class ArrayGrid(Grid):
                 return self.values[name][idx]
             else:
                 self.ensure_lazy_load()
-                return self.load_item(name, np.ndarray, idx)
+                return self.load_item(value_path, np.ndarray, idx)
         else:
             return None
 
@@ -353,12 +365,12 @@ class ArrayGrid(Grid):
             if self.values[name] is not None:
                 if self.preload_arrays:
                     self.logger.info('Saving grid "{}" of size {}'.format(name, self.values[name].shape))
-                    self.save_item(name, self.values[name])
+                    self.save_item(self.get_value_path(name), self.values[name])
                     self.logger.info('Saved grid "{}" of size {}'.format(name, self.values[name].shape))
                 else:
                     shape = self.get_value_shape(name)
                     self.logger.info('Allocating grid "{}" with size {}...'.format(name, shape))
-                    self.allocate_item(name, shape, np.float)
+                    self.allocate_item(self.get_value_path(name), shape, np.float)
                     self.logger.info('Allocated grid "{}" with size {}. Will write directly to storage.'.format(name, shape))
 
     def load_values(self, s=None):
@@ -368,16 +380,16 @@ class ArrayGrid(Grid):
             if self.preload_arrays:
                 if s is not None:
                     self.logger.info('Loading grid "{}" of size {}'.format(name, s))
-                    self.values[name][s] = self.load_item(name, np.ndarray, s=s)
+                    self.values[name][s] = self.load_item(self.get_value_path(name), np.ndarray, s=s)
                     self.logger.info('Loaded grid "{}" of size {}'.format(name, s))
                 else:
                     self.logger.info('Loading grid "{}" of size {}'.format(name, self.value_shapes[name]))
-                    self.values[name] = self.load_item(name, np.ndarray)
+                    self.values[name] = self.load_item(self.get_value_path(name), np.ndarray)
                     self.logger.info('Loaded grid "{}" of size {}'.format(name, self.value_shapes[name]))
                 self.value_shapes[name] = self.values[name].shape[len(gridshape):]
             else:
                 # When lazy-loading, we simply ignore the slice
-                shape = self.get_item_shape(name)
+                shape = self.get_item_shape(self.get_value_path(name))
                 if shape is not None:
                     self.value_shapes[name] = shape[len(gridshape):]
                 else:
@@ -387,11 +399,11 @@ class ArrayGrid(Grid):
 
     def save_value_indexes(self):
         for name in self.values:
-            self.save_item(name + '_idx', self.value_indexes[name])
+            self.save_item(self.get_index_path(name), self.value_indexes[name])
 
     def load_value_indexes(self):
         for name in self.value_indexes:
-            self.value_indexes[name] = self.load_item(name + '_idx', np.ndarray, s=None)
+            self.value_indexes[name] = self.load_item(self.get_index_path(name), np.ndarray, s=None)
 
     def save_items(self):
         super(ArrayGrid, self).save_items()

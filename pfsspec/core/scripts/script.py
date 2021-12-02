@@ -18,6 +18,9 @@ from pfsspec.core.util.notebookrunner import NotebookRunner
 class Script():
 
     CONFIG_NAME = None
+    CONFIG_CLASS = 'class'
+    CONFIG_SUBCLASS = 'subclass'
+    CONFIG_TYPE = 'type'
 
     def __init__(self, logging_enabled=True):
 
@@ -303,7 +306,7 @@ class Script():
     
     def init_logging(self, outdir):
         logdir = self.log_dir or os.path.join(outdir, 'logs')
-        os.makedirs(logdir)
+        os.makedirs(logdir, exist_ok=True)
 
         logfile = type(self).__name__.lower() + '.log'
         logfile = os.path.join(logdir, logfile)

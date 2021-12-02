@@ -65,7 +65,11 @@ class PfsObject():
         :return: The parsed command-line argument.
         """
 
-        args = args or self.args
+        if hasattr(self, 'args'):
+            args = args or self.args or {}
+        else:
+            args = args or {}
+
         return get_arg(name, old_value, args)
 
     def is_arg(self, name, args=None):
@@ -77,7 +81,11 @@ class PfsObject():
         :return: True if the optional command-line argument is specified.
         """
 
-        args = args or self.args
+        if hasattr(self, 'args'):
+            args = args or self.args or {}
+        else:
+            args = args or {}
+            
         return is_arg(name, args)
 
     @staticmethod

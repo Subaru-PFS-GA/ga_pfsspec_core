@@ -1,8 +1,15 @@
 from pfsspec.core import PfsObject
 
-class Importer(PfsObject):
+class Downloader(PfsObject):
     def __init__(self, orig=None):
-        super(Importer, self).__init__()
+        super(Downloader, self).__init__()
+
+        if not isinstance(orig, Downloader):
+            self.resume = False
+            self.outdir = None
+        else:
+            self.resume = orig.resume
+            self.outdir = orig.outdir
 
     def add_subparsers(self, configurations, parser):
         return []

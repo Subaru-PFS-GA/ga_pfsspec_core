@@ -17,7 +17,7 @@ class Downloader(PfsObject):
     def add_args(self, parser):
         pass
 
-    def init_from_args(self, args):
+    def init_from_args(self, config, args):
         pass
 
     def execute_notebooks(self, script):

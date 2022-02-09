@@ -48,11 +48,12 @@ class Import(Script):
         self.resume = self.get_arg('resume', self.resume)
 
     def create_importer(self):
-        self.importer = self.parser_configurations[self.args[self.CONFIG_CLASS]][self.args[self.CONFIG_SUBCLASS]][self.CONFIG_TYPE]()
+        config = self.parser_configurations[self.args[self.CONFIG_CLASS]][self.args[self.CONFIG_SUBCLASS]]
+        self.importer = config[self.CONFIG_TYPE]()
         self.importer.parallel = self.threads != 1
         self.importer.threads = self.threads
         self.importer.resume = self.resume
-        self.importer.init_from_args(self.args)
+        self.importer.init_from_args(config, self.args)
 
         # TODO: initialize pipeline
 

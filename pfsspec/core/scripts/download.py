@@ -49,12 +49,13 @@ class Download(Script):
         self.resume = self.get_arg('resume', self.resume)
 
     def create_downloader(self):
-        self.downloader = self.parser_configurations[self.args[self.CONFIG_CLASS]][self.args[self.CONFIG_SUBCLASS]][self.CONFIG_TYPE]()
+        config = self.parser_configurations[self.args[self.CONFIG_CLASS]][self.args[self.CONFIG_SUBCLASS]]
+        self.downloader = config[self.CONFIG_TYPE]()
         self.downloader.parallel = self.threads != 1
         self.downloader.threads = self.threads
         self.downloader.resume = self.resume
         self.downloader.outdir = self.outdir
-        self.downloader.init_from_args(self.args)
+        self.downloader.init_from_args(config, self.args)
 
     def prepare(self):
         super(Download, self).prepare()

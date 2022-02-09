@@ -84,3 +84,7 @@ class Physics():
         L = L_sun * 10**log_L   # luminosity from isochrone is in log(L/lsun)
         radius = np.sqrt(L / (4 * np.pi * sb * T_eff**4))
         return radius           # radius in cm
+
+    @staticmethod
+    def vdisp_to_z(vdisp):
+        return vdisp * 1e3 / Physics.c

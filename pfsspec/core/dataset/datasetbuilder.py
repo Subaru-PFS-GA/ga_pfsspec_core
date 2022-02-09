@@ -49,7 +49,7 @@ class DatasetBuilder(PfsObject):
         parser.add_argument('--chunk-size', type=int, help='Dataset chunk size.\n')
         parser.add_argument('--top', type=int, help='Stop after this many items.\n')
 
-    def init_from_args(self, args):
+    def init_from_args(self, config, args):
         # Only allow parallel if random seed is not set
         # It would be very painful to reproduce the same dataset with multiprocessing
         self.threads = self.get_arg('threads', self.threads, args)

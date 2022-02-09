@@ -74,8 +74,8 @@ class Grid(PfsObject):
         self.save_item(os.path.join(self.PREFIX_GRID, 'type'), type(self).__name__)
 
     def load_params(self):
-        type = self.load_item(os.path.join(self.PREFIX_GRID, 'type'), str)
-        if type != type(self).__name__:
+        t = self.load_item(os.path.join(self.PREFIX_GRID, 'type'), str)
+        if t != type(self).__name__:
             Exception("Trying to load grid of the wrong type.")
 
     def init_constants(self):

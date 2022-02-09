@@ -45,7 +45,7 @@ class DatasetMerger():
         parser.add_argument('--preload-arrays', action='store_true', help='Preload flux arrays into memory.\n')
         parser.add_argument('--chunk-size', type=int, help='Dataset chunk size.\n')
 
-    def init_from_args(self, args):
+    def init_from_args(self, config, args):
         self.input_paths = []
         for path in args['in']:
             self.input_paths += glob.glob(path)

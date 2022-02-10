@@ -38,7 +38,7 @@ class GridEnumerator():
         if self.stop:
             raise StopIteration()
         else:
-            # If in continue mode, we need to skip item that are already in the grid
+            # If in continue mode, we need to skip items that are already in the grid
             while True:
                 ci = self.current.copy()
                 cr = {p: self.axes[p].values[self.current[i]] for i, p in enumerate(self.axes)}

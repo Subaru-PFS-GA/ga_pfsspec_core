@@ -41,8 +41,9 @@ class Merge(Script):
         super(Merge, self).parse_args()
 
     def init_merger(self):
+        # TODO: rewrite to use configurations
         self.merger = Merge.MERGER_TYPES[self.args['merger']]()
-        self.merger.init_from_args(self.args)
+        self.merger.init_from_args(config, self.args)
         self.merger.init_inputs()
         self.merger.init_output()
 

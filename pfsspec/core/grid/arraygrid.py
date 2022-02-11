@@ -104,10 +104,10 @@ class ArrayGrid(Grid):
         return super(ArrayGrid, self).get_shape()
 
     def get_value_path(self, name):
-        return os.path.join(self.PREFIX_GRID, self.PREFIX_ARRAY, name, self.POSTFIX_VALUE)
+        return '/'.join((self.PREFIX_GRID, self.PREFIX_ARRAY, name, self.POSTFIX_VALUE))
 
     def get_index_path(self, name):
-        return os.path.join(self.PREFIX_GRID, self.PREFIX_ARRAY, name, self.POSTFIX_INDEX)
+        return '/'.join((self.PREFIX_GRID, self.PREFIX_ARRAY, name, self.POSTFIX_INDEX))
 
 #endregion
 
@@ -274,7 +274,7 @@ class ArrayGrid(Grid):
             return name in self.values and self.values[name] is not None and \
                    name in self.value_indexes and self.value_indexes[name] is not None
         else:
-            return name in self.values and self.has_item(name) and \
+            return name in self.values and self.has_item(self.get_value_path(name)) and \
                    name in self.value_indexes and self.value_indexes[name] is not None
 
     def has_value_at(self, name, idx, mode='any'):
@@ -352,7 +352,7 @@ class ArrayGrid(Grid):
                 return self.values[name][idx]
             else:
                 self.ensure_lazy_load()
-                return self.load_item(value_path, np.ndarray, idx)
+                return self.load_item(self.get_value_path(name), np.ndarray, idx)
         else:
             return None
 

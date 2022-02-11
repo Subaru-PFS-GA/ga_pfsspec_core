@@ -71,10 +71,10 @@ class Grid(PfsObject):
         return axes
 
     def save_params(self):
-        self.save_item(os.path.join(self.PREFIX_GRID, 'type'), type(self).__name__)
+        self.save_item('/'.join((self.PREFIX_GRID, 'type')), type(self).__name__)
 
     def load_params(self):
-        t = self.load_item(os.path.join(self.PREFIX_GRID, 'type'), str)
+        t = self.load_item('/'.join((self.PREFIX_GRID, 'type')), str)
         if t != type(self).__name__:
             Exception("Trying to load grid of the wrong type.")
 
@@ -95,13 +95,13 @@ class Grid(PfsObject):
 
     def save_constants(self):
         for p in self.constants:
-            path = os.path.join(self.PREFIX_GRID, self.PREFIX_CONST, p)
+            path = '/'.join((self.PREFIX_GRID, self.PREFIX_CONST, p))
             self.save_item(path, self.constants[p])
 
     def load_constants(self):
         constants = {}
         for p in self.constants:
-            path = os.path.join(self.PREFIX_GRID, self.PREFIX_CONST, p)
+            path = '/'.join((self.PREFIX_GRID, self.PREFIX_CONST, p))
             if self.has_item(path):
                 constants[p] = self.load_item(path, np.ndarray)
         self.constants = constants
@@ -129,9 +129,11 @@ class Grid(PfsObject):
                     self.axes[k].max = args[k][0]
 
     def save_axes(self):
-        for p in self.axes:
-            path = os.path.join(self.PREFIX_GRID, self.PREFIX_AXIS, p)
-            self.save_item(path, self.axes[p].values)
+        # Call `get_axes` to write out correct value range when grid is sliced.
+        axes = self.get_axes()
+        for p in axes:
+            path = '/'.join((self.PREFIX_GRID, self.PREFIX_AXIS, p))
+            self.save_item(path, axes[p].values)
 
     def load_axes(self):
         # TODO: This might not be the best solution
@@ -139,7 +141,7 @@ class Grid(PfsObject):
         # that the grid was squeezed during transformation
         axes = {}
         for p in self.axes:
-            path = os.path.join(self.PREFIX_GRID, self.PREFIX_AXIS, p)
+            path = '/'.join((self.PREFIX_GRID, self.PREFIX_AXIS, p))
             if self.has_item(path):
                 self.axes[p].values = self.load_item(path, np.ndarray)
                 axes[p] = self.axes[p]

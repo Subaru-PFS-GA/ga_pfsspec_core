@@ -16,26 +16,6 @@ class Import(Script):
 
         self.importer = None
 
-    # TODO: move to script?
-    def add_subparsers(self, parser):
-        # Register two positional variables that determine the importer class
-        # and subclass
-        cps = parser.add_subparsers(dest=self.CONFIG_CLASS)
-        for c in self.parser_configurations:
-            cp = cps.add_parser(c)
-            sps = cp.add_subparsers(dest=self.CONFIG_SUBCLASS)
-            for s in self.parser_configurations[c]:
-                sp = sps.add_parser(s)
-
-                # Instantiate importer and register further subparsers
-                importer = self.parser_configurations[c][s][self.CONFIG_TYPE]()
-                subparsers = importer.add_subparsers(self.parser_configurations[c][s], sp)
-                if subparsers is not None:
-                    for ss in subparsers:
-                        self.add_args(ss)
-                else:
-                    self.add_args(sp)
-
     def add_args(self, parser):
         super(Import, self).add_args(parser)
         parser.add_argument("--in", type=str, required=True, help="Model/data directory base path\n")

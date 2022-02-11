@@ -15,28 +15,6 @@ class Download(Script):
 
         self.downloader = None
 
-    # TODO: move to Script, merge with Import
-    def add_subparsers(self, parser):
-        # Register two positional variables that determine the importer class
-        # and subclass
-        cps = parser.add_subparsers(dest=self.CONFIG_CLASS)
-        for c in self.parser_configurations:
-            cp = cps.add_parser(c)
-            sps = cp.add_subparsers(dest=self.CONFIG_SUBCLASS)
-            for s in self.parser_configurations[c]:
-                sp = sps.add_parser(s)
-
-                # Instantiate downloader and register further subparsers
-                plugin = self.parser_configurations[c][s][self.CONFIG_TYPE]()
-                subparsers = plugin.add_subparsers(self.parser_configurations[c][s], sp)
-                if subparsers is not None:
-                    for ss in subparsers:
-                        self.add_args(ss)
-                        plugin.add_args(ss)
-                else:
-                    self.add_args(sp)
-                    plugin.add_args(sp)
-
     def add_args(self, parser):
         super(Download, self).add_args(parser)
 

@@ -66,8 +66,25 @@ class Script():
         self.add_subparsers(self.parser)
 
     def add_subparsers(self, parser):
-        # Default behavior doesn't user subparsers
-        self.add_args(parser)
+        # Register two positional variables that determine the plugin class
+        # and subclass
+        cps = parser.add_subparsers(dest=self.CONFIG_CLASS)
+        for c in self.parser_configurations:
+            cp = cps.add_parser(c)
+            sps = cp.add_subparsers(dest=self.CONFIG_SUBCLASS)
+            for s in self.parser_configurations[c]:
+                sp = sps.add_parser(s)
+
+                # Instantiate importer and register further subparsers
+                plugin = self.parser_configurations[c][s][self.CONFIG_TYPE]()
+                subparsers = plugin.add_subparsers(self.parser_configurations[c][s], sp)
+                if subparsers is not None:
+                    for ss in subparsers:
+                        self.add_args(ss)
+                        plugin.add_args(ss)
+                else:
+                    self.add_args(sp)
+                    plugin.add_args(sp)
 
     def get_arg(self, name, old_value, args=None):
         args = args or self.args

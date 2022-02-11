@@ -40,8 +40,13 @@ class GridBuilder(PfsObject):
         grid = self.create_input_grid()
         grid.add_args(parser)
 
-    def parse_args(self):
-        self.top = self.get_arg('top', self.top)
+    def init_from_args(self, config, args):
+        self.top = self.get_arg('top', self.top, args)
+
+        self.input_grid = self.create_input_grid()
+        self.input_grid.init_from_args(args)
+
+        self.output_grid = self.create_output_grid()
 
     def create_input_grid(self):
         raise NotImplementedError()
@@ -53,7 +58,6 @@ class GridBuilder(PfsObject):
         # Open and preprocess input
         if input_path is not None:
             self.open_input_grid(input_path)
-            self.input_grid.init_from_args(self.args)
             self.input_grid.build_axis_indexes()
             self.grid_shape = self.input_grid.get_shape()
 
@@ -92,3 +96,6 @@ class GridBuilder(PfsObject):
 
     def run(self):
         raise NotImplementedError()
+
+    def execute_notebooks(self, script):
+        pass

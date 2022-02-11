@@ -545,6 +545,17 @@ class PfsObject():
                     return data
                 else:
                     return None
+        elif type == np.bool or type == bool:
+            # Try attributes first, then dataset, otherwise return None
+            with h5py.File(self.filename, 'r') as f:
+                g, name = self.get_hdf5_group(f, name, create=False)
+                if g is not None and name in g.attrs:
+                    return g.attrs[name]
+                elif g is not None and name in g:
+                    data = g[name][()]
+                    return data
+                else:
+                    return None
         elif type == str:
             with h5py.File(self.filename, 'r') as f:
                 g, name = self.get_hdf5_group(f, name, create=False)

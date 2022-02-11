@@ -18,6 +18,7 @@ class Import(Script):
 
     def add_args(self, parser):
         super(Import, self).add_args(parser)
+
         parser.add_argument("--in", type=str, required=True, help="Model/data directory base path\n")
         parser.add_argument("--out", type=str, required=True, help="Output file, must be .h5 or .npz\n")
         parser.add_argument('--resume', action='store_true', help='Resume existing but aborted import.\n')
@@ -34,8 +35,6 @@ class Import(Script):
         self.importer.threads = self.threads
         self.importer.resume = self.resume
         self.importer.init_from_args(config, self.args)
-
-        # TODO: initialize pipeline
 
     def open_data(self):
         self.importer.open_data(self.args['in'], self.outdir)

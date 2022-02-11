@@ -1,26 +1,18 @@
 import os
 import logging
 
-from pfsspec.scripts.configurations import FIT_CONFIGURATIONS
-from pfsspec.scripts.script import Script
+from .script import Script
 
 class Fit(Script):
+
+    CONFIG_NAME = 'FIT_CONFIGURATIONS'
+
     def __init__(self):
         super(Fit, self).__init__()
 
-        self.fit = None
+        self.outdir = None
 
-    def add_subparsers(self, parser):
-        tps = parser.add_subparsers(dest='type')
-        for t in FIT_CONFIGURATIONS:
-            tp = tps.add_parser(t)
-            sps = tp.add_subparsers(dest='source')
-            for s in FIT_CONFIGURATIONS[t]:
-                sp = sps.add_parser(s)
-                self.add_args(sp)
-                cc = FIT_CONFIGURATIONS[t][s]['config']
-                gg = FIT_CONFIGURATIONS[t][s]['class'](cc)
-                gg.add_args(sp)
+        self.fit = None
 
     def add_args(self, parser):
         super(Fit, self).add_args(parser)
@@ -29,13 +21,15 @@ class Fit(Script):
         parser.add_argument('--out', type=str, help='Output data path.\n')
         parser.add_argument('--params', type=str, help='Parameters grid, if different from input.\n')
 
+    def create_plugin(self, config):
+        return config[self.CONFIG_TYPE](config['config'])
+
     def create_fit(self):
-        config = FIT_CONFIGURATIONS[self.args['type']][self.args['source']]['config']
-        self.fit = FIT_CONFIGURATIONS[self.args['type']][self.args['source']]['class'](config)
+        config = self.parser_configurations[self.args[self.CONFIG_CLASS]][self.args[self.CONFIG_SUBCLASS]]
+        self.fit = self.create_plugin(config)
         self.fit.parallel = self.threads != 1
         self.fit.threads = self.threads
-        self.fit.args = self.args
-        self.fit.parse_args()
+        self.fit.init_from_args(config, self.args)
 
     def open_data(self):
         self.fit.open_data(self.args['in'], self.outdir, self.args['params'])
@@ -53,6 +47,9 @@ class Fit(Script):
     def run(self):
         self.fit.run()
         self.fit.save_data(self.outdir)
+
+    def finish(self):
+        self.fit.execute_notebooks(self)
 
 def main():
     script = Fit()

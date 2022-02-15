@@ -43,14 +43,15 @@ class RbfGridBuilder(GridBuilder):
         parser.add_argument('--smoothing', type=float, help='RBF smoothing coeff.\n')
         parser.add_argument('--method', type=str, default='solve', choices=['solve', 'nnls'])
 
-    def parse_args(self):
-        super(RbfGridBuilder, self).parse_args()
-        self.padding = self.get_arg('padding', self.padding)
-        self.fill = self.get_arg('fill', self.fill)
-        self.function = self.get_arg('function', self.function)
-        self.epsilon = self.get_arg('epsilon', self.epsilon)
-        self.smoothing = self.get_arg('smoothing', self.smoothing)
-        self.method = self.get_arg('method', self.method)
+    def init_from_args(self, config, args):
+        super(RbfGridBuilder, self).init_from_args(config, args)
+
+        self.padding = self.get_arg('padding', self.padding, args)
+        self.fill = self.get_arg('fill', self.fill, args)
+        self.function = self.get_arg('function', self.function, args)
+        self.epsilon = self.get_arg('epsilon', self.epsilon, args)
+        self.smoothing = self.get_arg('smoothing', self.smoothing, args)
+        self.method = self.get_arg('method', self.method, args)
 
     def fit_rbf(self, value, axes, mask=None, method=None, function=None, epsilon=None):
         """Returns the Radial Base Function interpolation of a grid slice.

@@ -39,12 +39,12 @@ class PcaGridBuilder(GridBuilder):
         parser.add_argument('--svd-method', type=str, default='svd', choices=['svd', 'trsvd'], help='Truncate PCA')
         parser.add_argument('--svd-truncate', type=int, default=None, help='Truncate SVD')
 
-    def parse_args(self):
-        super(PcaGridBuilder, self).parse_args()
+    def init_from_args(self, config, args):
+        super(PcaGridBuilder, self).init_from_args(config, args)
 
-        self.pca_method = self.get_arg('pca_method', self.pca_method)
-        self.svd_method = self.get_arg('svd_method', self.svd_method)
-        self.svd_truncate = self.get_arg('svd_truncate', self.svd_truncate)
+        self.pca_method = self.get_arg('pca_method', self.pca_method, args)
+        self.svd_method = self.get_arg('svd_method', self.svd_method, args)
+        self.svd_truncate = self.get_arg('svd_truncate', self.svd_truncate, args)
 
     def get_vector_shape(self):
         # Return the shape of data vectors, a one element tuple

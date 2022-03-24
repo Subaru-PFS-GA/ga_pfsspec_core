@@ -31,6 +31,21 @@ function link_module() {
       echo "Creating symlink to tests for module $mod, directory $dir"
         ln -s ../modules/pfsspec-$mod/test/$dir test/$dir
     fi
+
+    if [[ ! -L scripts/$dir ]]; then
+      echo "Creating symlink to scripts for module $mod, directory $dir"
+        ln -s ../modules/pfsspec-$mod/scripts scripts/$dir
+    fi
+
+    if [[ ! -L nb/$dir ]]; then
+      echo "Creating symlink to notebooks for module $mod, directory $dir"
+        ln -s ../modules/pfsspec-$mod/nb nb/$dir
+    fi
+
+    if [[ ! -L docs/$dir ]]; then
+      echo "Creating symlink to docs for module $mod, directory $dir"
+        ln -s ../modules/pfsspec-$mod/docs docs/$dir
+    fi
 }
 
 if [[ ! -d pfsspec ]]; then

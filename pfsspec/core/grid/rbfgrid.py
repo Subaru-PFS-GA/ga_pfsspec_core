@@ -115,20 +115,35 @@ class RbfGrid(Grid):
     def has_value_at(self, name, idx, mode='any'):
         return True
 
-    def get_value_at(self, name, idx, s=None):
+    def check_extrapolation(self, idx):
+        i = 0
+        for k in self.axes:
+            # Only include index along the axis if it's not a 1-length axis
+            if self.axes[k].values.shape[0] > 1:
+                if idx[i] < 0 or self.axes[k].values.shape[0] < idx[i]:
+                    return True
+                i += 1
+        return False
+
+    def get_value_at(self, name, idx, s=None, extrapolate=False):
         idx = Grid.rectify_index(idx)
+        if not extrapolate and self.check_extrapolation(idx):
+            return None
         value = self.values[name](*idx)
         return value[s or ()]
 
-    def get_value(self, name, s=None, **kwargs):
+    def get_value(self, name, s=None, extrapolate=False, **kwargs):
         idx = self.get_index(**kwargs)
-        return self.get_value_at(name, idx, s=s)
+        return self.get_value_at(name, idx, s=s, extrapolate=extrapolate)
 
-    def get_values_at(self, idx, s=None, names=None):
+    def get_values_at(self, idx, s=None, names=None, extrapolate=False):
         # Return all values interpolated to idx. This function is optimized for
         # RBF grids where the distance matrix computation is expensive.
-        idx = Grid.rectify_index(idx)
+        idx = Grid.rectify_index(idx)       
         names = names or self.values.keys()
+
+        if not extrapolate and self.check_extrapolation(idx):
+            return None
         
         # We can potentially reuse the distance/kernel matrix if the grid points
         # and the kernels are the same
@@ -141,13 +156,13 @@ class RbfGrid(Grid):
                 y, A = self.values[name].eval(*idx)
             else:
                 y, A = self.values[name].eval(*idx, A=A)
-            values[name] = y
+            values[name] = y[s or ()]
 
         return values
 
-    def get_values(self, s=None, names=None, **kwargs):
+    def get_values(self, s=None, names=None, extrapolate=False, **kwargs):
         idx = self.get_index(**kwargs)
-        return self.get_values_at(idx, s, names=names)
+        return self.get_values_at(idx, s, names=names, extrapolate=extrapolate)
 
     def save_items(self):
         super(RbfGrid, self).save_items()

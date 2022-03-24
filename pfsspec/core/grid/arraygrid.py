@@ -213,7 +213,10 @@ class ArrayGrid(Grid):
 
         i = 0
         for p in self.axes:
-            if kwargs[p] < self.axes[p].values[idx1[i]]:
+            if self.axes[p].values.shape[0] == 1:
+                # If the grid has a single value along an axis (not squeezed)
+                idx1[i], idx2[i] = idx1[i], idx1[i]
+            elif kwargs[p] < self.axes[p].values[idx1[i]]:
                 idx1[i], idx2[i] = idx1[i] - 1, idx1[i]
             else:
                 idx1[i], idx2[i] = idx1[i], idx1[i] + 1
@@ -451,7 +454,13 @@ class ArrayGrid(Grid):
                 return None
 
         # Parameter values to interpolate between
-        x = tuple([[self.axes[p].values[idx1[i]], self.axes[p].values[idx2[i]]] for i, p in enumerate(self.axes)])
+        x = []
+        for i, p in enumerate(self.axes):
+            # Only keep dimensions where interpolation is necessary, i.e. skip
+            # where axis has a single value only
+            if self.axes[p].values.shape[0] > 1:
+                x.append([self.axes[p].values[idx1[i]], self.axes[p].values[idx2[i]]])
+        x = tuple(x)
 
         # Will hold data values
         s = [2, ] * len(x)
@@ -460,12 +469,12 @@ class ArrayGrid(Grid):
         V = np.empty(s)
 
         ii = tuple(np.array(tuple(itertools.product(*([[0, 1],] * len(x))))).transpose())
-        kk = tuple(np.array(tuple(itertools.product(*[[idx1[i], idx2[i]] for i in range(len(idx1))]))).transpose())
+        kk = tuple(np.array(tuple(itertools.product(*[[idx1[i], idx2[i]] for i in range(len(idx1)) if idx1[i] != idx2[i]]))).transpose())
 
-        V[ii] = self.get_value_at(name, kk)
+        V[ii] = np.squeeze(self.get_value_at(name, kk))
 
         fn = RegularGridInterpolator(x, V)
-        pp = tuple([kwargs[p] for p in self.axes])
+        pp = tuple([kwargs[p] for p in self.axes if self.axes[p].values.shape[0] > 1])
         value = fn(pp)
         return value, kwargs
 

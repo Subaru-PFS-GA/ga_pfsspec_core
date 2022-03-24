@@ -12,7 +12,10 @@ class Filter(PfsObject):
         self.thru = None
 
     def read(self, file):
-        [self.wave, self.thru] = np.loadtxt(file).transpose()
+        [wave, thru] = np.loadtxt(file).transpose()
+        ix = np.argsort(wave)
+        self.wave = wave[ix]
+        self.thru = thru[ix]
 
     def extend(self, min, max, res):
         wavemin = self.wave.min()

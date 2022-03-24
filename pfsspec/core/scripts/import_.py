@@ -51,7 +51,7 @@ class Import(Script):
 
     def run(self):
         self.importer.run()
-        self.importer.save_data()
+        self.importer.save_data(self.outdir)
 
     def finish(self):
         self.importer.execute_notebooks(self)

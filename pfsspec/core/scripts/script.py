@@ -68,10 +68,10 @@ class Script():
     def add_subparsers(self, parser):
         # Register two positional variables that determine the plugin class
         # and subclass
-        cps = parser.add_subparsers(dest=self.CONFIG_CLASS)
+        cps = parser.add_subparsers(dest=self.CONFIG_CLASS, required=True)
         for c in self.parser_configurations:
             cp = cps.add_parser(c)
-            sps = cp.add_subparsers(dest=self.CONFIG_SUBCLASS)
+            sps = cp.add_subparsers(dest=self.CONFIG_SUBCLASS, required=True)
             for s in self.parser_configurations[c]:
                 sp = sps.add_parser(s)
 
@@ -364,11 +364,11 @@ class Script():
     def finish(self):
         pass
 
-    def execute_notebook(self, notebook_name, output_notebook_name=None, output_html=True, parameters={}, kernel='python3', outdir=None):
+    def execute_notebook(self, notebook_path, output_notebook_path=None, output_html=True, parameters={}, kernel='python3', outdir=None):
         # Note that jupyter kernels in the current env might be different from the ones
         # in the jupyterhub environment
 
-        self.logger.info('Executing notebook {}'.format(notebook_name))
+        self.logger.info('Executing notebook {}'.format(notebook_path))
 
         if outdir is None:
             outdir = self.args['out']
@@ -378,14 +378,14 @@ class Script():
         if 'PROJECT_PATH' not in parameters:
             parameters['PROJECT_PATH'] = os.getcwd()
 
-        if output_notebook_name is None:
-            output_notebook_name = notebook_name
+        if output_notebook_path is None:
+            output_notebook_path = os.path.basename(notebook_path)
 
         nr = NotebookRunner()
-        nr.input_notebook = os.path.join('nb', notebook_name + '.ipynb')
-        nr.output_notebook = os.path.join(outdir, output_notebook_name + '.ipynb')
+        nr.input_notebook = os.path.join('nb', notebook_path + '.ipynb')
+        nr.output_notebook = os.path.join(outdir, output_notebook_path + '.ipynb')
         if output_html:
-            nr.output_html = os.path.join(outdir, output_notebook_name + '.html')
+            nr.output_html = os.path.join(outdir, output_notebook_path + '.html')
         nr.parameters = parameters
         nr.kernel = kernel
         nr.run()

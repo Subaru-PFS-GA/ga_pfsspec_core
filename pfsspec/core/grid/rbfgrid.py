@@ -9,6 +9,13 @@ class RbfGrid(Grid):
     # necessarily a grid, as RBF interpolation extends function to any point
     # but nodes are defined based on the predefined values along the axes.
 
+    POSTFIX_RBF = 'rbf'
+    POSTFIX_XI = 'xi'
+    POSTFIX_NODES = 'a'
+    POSTFIX_C = 'c'
+    POSTFIX_FUNCTION = 'function'
+    POSTFIX_EPSILON = 'eps'
+
     def __init__(self, config=None, orig=None):
         super(RbfGrid, self).__init__(orig=orig)
 
@@ -30,6 +37,9 @@ class RbfGrid(Grid):
     @property
     def rbf_grid(self):
         return self
+
+    def get_value_path(self, name):
+        return '/'.join([Grid.PREFIX_GRID, Grid.PREFIX_ARRAYS, name, self.POSTFIX_RBF])
 
     def init_value(self, name, shape=None, **kwargs):
         if shape is None:
@@ -120,7 +130,7 @@ class RbfGrid(Grid):
         for k in self.axes:
             # Only include index along the axis if it's not a 1-length axis
             if self.axes[k].values.shape[0] > 1:
-                if idx[i] < 0 or self.axes[k].values.shape[0] < idx[i]:
+                if np.any((idx[i] < 0) | (self.axes[k].values.shape[0] < idx[i])):
                     return True
                 i += 1
         return False
@@ -176,11 +186,14 @@ class RbfGrid(Grid):
         for name in self.values:
             if self.values[name] is not None:
                 self.logger.info('Saving RBF "{}" of size {}'.format(name, self.values[name].nodes.shape))
-                self.save_item('{}/rbf/xi'.format(name), self.values[name].xi)
-                self.save_item('{}/rbf/nodes'.format(name), self.values[name].nodes)
-                self.save_item('{}/rbf/c'.format(name), self.values[name].c)
-                self.save_item('{}/rbf/function'.format(name), self.values[name].function)
-                self.save_item('{}/rbf/epsilon'.format(name), self.values[name].epsilon)
+
+                path = self.get_value_path(name)
+                self.save_item('/'.join([path, self.POSTFIX_XI]), self.values[name].xi)
+                self.save_item('/'.join([path, self.POSTFIX_NODES]), self.values[name].nodes)
+                self.save_item('/'.join([path, self.POSTFIX_C]), self.values[name].c)
+                self.save_item('/'.join([path, self.POSTFIX_FUNCTION]), self.values[name].function)
+                self.save_item('/'.join([path, self.POSTFIX_EPSILON]), self.values[name].epsilon)
+
                 self.logger.info('Saved RBF "{}" of size {}'.format(name, self.values[name].nodes.shape))
 
     def load_items(self, s=None):
@@ -200,13 +213,14 @@ class RbfGrid(Grid):
 
         for name in self.values:
             self.logger.info('Loading RBF "{}" of size {}'.format(name, s))
-            xi = self.load_item('{}/rbf/xi'.format(name), np.ndarray)
-            nodes = self.load_item('{}/rbf/nodes'.format(name), np.ndarray)
-            c = self.load_item('{}/rbf/c'.format(name), np.ndarray)
-            function = self.load_item('{}/rbf/function'.format(name), str)
-            epsilon = self.load_item('{}/rbf/epsilon'.format(name), float)
+
+            path = self.get_value_path(name)
+            xi = self.load_item('/'.join([path, self.POSTFIX_XI]), np.ndarray)
+            nodes = self.load_item('/'.join([path, self.POSTFIX_NODES]), np.ndarray)
+            c = self.load_item('/'.join([path, self.POSTFIX_C]), np.ndarray)
+            function = self.load_item('/'.join([path, self.POSTFIX_FUNCTION]), str)
+            epsilon = self.load_item('/'.join([path, self.POSTFIX_EPSILON]), float)
             if xi is not None and nodes is not None:
-                # TODO: save function name to hdf5 and load back from there
                 self.values[name] = self.load_rbf(xi, nodes, c, function=function, epsilon=epsilon)
                 self.logger.info('Loaded RBF "{}" of size {}'.format(name, s))
             else:

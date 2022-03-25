@@ -20,7 +20,6 @@ class ArrayGrid(Grid):
     value array which indicated valid/invalid data in a particular grid point.
     """
 
-    PREFIX_ARRAY = 'arrays'
     POSTFIX_VALUE = 'value'
     POSTFIX_INDEX = 'index'
 
@@ -104,10 +103,10 @@ class ArrayGrid(Grid):
         return super(ArrayGrid, self).get_shape()
 
     def get_value_path(self, name):
-        return '/'.join((self.PREFIX_GRID, self.PREFIX_ARRAY, name, self.POSTFIX_VALUE))
+        return '/'.join([self.PREFIX_GRID, self.PREFIX_ARRAYS, name, self.POSTFIX_VALUE])
 
     def get_index_path(self, name):
-        return '/'.join((self.PREFIX_GRID, self.PREFIX_ARRAY, name, self.POSTFIX_INDEX))
+        return '/'.join([self.PREFIX_GRID, self.PREFIX_ARRAYS, name, self.POSTFIX_INDEX])
 
 #endregion
 

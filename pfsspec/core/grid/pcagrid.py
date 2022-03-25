@@ -2,9 +2,14 @@ import logging
 import numpy as np
 
 from pfsspec.core import PfsObject
+from pfsspec.core.grid import Grid
 
 class PcaGrid(PfsObject):
     # Wraps an ArrayGrid or an RbfGrid and adds PCA decompression support
+
+    POSTFIX_PCA = 'pca'
+    POSTFIX_EIGS = 'eigs'
+    POSTFIX_EIGV = 'eigv'
 
     def __init__(self, grid, orig=None):
         super(PcaGrid, self).__init__(orig=orig)
@@ -46,6 +51,9 @@ class PcaGrid(PfsObject):
 
     def get_constants(self):
         return self.grid.get_constants()
+
+    def get_value_path(self, name):
+        return '/'.join([Grid.PREFIX_GRID, Grid.PREFIX_ARRAYS, name, self.POSTFIX_PCA])
 
     def set_constants(self, constants):
         self.grid.set_constants(constants)
@@ -167,8 +175,9 @@ class PcaGrid(PfsObject):
 
         for name in self.eigs:
             if self.eigs[name] is not None:
-                self.save_item('{}_eigs'.format(name), self.eigs[name])
-                self.save_item('{}_eigv'.format(name), self.eigv[name])
+                path = self.get_value_path(name)
+                self.save_item('/'.join([path, self.POSTFIX_EIGS]), self.eigs[name])
+                self.save_item('/'.join([path, self.POSTFIX_EIGV]), self.eigv[name])
 
     def load_items(self, s=None):
         self.grid.filename = self.filename
@@ -176,8 +185,9 @@ class PcaGrid(PfsObject):
         self.grid.load_items(s=s)
 
         for name in self.eigs:
-            self.eigs[name] = self.load_item('{}_eigs'.format(name), np.ndarray)
-            self.eigv[name] = self.load_item('{}_eigv'.format(name), np.ndarray)
+            path = self.get_value_path(name)
+            self.eigs[name] = self.load_item('/'.join([path, self.POSTFIX_EIGS]), np.ndarray)
+            self.eigv[name] = self.load_item('/'.join([path, self.POSTFIX_EIGV]), np.ndarray)
 
     def set_object_params(self, obj, idx=None, **kwargs):
         self.grid.set_object_params(obj, idx=idx, **kwargs)

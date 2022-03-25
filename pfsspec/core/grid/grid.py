@@ -16,6 +16,7 @@ class Grid(PfsObject):
     PREFIX_GRID = 'grid'
     PREFIX_CONST = 'const'
     PREFIX_AXIS = 'axes'
+    PREFIX_ARRAYS = 'arrays'
 
     def __init__(self, orig=None):
         super(Grid, self).__init__(orig=orig)

@@ -1,10 +1,10 @@
 import scipy.stats
 import numpy as np
 
-from pfsspec.core import PfsObject
-from .dataset import Dataset
+from .arraydataset import ArrayDataset
+from ..spectrum import Spectrum
 
-class SpectrumDataset(PfsObject):
+class SpectrumDataset(ArrayDataset):
     """
     Implements a dataset to store spectra with optional error and mask vectors.
 
@@ -13,114 +13,47 @@ class SpectrumDataset(PfsObject):
     stored as large rectangular arrays.
     """
 
-    def __init__(self, orig=None):
+    PREFIX_SPECTRUMDATASET = 'spectrumdataset'
 
-        # TODO: we now have wave and three data arrays for flux, error and mask
-        #       this is usually enough for training but also consider making it
-        #       more generic to support continuum, etc. or entirely different types
-        #       of datasets, like the implementation of grid.
-        #       This could be done based on the function get_value and set_value
-
-        if isinstance(orig, Dataset):
-            self.constant_wave = orig.constant_wave
-            
+    def __init__(self, constant_wave=None, preload_arrays=False, orig=None):
+        if isinstance(orig, SpectrumDataset):
+            self.constant_wave = constant_wave if constant_wave is not None else orig.constant_wave
             self.wave = orig.wave
-            self.flux = orig.flux
-            self.error = orig.error
-            self.mask = orig.mask
         else:
-            self.constant_wave = True
+            self.constant_wave = constant_wave if constant_wave is not None else True
+            self.wave = None
 
-            self.params = None
+        super(SpectrumDataset, self).__init__(preload_arrays=preload_arrays, orig=orig)
 
-            self.cache_chunk_id = None
-            self.cache_chunk_size = None
-            self.cache_dirty = False
-    
-    # TODO: wrap a dataset
+    def init_values(self, row_count=None):
+        super(SpectrumDataset, self).init_values(row_count=row_count)
 
-    # TODO: Make it more generic, support data other than spectra.
-    # def init_storage(self, wcount, scount, constant_wave=True):
-    #     """
-    #     Initialize the storage based on the size of the data arrays. If arrays are pre-loaded,
-    #     numpy ndarrays will be allocated. If the arrays are not pre-loaded and the file format is
-    #     HDF5, datasets on the disk will be allocated.
+        if not self.constant_wave:
+            self.init_value('wave', dtype=np.float)
+        self.init_value('flux', dtype=np.float)
+        self.init_value('error', dtype=np.float)
+        self.init_value('mask', dtype=np.int)
 
-    #     :param wcount: Number of wavelength bins.
-    #     :param scount: Number of spectra
-    #     :param constant_wave: Whether the wavelength grid is fixed.
-    #     """
+    def allocate_values(self, spectrum_count, wave_count):
+        super(SpectrumDataset, self).allocate_values(row_count=spectrum_count)
 
-    #     self.constant_wave = constant_wave
-    #     if self.preload_arrays:
-    #         self.logger.debug('Initializing memory for dataset of size {}.'.format((scount, wcount)))
+        if not self.constant_wave:
+            self.allocate_value('wave', shape=(wave_count,), dtype=np.float)
+        self.allocate_value('flux', shape=(wave_count,), dtype=np.float)
+        self.allocate_value('error', shape=(wave_count,), dtype=np.float)
+        self.allocate_value('mask', shape=(wave_count,), dtype=np.int)
 
-    #         if constant_wave:
-    #             self.wave = np.empty(wcount)
-    #         else:
-    #             self.wave = np.empty((scount, wcount))
-    #         self.flux = np.empty((scount, wcount))
-    #         self.error = np.empty((scount, wcount))
-    #         self.mask = np.empty((scount, wcount))
+    def load_items(self, s=None):
+        super().load_items(s)
 
-    #         self.logger.debug('Initialized memory for dataset of size {}.'.format((scount, wcount)))
-    #     else:
-    #         self.logger.debug('Allocating disk storage for dataset of size {}.'.format((scount, wcount)))
+        if self.constant_wave:
+            self.wave = self.load_item('/'.join([self.PREFIX_SPECTRUMDATASET, 'wave']), np.ndarray)
 
-    #         if constant_wave:
-    #             self.allocate_item('wave', (wcount,), np.float)
-    #         else:
-    #             self.allocate_item('wave', (scount, wcount), np.float)
-    #         self.allocate_item('flux', (scount, wcount), np.float)
-    #         self.allocate_item('error', (scount, wcount), np.float)
-    #         self.allocate_item('mask', (scount, wcount), np.int32)
+    def save_items(self):
+        super().save_items()
 
-    #         self.logger.debug('Allocated disk storage for dataset of size {}.'.format((scount, wcount)))
-
-    #     self.shape = (scount, wcount)
-
-    # def load_items(self, s=None):
-    #     self.params = self.load_item('params', pd.DataFrame, s=s)
-    #     if self.preload_arrays or len(self.get_item_shape('wave')) == 1:
-    #         # Single wave vector or preloading is requested
-    #         self.wave = self.load_item('wave', np.ndarray)
-    #         self.constant_wave = (len(self.wave.shape) == 1)
-    #     else:
-    #         self.wave = None
-    #         self.constant_wave = (len(self.get_item_shape('wave')) == 1)
-
-    #     if self.preload_arrays:
-    #         self.flux = self.load_item('flux', np.ndarray, s=s)
-    #         self.error = self.load_item('error', np.ndarray, s=s)
-    #         if self.error is not None and np.any(np.isnan(self.error)):
-    #             self.error = None
-    #         self.mask = self.load_item('mask', np.ndarray, s=s)
-
-    #         self.shape = self.flux.shape
-    #     else:
-    #         self.flux = None
-    #         self.error = None
-    #         self.mask = None
-
-    #         self.shape = self.get_item_shape('flux')
-
-    # def save_items(self):
-    #     if self.preload_arrays:
-    #         self.save_item('wave', self.wave)
-    #         self.save_item('flux', self.flux)
-    #         self.save_item('error', self.error)
-    #         self.save_item('mask', self.error)
-    #         self.save_item('params', self.params)
-    #     else:
-    #         if self.constant_wave:
-    #             self.save_item('wave', self.wave)
-
-    #         # Flushing the chunk cache sets the params to None so if params
-    #         # is not None, it means that we have to save it now
-    #         if self.params is not None:
-    #             self.save_item('params', self.params)
-
-    #         # Everything else is written to the disk lazyly
+        if self.constant_wave:
+            self.save_item('/'.join([self.PREFIX_SPECTRUMDATASET, 'wave']), self.wave)
 
     def create_spectrum(self):
         # Override this function to return a specific kind of class derived from Spectrum.
@@ -197,40 +130,3 @@ class SpectrumDataset(PfsObject):
                 # TODO: add quantiles?
 
             i += 1
-
-    # def reset_cache_all(self, chunk_size, chunk_id):
-    #     if not self.constant_wave:
-    #         self.wave = None
-    #     self.flux = None
-    #     self.error = None
-    #     self.mask = None
-
-    #     self.cache_chunk_id = chunk_id
-    #     self.cache_chunk_size = chunk_size
-    #     self.cache_dirty = False
-
-    # def flush_cache_all(self, chunk_size, chunk_id):
-    #     self.logger.debug('Flushing dataset chunk `:{}` to disk.'.format(self.cache_chunk_id))
-
-    #     if not self.constant_wave:
-    #         self.flush_cache_item('wave')
-    #     self.flush_cache_item('flux')
-    #     self.flush_cache_item('error')
-    #     self.flush_cache_item('mask')
-
-    #     # Sort and save the last chunk of the parameters
-    #     if self.params is not None:
-    #         self.params.sort_values('id', inplace=True)
-    #     min_string_length = { 'interp_param': 15 }
-    #     s = self.get_chunk_slice(self.cache_chunk_size, self.cache_chunk_id)
-    #     self.save_item('params', self.params, s=s, min_string_length=min_string_length)
-
-    #     # TODO: The issue with merging new chunks into an existing DataFrame is that
-    #     #       the index is rebuilt repeadately, causing an even increasing processing
-    #     #       time. To prevent this, we reset the params DataFrame here but it should
-    #     #       only happen during building a dataset. Figure out a better solution to this.
-    #     self.params = None
-
-    #     self.logger.debug('Flushed dataset chunk {} to disk.'.format(self.cache_chunk_id))
-
-    #     self.reset_cache_all(chunk_size, chunk_id)

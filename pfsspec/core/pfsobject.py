@@ -248,11 +248,11 @@ class PfsObject():
         else:
             raise NotImplementedError()
 
-    def save_item_hdf5(self, name, item, s=None, min_string_length=None):
+    def save_item_hdf5(self, path, item, s=None, min_string_length=None):
         """
         Saves an item into an HDF5 file. Supports partial updates.
 
-        :param name: Name or path of the dataset.
+        :param path: Name or path of the dataset.
         :param item: Data item.
         :param s: Optional target slice, defaults to None.
         :param min_string_length: Dictionary of minimum length of pandas string columns.
@@ -271,7 +271,7 @@ class PfsObject():
                 pass
 
         f = open_hdf5()
-        g, name = self.get_hdf5_group(f, name, create=True)
+        g, name = self.get_hdf5_group(f, path, create=True)
 
         if item is None:
             # Do not save if value is None
@@ -283,11 +283,11 @@ class PfsObject():
             #       appending them.
 
             if s is None:
-                item.to_hdf(self.filename, name, mode='a', format='table', min_itemsize=min_string_length)
+                item.to_hdf(self.filename, path, mode='a', format='table', min_itemsize=min_string_length)
             else:
                 # TODO: this throws an error
                 # TODO: verify if s is at the end of table
-                item.to_hdf(self.filename, name, mode='a', format='table', append=True, min_itemsize=min_string_length)
+                item.to_hdf(self.filename, path, mode='a', format='table', append=True, min_itemsize=min_string_length)
         elif isinstance(item, np.ndarray):
             if s is not None:
                 # in-place update
@@ -452,7 +452,7 @@ class PfsObject():
                 g = g[part]
         return g, parts[-1]
 
-    def load_item_hdf5(self, name, type, s=None):
+    def load_item_hdf5(self, path, type, s=None):
         """
         Loads an item from an HDF5 file. Supports partial arrays.
 
@@ -474,12 +474,12 @@ class PfsObject():
 
         if type == pd.DataFrame:
             if s is not None:
-                return pd.read_hdf(self.filename, name, start=s.start, stop=s.stop)
+                return pd.read_hdf(self.filename, path, start=s.start, stop=s.stop)
             else:
-                return pd.read_hdf(self.filename, name)
+                return pd.read_hdf(self.filename, path)
         elif type == np.ndarray:
             with h5py.File(self.filename, 'r') as f:
-                g, name = self.get_hdf5_group(f, name, create=False)
+                g, name = self.get_hdf5_group(f, path, create=False)
                 if g is not None and name in g:
                     # Do some smart indexing magic here because index arrays are not supported by h5py
                     # This is not full fancy indexing!
@@ -537,7 +537,7 @@ class PfsObject():
         elif type == np.float or type == np.int:
             # Try attributes first, then dataset, otherwise return None
             with h5py.File(self.filename, 'r') as f:
-                g, name = self.get_hdf5_group(f, name, create=False)
+                g, name = self.get_hdf5_group(f, path, create=False)
                 if g is not None and name in g.attrs:
                     return g.attrs[name]
                 elif g is not None and name in g:
@@ -548,7 +548,7 @@ class PfsObject():
         elif type == np.bool or type == bool:
             # Try attributes first, then dataset, otherwise return None
             with h5py.File(self.filename, 'r') as f:
-                g, name = self.get_hdf5_group(f, name, create=False)
+                g, name = self.get_hdf5_group(f, path, create=False)
                 if g is not None and name in g.attrs:
                     return g.attrs[name]
                 elif g is not None and name in g:
@@ -558,7 +558,7 @@ class PfsObject():
                     return None
         elif type == str:
             with h5py.File(self.filename, 'r') as f:
-                g, name = self.get_hdf5_group(f, name, create=False)
+                g, name = self.get_hdf5_group(f, path, create=False)
                 if g is not None and name in g.attrs:
                     return g.attrs[name]
                 else:

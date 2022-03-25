@@ -7,26 +7,26 @@ from pfsspec.core.dataset.spectrumdataset import SpectrumDataset
 from test.core import TestBase
 from pfsspec.core import PfsObject
 from pfsspec.core import Spectrum
-from pfsspec.core.dataset import Dataset
+from pfsspec.core.dataset import ArrayDataset
 from pfsspec.core.dataset import DatasetConfig
 
-class TestDataset(TestBase):
+class TestArrayDataset(TestBase):
     #region Helper functions
 
-    class SpectrumTestDataset(Dataset):
+    class SpectrumTestDataset(ArrayDataset):
         def __init__(self, config=None, preload_arrays=None, value_shape=None, orig=None):
-            super(TestDataset.SpectrumTestDataset, self).__init__(config, preload_arrays, orig=orig)
+            super(TestArrayDataset.SpectrumTestDataset, self).__init__(config, preload_arrays, orig=orig)
             self.value_shape = value_shape
 
         def init_values(self, row_count=None):
-            super(TestDataset.SpectrumTestDataset, self).init_values(row_count=row_count)
+            super(TestArrayDataset.SpectrumTestDataset, self).init_values(row_count=row_count)
 
             self.init_value('flux', dtype=np.float)
             self.init_value('error', dtype=np.float)
             self.init_value('mask', dtype=np.int)
 
         def allocate_values(self, row_count):
-            super(TestDataset.SpectrumTestDataset, self).allocate_values(row_count=row_count)
+            super(TestArrayDataset.SpectrumTestDataset, self).allocate_values(row_count=row_count)
 
             self.allocate_value('flux', self.value_shape, dtype=np.float)
             self.allocate_value('error', self.value_shape, dtype=np.float)
@@ -37,7 +37,7 @@ class TestDataset(TestBase):
         Create a test dataset with a few random columns and spectra
         """
         
-        ds = TestDataset.SpectrumTestDataset(preload_arrays=True, value_shape=value_shape)
+        ds = TestArrayDataset.SpectrumTestDataset(preload_arrays=True, value_shape=value_shape)
         ds.params = pd.DataFrame({
             'id': np.arange(0, size, dtype=np.int),
             'Fe_H': np.random.normal(-1, 0.5, size=size),
@@ -72,19 +72,26 @@ class TestDataset(TestBase):
         self.create_test_datasets(format=format)
 
         filename = self.get_test_filename(filename='large_dataset', ext=PfsObject.get_extension(format))
-        ds = TestDataset.SpectrumTestDataset(preload_arrays=False)
+        ds = TestArrayDataset.SpectrumTestDataset(preload_arrays=False)
         ds.load(filename, format)
         self.assertEqual(10000, ds.get_count())
 
     def test_get_chunk_id(self):
-        raise NotImplementedError()
+        format = 'h5'
+        self.create_test_datasets(format=format)
+
+        ds = TestArrayDataset.SpectrumTestDataset(preload_arrays=False)
+
+        self.assertEqual((0, 0), ds.get_chunk_id(0, 3000))
+        self.assertEqual((1, 0), ds.get_chunk_id(3000, 3000))
+        self.assertEqual((1, 300), ds.get_chunk_id(3300, 3000))
 
     def test_get_chunk_count(self):
         format = 'h5'
         self.create_test_datasets(format=format)
 
         filename = self.get_test_filename(filename='small_dataset', ext=PfsObject.get_extension(format))
-        ds = Dataset(preload_arrays=False)
+        ds = ArrayDataset(preload_arrays=False)
         ds.load(filename, format)
         self.assertEqual(100, ds.get_count())
         self.assertEqual(10, ds.get_chunk_count(10))
@@ -97,7 +104,7 @@ class TestDataset(TestBase):
         self.create_test_datasets(format=format)
 
         filename = self.get_test_filename(filename='small_dataset', ext=PfsObject.get_extension(format))
-        ds = Dataset(preload_arrays=False)
+        ds = ArrayDataset(preload_arrays=False)
         ds.load(filename, format)
         self.assertEqual(100, ds.get_count())
 
@@ -118,7 +125,7 @@ class TestDataset(TestBase):
     def test_allocate_values_preload(self):
         size = 100
 
-        ds = TestDataset.SpectrumTestDataset(preload_arrays=True, value_shape=6000)
+        ds = TestArrayDataset.SpectrumTestDataset(preload_arrays=True, value_shape=6000)
         ds.params = pd.DataFrame({
             'Fe_H': np.random.normal(-1, 0.5, size=size),
             'T_eff': np.random.uniform(3500, 7000, size=size),
@@ -137,7 +144,7 @@ class TestDataset(TestBase):
         if os.path.isfile(filename):
             os.remove(filename)
         
-        ds = TestDataset.SpectrumTestDataset(preload_arrays=False, value_shape=6000)
+        ds = TestArrayDataset.SpectrumTestDataset(preload_arrays=False, value_shape=6000)
         ds.params = pd.DataFrame({
             'Fe_H': np.random.normal(-1, 0.5, size=size),
             'T_eff': np.random.uniform(3500, 7000, size=size),
@@ -162,7 +169,7 @@ class TestDataset(TestBase):
             self.create_test_datasets(format=format)
 
             filename = self.get_test_filename(filename='small_dataset', ext=PfsObject.get_extension(format))
-            ds = TestDataset.SpectrumTestDataset(preload_arrays=True)
+            ds = TestArrayDataset.SpectrumTestDataset(preload_arrays=True)
             ds.init_values()
             ds.load(filename, format)
             self.assertEqual((100, 4), ds.params.shape)
@@ -175,7 +182,7 @@ class TestDataset(TestBase):
         self.create_test_datasets(format=format)
 
         filename = self.get_test_filename(filename='large_dataset', ext=PfsObject.get_extension(format))
-        ds = TestDataset.SpectrumTestDataset(preload_arrays=False)
+        ds = TestArrayDataset.SpectrumTestDataset(preload_arrays=False)
         ds.init_values()
         ds.load(filename, format)
         self.assertEqual((10000, 4), ds.params.shape)
@@ -190,7 +197,7 @@ class TestDataset(TestBase):
     def test_get_params_preload(self):
         format = 'h5'
         filename = self.get_test_filename(filename='large_dataset', ext=PfsObject.get_extension(format))
-        ds = Dataset(preload_arrays=True)
+        ds = ArrayDataset(preload_arrays=True)
         ds.load(filename, format)
 
         p = ds.get_params(names=None, idx=(), chunk_size=None, chunk_id=None)
@@ -209,7 +216,7 @@ class TestDataset(TestBase):
         format = 'h5'
         chunk_size = 300
         filename = self.get_test_filename(filename='large_dataset', ext=PfsObject.get_extension(format))
-        ds = Dataset(preload_arrays=False)
+        ds = ArrayDataset(preload_arrays=False)
         ds.load(filename, format)
 
         p = ds.get_params(names=None, idx=slice(0, 10, None), chunk_size=chunk_size, chunk_id=2)
@@ -229,7 +236,7 @@ class TestDataset(TestBase):
     def test_set_params(self):
         format = 'h5'
         filename = self.get_test_filename(filename='large_dataset', ext=PfsObject.get_extension(format))
-        ds = Dataset(preload_arrays=True)
+        ds = ArrayDataset(preload_arrays=True)
         ds.load(filename, format)
 
         v = np.random.normal(-1.0, 1.0, size=(10000))
@@ -248,7 +255,7 @@ class TestDataset(TestBase):
         ds.set_params(names=['Fe_H', 'T_eff'], values=v, idx=idx, chunk_size=300, chunk_id=2)
 
     def test_append_params_row(self):
-        ds = Dataset()
+        ds = ArrayDataset()
 
         row = {
             'id': 0,
@@ -268,7 +275,7 @@ class TestDataset(TestBase):
     def test_get_value_preload(self):
         format = 'h5'
         filename = self.get_test_filename(filename='large_dataset', ext=PfsObject.get_extension(format))
-        ds = TestDataset.SpectrumTestDataset(preload_arrays=True)
+        ds = TestArrayDataset.SpectrumTestDataset(preload_arrays=True)
         ds.load(filename, format)
 
         self.assertIsNotNone(ds.values['flux'])
@@ -287,7 +294,7 @@ class TestDataset(TestBase):
 
         format = 'h5'
         filename = self.get_test_filename(filename='large_dataset', ext=PfsObject.get_extension(format))
-        ds = TestDataset.SpectrumTestDataset(preload_arrays=False)
+        ds = TestArrayDataset.SpectrumTestDataset(preload_arrays=False)
         ds.load(filename, format)
 
         v = ds.get_value('flux', idx=slice(0, 10, None))
@@ -307,7 +314,7 @@ class TestDataset(TestBase):
 
         format = 'h5'
         filename = self.get_test_filename(filename='large_dataset', ext=PfsObject.get_extension(format))
-        ds = TestDataset.SpectrumTestDataset(preload_arrays=False)
+        ds = TestArrayDataset.SpectrumTestDataset(preload_arrays=False)
         ds.load(filename, format)
 
         # Cache is cold
@@ -344,7 +351,7 @@ class TestDataset(TestBase):
 
         format = 'h5'
         filename = self.get_test_filename(filename='large_dataset', ext=PfsObject.get_extension(format))
-        ds = TestDataset.SpectrumTestDataset(preload_arrays=True)
+        ds = TestArrayDataset.SpectrumTestDataset(preload_arrays=True)
         ds.load(filename, format)
 
         self.assertIsNotNone(ds.values['flux'])
@@ -365,7 +372,7 @@ class TestDataset(TestBase):
 
         format = 'h5'
         filename = self.get_test_filename(filename='large_dataset', ext=PfsObject.get_extension(format))
-        ds = TestDataset.SpectrumTestDataset(preload_arrays=False)
+        ds = TestArrayDataset.SpectrumTestDataset(preload_arrays=False)
         ds.load(filename, format)
 
         self.assertIsNone(ds.values['flux'])
@@ -392,7 +399,7 @@ class TestDataset(TestBase):
         format = 'h5'
         self.create_test_datasets(format=format)
         filename = self.get_test_filename(filename='large_dataset', ext=PfsObject.get_extension(format))
-        ds = TestDataset.SpectrumTestDataset(preload_arrays=False)
+        ds = TestArrayDataset.SpectrumTestDataset(preload_arrays=False)
         ds.load(filename, format)
 
         self.assertIsNone(ds.values['flux'])
@@ -426,7 +433,7 @@ class TestDataset(TestBase):
 
         format = 'h5'
         filename = self.get_test_filename(filename='large_dataset', ext=PfsObject.get_extension(format))
-        ds = TestDataset.SpectrumTestDataset(preload_arrays=False)
+        ds = TestArrayDataset.SpectrumTestDataset(preload_arrays=False)
         ds.load(filename, format)
 
         # Read with cold cache
@@ -449,7 +456,7 @@ class TestDataset(TestBase):
     def test_reset_index(self):
         format = 'h5'
         filename = self.get_test_filename(filename='large_dataset', ext=PfsObject.get_extension(format))
-        ds = TestDataset.SpectrumTestDataset(preload_arrays=False)
+        ds = TestArrayDataset.SpectrumTestDataset(preload_arrays=False)
         ds.load(filename, format)
 
         ds.reset_index(ds.params)

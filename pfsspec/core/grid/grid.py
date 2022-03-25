@@ -22,11 +22,9 @@ class Grid(PfsObject):
         super(Grid, self).__init__(orig=orig)
 
         if isinstance(orig, Grid):
-            self.preload_arrays = orig.preload_arrays
             self.axes = orig.axes
             self.constants = orig.constants
         else:
-            self.preload_arrays = False
             self.axes = {}
             self.constants = {}
 
@@ -36,11 +34,6 @@ class Grid(PfsObject):
     def get_shape(self):
         shape = tuple(self.axes[p].values.shape[0] for p in self.axes)
         return shape
-
-    def ensure_lazy_load(self):
-        # This works with HDF5 format only!
-        if not self.preload_arrays and self.fileformat != 'h5':
-            raise NotImplementedError()
 
     def get_constants(self):
         return self.constants

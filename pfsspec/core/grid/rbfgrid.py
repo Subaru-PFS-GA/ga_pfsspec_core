@@ -21,10 +21,12 @@ class RbfGrid(Grid):
 
         if isinstance(orig, RbfGrid):
             self.config = config if config is not None else orig.config
+            self.preload_arrays = orig.preload_arrays
             self.values = orig.values
             self.value_shapes = orig.value_shapes
         else:
             self.config = config
+            self.preload_arrays = False
             self.values = {}
             self.value_shapes = {}
 
@@ -37,6 +39,11 @@ class RbfGrid(Grid):
     @property
     def rbf_grid(self):
         return self
+
+    def ensure_lazy_load(self):
+        # This works with HDF5 format only!
+        if not self.preload_arrays and self.fileformat != 'h5':
+            raise NotImplementedError()
 
     def get_value_path(self, name):
         return '/'.join([Grid.PREFIX_GRID, Grid.PREFIX_ARRAYS, name, self.POSTFIX_RBF])

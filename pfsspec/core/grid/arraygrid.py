@@ -28,12 +28,14 @@ class ArrayGrid(Grid):
 
         if isinstance(orig, ArrayGrid):
             self.config = config if config is not None else orig.config
+            self.preload_arrays = orig.preload_arrays
             self.values = orig.values
             self.value_shapes = orig.value_shapes
             self.value_indexes = orig.value_indexes
             self.slice = orig.slice
         else:
             self.config = config        # Grid configuration class
+            self.preload_arrays = False
             self.values = {}            # Dictionary of value arrays
             self.value_shapes = {}      # Dictionary of value array shapes (excl. grid shape)
             self.value_indexes = {}     # Dictionary of index array indicating existing grid points
@@ -73,6 +75,11 @@ class ArrayGrid(Grid):
                 s.append(slice(None))
 
         return tuple(s)
+
+    def ensure_lazy_load(self):
+        # This works with HDF5 format only!
+        if not self.preload_arrays and self.fileformat != 'h5':
+            raise NotImplementedError()
 
     def get_axes(self, squeeze=False):
         # Return axes that are limited by the slices

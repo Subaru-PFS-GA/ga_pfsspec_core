@@ -105,7 +105,8 @@ class Script():
         parser.add_argument('--log-dir', type=str, default=None, help='Log directory\n')
         parser.add_argument('--random-seed', type=int, default=None, help='Set random seed\n')
 
-    def get_configs(self, args):
+    def get_configs(self, path, args):
+        paths = []
         configs = []
         if 'config' in args and args['config'] is not None:
             if isinstance(args['config'], Iterable):
@@ -114,26 +115,28 @@ class Script():
                 filenames = [args['config']]
 
             for filename in filenames:
-                config = self.load_args_json(filename)
+                fn = os.path.join(path, filename)
+                config = self.load_args_json(fn)
+                paths.append(fn)
                 configs.append(config)
 
-        return configs
+        return paths, configs
 
     def parse_args(self):
         if self.args is None:
             # - 1. parse command-line args with defaults enabled (already done above)
             self.args = self.parser.parse_args().__dict__
-            configs = self.get_configs(self.args)
+            paths, configs = self.get_configs(os.getcwd(), self.args)
             if len(configs) > 0:
                 # If a config file is used:
                 # - 2. load config file, override all specified arguments
-                for config in configs:
-                    self.merge_args(config, override=True, recursive=True)
+                for path, config in zip(paths, configs):
+                    self.merge_args(os.path.dirname(path), config, override=True, recursive=True)
 
                 # - 3. reparse command-line with defaults suppressed, apply overrides
                 self.disable_parser_defaults(self.parser)
                 command_args = self.parser.parse_args().__dict__
-                self.merge_args(command_args, override=True, recursive=False)
+                self.merge_args(os.getcwd(), command_args, override=True, recursive=False)
 
             # Parse some special but generic arguments
             self.debug = self.get_arg('debug', self.debug)
@@ -142,12 +145,12 @@ class Script():
             self.log_dir = self.get_arg('log_dir', self.log_dir)
             self.random_seed = self.get_arg('random_seed', self.random_seed)
 
-    def merge_args(self, other_args, override=True, recursive=False):
+    def merge_args(self, path, other_args, override=True, recursive=False):
         if 'config' in other_args and recursive:
             # This is a config within a config file, load configs recursively, if requested
-            configs = self.get_configs(other_args)
-            for config in configs:
-                self.merge_args(config, override=override, recursive=True)
+            paths, configs = self.get_configs(path, other_args)
+            for path, config in zip(path, configs):
+                self.merge_args(os.path.dirname(path), config, override=override, recursive=True)
 
         for k in other_args:
             if other_args[k] is not None and (k not in self.args or self.args[k] is None or override):

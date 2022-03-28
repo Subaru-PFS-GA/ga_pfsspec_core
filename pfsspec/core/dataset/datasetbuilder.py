@@ -147,9 +147,9 @@ class DatasetBuilder(PfsObject):
             total_items += len(rng)
 
         if not self.resume:
-            self.logger.info('Building a new dataset of size {}'.format(self.dataset.shape))
+            self.logger.info('Building a new dataset of size {}'.format(self.dataset.get_value_shape('flux')))
         else:
-            self.logger.info('Resume building a dataset of size {}'.format(self.dataset.shape))
+            self.logger.info('Resume building a dataset of size {}'.format(self.dataset.get_value_shape('flux')))
             existing = set(self.dataset.params['id'])
             total_items = 0
             for chunk_id in range(count // self.chunk_size):

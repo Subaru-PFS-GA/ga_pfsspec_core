@@ -11,6 +11,7 @@ from .constants import Constants
 from .pfsobject import PfsObject
 from .filter import Filter
 from .spectrum import Spectrum
+from pfsspec.sim.obsmod import Psf
 
 class Pipeline(PfsObject):
     """
@@ -192,6 +193,11 @@ class Pipeline(PfsObject):
                 spec.wave_edges = (1 + z) * spec.wave_edges
 
     def run_step_rebin(self, spec, **kwargs):
+        if self.wave is not None:
+            wave, wave_edges = self.get_wave()
+            self.rebin(spec, wave, wave_edges)
+
+    def rebin(self, spec, wave, wave_edges):
         # TODO: how to rebin error and mask?
         #       mask should be combined if flux comes from multiple bins
         # TODO: does pysynphot support bin edges
@@ -205,30 +211,28 @@ class Pipeline(PfsObject):
                 obs = pysynphot.observation.Observation(spec, filt, binset=nwave, force='taper')
                 return obs.binflux
 
-        if self.wave is not None:
-            wave, wave_edges = self.get_wave()
-            spec.wave = wave
-            spec.wave_edges = wave_edges
+        spec.flux = rebin_vector(spec.wave, wave, spec.flux)
+        spec.flux_sky = rebin_vector(spec.wave, wave, spec.flux_sky)
 
-            spec.flux = rebin_vector(spec.wave, wave, spec.flux)
-            spec.flux_sky = rebin_vector(spec.wave, wave, spec.flux_sky)
+        # For the error vector, use nearest-neighbor interpolations
+        # later we can figure out how to do this correctly and add correlated noise, etc.
+        if spec.flux_err is not None:
+            ip = interp1d(spec.wave, spec.flux_err, kind='nearest')
+            spec.flux_err = ip(wave)
 
-            # For the error vector, use nearest-neighbor interpolations
-            # later we can figure out how to do this correctly and add correlated noise, etc.
-            if spec.flux_err is not None:
-                ip = interp1d(spec.wave, spec.flux_err, kind='nearest')
-                spec.flux_err = ip(wave)
+        if spec.cont is not None:
+            spec.cont = rebin_vector(spec.wave, wave, spec.cont)
 
-            if spec.cont is not None:
-                spec.cont = rebin_vector(spec.wave, wave, spec.cont)
+        # TODO: we only take the closest bin here which is incorrect
+        #       mask values should combined with bitwise or across bins
+        if spec.mask is not None:
+            wl_idx = np.digitize(wave, spec.wave)
+            spec.mask = spec.mask[wl_idx]
+        else:
+            spec.mask = None
 
-            # TODO: we only take the closest bin here which is incorrect
-            #       mask values should combined with bitwise or across bins
-            if spec.mask is not None:
-                wl_idx = np.digitize(wave, spec.wave)
-                spec.mask = spec.mask[wl_idx]
-            else:
-                spec.mask = None
+        spec.wave = wave
+        spec.wave_edges = wave_edges
 
     #region Convolution
 
@@ -441,11 +445,54 @@ class Pipeline(PfsObject):
     def convolve_varying_kernel(self, spec, kernel_func, size=None, wlim=None):
         # NOTE: this function does not take model resolution into account!
 
+        def convolve_vectors(wave, data, kernel_func, size=None, wlim=None):
+            """
+            Convolve with a kernel that varies with wavelength. Kernel is computed
+            by a function passed as a parameter.
+            """
+
+            # Get a test kernel from the middle of the wavelength range to have its size
+            kernel = kernel_func(wave[wave.shape[0] // 2], size=size)
+
+            # Start and end of convolution
+            # Outside this range, original values will be used
+            if wlim is not None:
+                idx = np.digitize(wlim, wave)
+            else:
+                idx = [0, wave.shape[0]]
+
+            idx_lim = [
+                max(idx[0], kernel.shape[0] // 2),
+                min(idx[1], wave.shape[0] - kernel.shape[0] // 2)
+            ]
+
+            # Construct results
+            if not isinstance(data, tuple) and not isinstance(data, list):
+                data = [data, ]
+            res = [np.zeros(d.shape) for d in data]
+
+            # Do the convolution
+            # TODO: can we optimize it further?
+            offset = 0 - kernel.shape[0] // 2
+            for i in range(idx_lim[0], idx_lim[1]):
+                kernel = kernel_func(wave[i], size=size)
+                s = slice(i + offset, i + offset + kernel.shape[0])
+                for d, r in zip(data, res):
+                    z = d[i] * kernel
+                    r[s] += z
+
+            # Fill-in parts that are not convolved
+            for d, r in zip(data, res):
+                r[:idx_lim[0] - offset] = d[:idx_lim[0] - offset]
+                r[idx_lim[1] + offset:] = d[idx_lim[1] + offset:]
+
+            return res
+
         data = [spec.flux, ]
         if spec.cont is not None:
-            data.append(self.cont)
+            data.append(spec.cont)
 
-        res = Spectrum.convolve_vector_varying_kernel(spec.wave, data, kernel_func, size=size, wlim=wlim)
+        res = convolve_vectors(spec.wave, data, kernel_func, size=size, wlim=wlim)
 
         spec.flux = res[0]
         if spec.cont is not None:
@@ -455,7 +502,7 @@ class Pipeline(PfsObject):
     def convolve_psf(self, spec, psf, model_res, wlim):
         # Note, that this is in addition to model spectrum resolution
         if isinstance(psf, Psf):
-            spec.convolve_varying_kernel(psf.get_kernel)
+            self.convolve_varying_kernel(spec, psf.get_kernel)
         elif isinstance(psf, numbers.Number) and model_res is not None:
             sigma = psf
 
@@ -464,11 +511,11 @@ class Pipeline(PfsObject):
                 fwhm = 0.5 * (wlim[0] + wlim[-1]) / model_res
                 ss = fwhm / 2 / np.sqrt(2 * np.log(2))
                 sigma = np.sqrt(sigma ** 2 - ss ** 2)
-            spec.convolve_gaussian(dlambda=sigma, wlim=wlim)
+            self.convolve_gaussian(spec, dlambda=sigma, wlim=wlim)
         elif isinstance(psf, numbers.Number):
             # This is a simplified version when the model resolution is not known
             # TODO: review this
-            spec.convolve_gaussian_log(5000, dlambda=psf)
+            self.convolve_gaussian_log(spec, 5000, dlambda=psf)
         else:
             raise NotImplementedError()
 
@@ -504,15 +551,14 @@ class Pipeline(PfsObject):
     #endregion
 
     def run_step_magnitude(self, spec, **kwargs):
-        raise NotImplementedError()
-
         mag = None
-        if self.mag_filter is not None:
+        filter = self.get_norm_filter()
+        if filter is not None:
             if 'mag' in kwargs and not np.isnan(kwargs['mag']) and kwargs['mag'] != 0:
                 mag = kwargs['mag']
 
         if mag is not None:
-            spec.normalize_to_mag(self.mag_filter, mag)
+            spec.normalize_to_mag(filter, mag)
 
     def run_step_normalize(self, spec, **kwargs):
         # Normalization in wavelength range overrides previous normalization

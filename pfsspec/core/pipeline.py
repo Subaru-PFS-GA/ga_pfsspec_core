@@ -1,4 +1,5 @@
 import numpy as np
+import numbers
 from scipy.interpolate import interp1d
 import collections
 import pysynphot
@@ -11,7 +12,7 @@ from .constants import Constants
 from .pfsobject import PfsObject
 from .filter import Filter
 from .spectrum import Spectrum
-from pfsspec.sim.obsmod import Psf
+from .psf import Psf
 
 class Pipeline(PfsObject):
     """
@@ -36,9 +37,8 @@ class Pipeline(PfsObject):
             self.wave_lin = False
             self.wave_log = False
             self.wave_bins = None
-            self.norm = None                # Normalization method
-            self.norm_wave = None           # Normalization wavelength range
-            self.norm_filter = None         # Magnitude filter for normalization
+            self.norm = None                # Post process normalization method
+            self.norm_wave = None           # Post process normalization wavelength range
         else:
             self.random_state = orig.random_state
 
@@ -52,7 +52,6 @@ class Pipeline(PfsObject):
             self.wave_bins = orig.wave_bins
             self.norm = orig.norm
             self.norm_wave = orig.norm_wave
-            self.norm_filter = orig.norm_filter
 
     def add_args(self, parser):
         parser.add_argument('--restframe', action='store_true', help='Convert to rest-frame.\n')
@@ -68,7 +67,6 @@ class Pipeline(PfsObject):
 
         parser.add_argument('--norm', type=str, default=None, help='Normalization method\n')
         parser.add_argument('--norm-wave', type=float, nargs=2, default=[4200, 6500], help='Normalization method\n')
-        parser.add_argument('--norm-filter', type=str, default=None, help='Broadband filter for normalization to magnitude.\n')
 
     def init_from_args(self, args):
         self.restframe = self.get_arg('restframe', self.restframe, args)
@@ -88,7 +86,6 @@ class Pipeline(PfsObject):
         
         self.norm = self.get_arg('norm', self.norm, args)
         self.norm_wave = self.get_arg('norm_wave', self.norm_wave, args)
-        self.norm_filter = self.get_arg('norm_filter', self.norm_filter, args)
       
     def is_constant_wave(self):
         # Returns true when the wavelength grid is the same for all processed spectra
@@ -149,23 +146,11 @@ class Pipeline(PfsObject):
             centers, _ = self.get_wave_spec(spec, **kwargs)
             return centers.shape[0]
 
-    def get_norm_filter(self):
-        if isinstance(self.norm_filter, Filter):
-            return self.norm_filter
-        elif isinstance(self.norm_filter, str):
-            filter = Filter()
-            filter.read(self.norm_filter)
-            self.norm_filter = filter
-            return filter
-        else:
-            return None
-
     def run(self, spec, **kwargs):
         self.run_step_restframe(spec, **kwargs)
         self.run_step_redshift(spec, **kwargs)
         self.run_step_convolution(spec, **kwargs)
         self.run_step_rebin(spec, **kwargs)
-        # self.run_step_magnitude(spec, **kwargs)
         self.run_step_normalize(spec, **kwargs)
 
     def run_step_restframe(self, spec: Spectrum, **kwargs):
@@ -549,16 +534,6 @@ class Pipeline(PfsObject):
             raise NotImplementedError()
 
     #endregion
-
-    def run_step_magnitude(self, spec, **kwargs):
-        mag = None
-        filter = self.get_norm_filter()
-        if filter is not None:
-            if 'mag' in kwargs and not np.isnan(kwargs['mag']) and kwargs['mag'] != 0:
-                mag = kwargs['mag']
-
-        if mag is not None:
-            spec.normalize_to_mag(filter, mag)
 
     def run_step_normalize(self, spec, **kwargs):
         # Normalization in wavelength range overrides previous normalization

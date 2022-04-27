@@ -1,6 +1,8 @@
 import numpy as np
 import numexpr as ne
 from scipy import linalg
+from scipy.sparse.linalg import spsolve
+from scipy.sparse import csc_matrix
 from sklearn.metrics import pairwise_distances
 from scipy.special import xlogy
 
@@ -188,6 +190,12 @@ class Rbf():
             else:
                 with Timer('Solving RBF if size {} with numpy.linalg.solve...'.format(A.shape)):
                     self.nodes = linalg.solve(A, di)
+        elif self.method == 'sparse':
+            self.c = np.mean(self.di, axis=0)
+            di = self.di - self.c
+            A[A < 1e-3] = 0.0
+            A = csc_matrix(A)
+            self.nodes = spsolve(A, di)
         elif self.method == 'nnls':
             self.c = np.min(self.di, axis=0)
             A = self.A
@@ -203,8 +211,6 @@ class Rbf():
                     self.nodes = nnls(A, di)
         else:
             raise ValueError('Method has to be `solve` or `nnls`.')
-
-        pass
 
     def is_compatible(self, other):
         # Does a quick compatibility between two RBF grids to see

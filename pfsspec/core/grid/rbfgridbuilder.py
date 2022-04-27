@@ -27,7 +27,7 @@ class RbfGridBuilder(GridBuilder):
             self.function = 'multiquadric'
             self.epsilon = None
             self.smoothing = 0.0
-            self.method = 'solve'
+            self.method = None
 
     def add_args(self, parser):
         super(RbfGridBuilder, self).add_args(parser)
@@ -41,7 +41,7 @@ class RbfGridBuilder(GridBuilder):
             help='RBF kernel function.\n')
         parser.add_argument('--epsilon', type=float, help='Adjustable constant for Gaussian and multiquadric.\n')
         parser.add_argument('--smoothing', type=float, help='RBF smoothing coeff.\n')
-        parser.add_argument('--method', type=str, default='solve', choices=['solve', 'nnls'])
+        parser.add_argument('--method', type=str, default=None, choices=['sparse', 'solve', 'nnls'])
 
     def init_from_args(self, config, args):
         super(RbfGridBuilder, self).init_from_args(config, args)
@@ -115,7 +115,7 @@ class RbfGridBuilder(GridBuilder):
         rbf = Rbf()
         rbf.fit(*points, value, function=function or self.function,
             epsilon=epsilon or self.epsilon, smooth=self.smoothing,
-            mode=mode, method=method or self.method)
+            mode=mode, method=self.method or method)
 
         if self.fill:
             # Fill in the results with zeros at masked grid points so that

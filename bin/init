@@ -16,7 +16,29 @@ if [[ ! -L configs ]]; then
     ln -s modules/pfsspec-config/configs configs
 fi
 
-# Verify / create submodule symlinks
+# Source environment configs
+
+echo "Sourcing environment file $PFSSPEC_ENV"
+source "./configs/envs/$PFSSPEC_ENV.sh"
+
+echo "Activating conda environment $PFSSPEC_CONDAENV"
+source "$PFSSPEC_CONDAPATH/bin/activate" "$PFSSPEC_CONDAENV"
+
+# Verify / create submodule symlinks and git configs
+
+function init_git_module() {
+    mod="$1"
+    dir="$2"
+
+    echo "Configuring git for repo $mod"
+    pushd "modules/pfsspec-$dir" >/dev/null
+
+    git config --local filter.ipynb_stripout.clean "$(which python) $(git rev-parse --show-toplevel)/../pfsspec-core/bin/ipynb_stripout"
+    git config --local filter.ipynb_stripout.smudge cat
+    git config --local filter.ipynb_stripout.required true
+
+    popd >/dev/null
+}
 
 function link_module() {
     mod="$1"
@@ -46,6 +68,8 @@ function link_module() {
       echo "Creating symlink to docs for module $mod, directory $dir"
         ln -s ../modules/pfsspec-$mod/docs docs/$dir
     fi
+
+    init_git_module "$mod" "$dir"
 }
 
 if [[ ! -d pfsspec ]]; then
@@ -93,14 +117,6 @@ while (( "$#" )); do
         ;;
     esac
 done
-
-# Source environment configs
-
-echo "Sourcing environment file $PFSSPEC_ENV"
-source "./configs/envs/$PFSSPEC_ENV.sh"
-
-echo "Activating conda environment $PFSSPEC_CONDAENV"
-source "$PFSSPEC_CONDAPATH/bin/activate" "$PFSSPEC_CONDAENV"
 
 ######## GIT/SSH config ########################################################
 

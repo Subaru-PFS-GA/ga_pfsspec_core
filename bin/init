@@ -9,6 +9,36 @@ fi
 echo "Sourcing .bashrc"
 source ~/.bashrc
 
+# Parse arguments
+
+PFSSPEC_ENV="default"
+INIT_GIT="1"
+
+while (( "$#" )); do
+    case "$1" in
+      -e|--env)
+        PFSSPEC_ENV="$2"
+        shift 2
+        ;;
+      -g|--init-git)
+        INIT_GIT="1"
+        shift
+        ;;
+      --no-init-git)
+        INIT_GIT="0"
+        shift
+        ;;
+      --) # end argument parsing
+        shift
+        break
+        ;;
+      *) # preserve all other arguments
+        PARAMS="$PARAMS $1"
+        shift
+        ;;
+    esac
+done
+
 # Verify / create configuration symlinks
 
 if [[ ! -L configs ]]; then
@@ -87,36 +117,6 @@ link_module stellar stellar
 link_module survey survey
 link_module sim sim
 link_module learn learn
-
-# Parse arguments
-
-PFSSPEC_ENV="default"
-INIT_GIT="1"
-
-while (( "$#" )); do
-    case "$1" in
-      -e|--env)
-        PFSSPEC_ENV="$2"
-        shift 2
-        ;;
-      -g|--init-git)
-        INIT_GIT="1"
-        shift
-        ;;
-      --no-init-git)
-        INIT_GIT="0"
-        shift
-        ;;
-      --) # end argument parsing
-        shift
-        break
-        ;;
-      *) # preserve all other arguments
-        PARAMS="$PARAMS $1"
-        shift
-        ;;
-    esac
-done
 
 ######## GIT/SSH config ########################################################
 

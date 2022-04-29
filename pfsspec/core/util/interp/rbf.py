@@ -210,7 +210,7 @@ class Rbf():
                     with Timer('Solving RBF of shape {} with {}...'.format(A.shape, func_fullname(nnls))):
                         self.nodes = nnls(A, di)
             else:
-                raise ValueError('Method has to be `solve` or `nnls`.')
+                raise ValueError('Method has to be `solve`, `sparse` or `nnls`.')
         finally:
             del A
             self.di = None

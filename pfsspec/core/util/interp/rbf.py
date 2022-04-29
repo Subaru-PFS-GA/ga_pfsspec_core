@@ -1,3 +1,4 @@
+import gc
 import numpy as np
 import numexpr as ne
 from scipy import linalg
@@ -21,8 +22,8 @@ class Rbf():
 
     def __init__(self):
         self.xi = None
-        self.r = None
-        self.A = None
+        self.nodes = None
+        self.c = None
 
     # Available radial basis functions that can be selected as strings;
     # they all start with _h_ (self._init_function relies on that)
@@ -165,52 +166,55 @@ class Rbf():
         if not all([x.size == self.di.shape[0] for x in self.xi]):
             raise ValueError("All arrays must be equal length.")
 
-        if self.r is None:
+        try:
             # This is a big matrix, use parallel threads to calculate
-            self.r = self._calculate_distance_matrix(self.xi.T, n_jobs=-1)
+            r = self._calculate_distance_matrix(self.xi.T, n_jobs=-1)
+            A = self._calculate_kernel_matrix(r, n_jobs=-1)
+        finally:
+            del r
+            gc.collect()
 
-        if self.A is None:
-            self.A = self._calculate_kernel_matrix(self.r, n_jobs=-1)
-
-        A = self.A
-
-        if self.method == 'solve':
-            # TODO: delete, no offseting self.c = np.zeros_like(self.di[0, :])
-            self.c = np.mean(self.di, axis=0)
-            di = self.di - self.c
-            if self._target_dim > 1:  
-                # If we have more than one target dimension,
-                # we first factorize the matrix then solve for each variable of di
-             
-                with Timer('Solving RBF of size {} with numpy.linalg.lu_factor...'.format(A.shape)):
-                    lu, piv = linalg.lu_factor(A)
-                    self.nodes = np.zeros((self.N, self._target_dim), dtype=di.dtype)
-                    for i in range(self._target_dim):
-                        self.nodes[:, i] = linalg.lu_solve((lu, piv), di[:, i])
+        try:
+            if self.method == 'solve':
+                # TODO: delete, no offseting self.c = np.zeros_like(self.di[0, :])
+                self.c = np.mean(self.di, axis=0)
+                di = self.di - self.c
+                if self._target_dim > 1:  
+                    # If we have more than one target dimension,
+                    # we first factorize the matrix then solve for each variable of di
+                
+                    with Timer('Solving RBF of size {} with numpy.linalg.lu_factor...'.format(A.shape)):
+                        lu, piv = linalg.lu_factor(A)
+                        self.nodes = np.zeros((self.N, self._target_dim), dtype=di.dtype)
+                        for i in range(self._target_dim):
+                            self.nodes[:, i] = linalg.lu_solve((lu, piv), di[:, i])
+                else:
+                    with Timer('Solving RBF if size {} with numpy.linalg.solve...'.format(A.shape)):
+                        self.nodes = linalg.solve(A, di)
+            elif self.method == 'sparse':
+                self.c = np.mean(self.di, axis=0)
+                di = self.di - self.c
+                A[A < 1e-3] = 0.0
+                A = csc_matrix(A)
+                self.nodes = spsolve(A, di)
+            elif self.method == 'nnls':
+                self.c = np.min(self.di, axis=0)
+                di = self.di - self.c
+                if self._target_dim > 1:
+                    self.nodes = np.zeros((self.N, self._target_dim), dtype=self.di.dtype)
+                    with Timer('Solving RBF of shape {} with {}...'.format(A.shape, func_fullname(nnls))):
+                        for i in range(self._target_dim):
+                            n = nnls(A, di[:, i])
+                            self.nodes[:, i] = n  
+                else:
+                    with Timer('Solving RBF of shape {} with {}...'.format(A.shape, func_fullname(nnls))):
+                        self.nodes = nnls(A, di)
             else:
-                with Timer('Solving RBF if size {} with numpy.linalg.solve...'.format(A.shape)):
-                    self.nodes = linalg.solve(A, di)
-        elif self.method == 'sparse':
-            self.c = np.mean(self.di, axis=0)
-            di = self.di - self.c
-            A[A < 1e-3] = 0.0
-            A = csc_matrix(A)
-            self.nodes = spsolve(A, di)
-        elif self.method == 'nnls':
-            self.c = np.min(self.di, axis=0)
-            A = self.A
-            di = self.di - self.c
-            if self._target_dim > 1:
-                self.nodes = np.zeros((self.N, self._target_dim), dtype=self.di.dtype)
-                with Timer('Solving RBF of shape {} with {}...'.format(A.shape, func_fullname(nnls))):
-                    for i in range(self._target_dim):
-                        n = nnls(A, di[:, i])
-                        self.nodes[:, i] = n  
-            else:
-                with Timer('Solving RBF of shape {} with {}...'.format(A.shape, func_fullname(nnls))):
-                    self.nodes = nnls(A, di)
-        else:
-            raise ValueError('Method has to be `solve` or `nnls`.')
+                raise ValueError('Method has to be `solve` or `nnls`.')
+        finally:
+            del A
+            self.di = None
+            gc.collect()
 
     def is_compatible(self, other):
         # Does a quick compatibility between two RBF grids to see

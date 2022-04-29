@@ -1,4 +1,5 @@
 import os
+import gc
 import logging
 import numpy as np
 import time
@@ -127,7 +128,6 @@ class RbfGridBuilder(GridBuilder):
             nodes[m, :] = rbf.nodes
             rbf.nodes = nodes
 
-            rbf.r = None
-            rbf.A = None
+        gc.collect()
 
         return rbf

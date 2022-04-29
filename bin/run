@@ -7,23 +7,13 @@ PARAMS=""
 COMMAND="$1"
 shift
 
-# Get runmode
-
-if [[ $1 == "sbatch" ]] || [[ $1 == "srun" ]]; then
-    RUNMODE=$1
-    shift
-elif [[ $1 == "run" ]]; then
-    RUNMODE=$1
-    shift
-else
-    RUNMODE="run"
-fi
-
 # Parse slurm and other parameters
 
+RUNMODE="run"
 PYTHON_DEBUG=0
-SBATCH_PARTITION=default
-SBATCH_MEM=16G
+SBATCH_DEPENDENCY=""
+SBATCH_PARTITION="default"
+SBATCH_MEM="16G"
 SBATCH_TIME="12:00:00"
 SBATCH_GPUS=0
 SBATCH_CPUS_PER_TASK=8
@@ -34,28 +24,40 @@ while (( "$#" )); do
             PYTHON_DEBUG=1
             shift
             ;;
+        --sbatch)
+            RUNMODE="sbatch"
+            shift
+            ;;
+        --dependency)
+            SBATCH_DEPENDENCY="--dependency $2"
+            shift 2
+            ;;
+        --srun)
+            RUNMODE="srun"
+            shift
+            ;;
         -p|--partition)
-            SBATCH_PARTITION=$2
+            SBATCH_PARTITION="$2"
             shift 2
             ;;
         --mem)
-            SBATCH_MEM=$2
+            SBATCH_MEM="$2"
             shift 2
             ;;
         -t|--time)
-            SBATCH_TIME=$2
+            SBATCH_TIME="$2"
             shift 2
             ;;
         -G|--gpus)
             if [[ $RUNMODE != "run" ]]; then
-                SBATCH_GPUS=$2
+                SBATCH_GPUS="$2"
             else
                 PARAMS="$PARAMS $1 $2"
             fi
             shift 2
             ;;
         -c|--cpus-per-task|--cpus)
-            SBATCH_CPUS_PER_TASK=$2
+            SBATCH_CPUS_PER_TASK="$2"
             shift 2
             ;;
         --) # end argument parsing
@@ -92,13 +94,17 @@ elif [[ $RUNMODE == "srun" ]]; then
               --time $SBATCH_TIME \
               python $DEBUGGER $COMMAND $PARAMS
 elif [[ $RUNMODE == "sbatch" ]]; then
-    sbatch <<EOF
+    sbatch --parsable $SBATCH_DEPENDENCY <<EOF
 #!/bin/bash
 #SBATCH --partition $SBATCH_PARTITION
 #SBATCH --gres gpu:$SBATCH_GPUS
 #SBATCH --cpus-per-task $SBATCH_CPUS_PER_TASK
 #SBATCH --mem $SBATCH_MEM
 #SBATCH --time $SBATCH_TIME
+
+# Limit number of threads (for multiprocess computation only!)
+export NUMEXPR_MAX_THREADS=64
+export OMP_NUM_THREADS=8
 
 set -e
 

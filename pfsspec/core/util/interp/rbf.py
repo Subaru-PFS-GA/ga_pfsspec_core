@@ -25,6 +25,8 @@ class Rbf():
         self.nodes = None
         self.c = None
 
+        self.weight_matrix_callback = None
+
     # Available radial basis functions that can be selected as strings;
     # they all start with _h_ (self._init_function relies on that)
     def _h_multiquadric(self, r):
@@ -170,9 +172,14 @@ class Rbf():
             # This is a big matrix, use parallel threads to calculate
             r = self._calculate_distance_matrix(self.xi.T, n_jobs=-1)
             A = self._calculate_kernel_matrix(r, n_jobs=-1)
+
+            if self.weight_matrix_callback is not None:
+                self.weight_matrix_callback(A, self.di)
+
         finally:
-            del r
-            gc.collect()
+            if 'r' in locals():
+                del r
+                gc.collect()
 
         try:
             if self.method == 'solve':
@@ -209,10 +216,14 @@ class Rbf():
                 else:
                     with Timer('Solving RBF of shape {} with {}...'.format(A.shape, func_fullname(nnls))):
                         self.nodes = nnls(A, di)
+            elif self.method == 'skip':
+                # Skip solving the equation, for debugging purposes only
+                self.nodes = np.zeros_like(self.di)
             else:
                 raise ValueError('Method has to be `solve`, `sparse` or `nnls`.')
         finally:
-            del A
+            if 'A' in locals():
+                del A
             self.di = None
             gc.collect()
 

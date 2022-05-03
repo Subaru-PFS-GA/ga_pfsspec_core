@@ -42,7 +42,7 @@ class RbfGridBuilder(GridBuilder):
             help='RBF kernel function.\n')
         parser.add_argument('--epsilon', type=float, help='Adjustable constant for Gaussian and multiquadric.\n')
         parser.add_argument('--smoothing', type=float, help='RBF smoothing coeff.\n')
-        parser.add_argument('--method', type=str, default=None, choices=['sparse', 'solve', 'nnls'])
+        parser.add_argument('--method', type=str, default=None, choices=['sparse', 'solve', 'nnls', 'skip'])
 
     def init_from_args(self, config, args):
         super(RbfGridBuilder, self).init_from_args(config, args)
@@ -54,7 +54,7 @@ class RbfGridBuilder(GridBuilder):
         self.smoothing = self.get_arg('smoothing', self.smoothing, args)
         self.method = self.get_arg('method', self.method, args)
 
-    def fit_rbf(self, value, axes, mask=None, method=None, function=None, epsilon=None):
+    def fit_rbf(self, value, axes, mask=None, method=None, function=None, epsilon=None, callback=None):
         """Returns the Radial Base Function interpolation of a grid slice.
 
         Args:
@@ -114,6 +114,7 @@ class RbfGridBuilder(GridBuilder):
             mode = 'N-D'
 
         rbf = Rbf()
+        rbf.weight_matrix_callback = callback
         rbf.fit(*points, value, function=function or self.function,
             epsilon=epsilon or self.epsilon, smooth=self.smoothing,
             mode=mode, method=self.method or method)

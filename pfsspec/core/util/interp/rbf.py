@@ -1,7 +1,7 @@
 import gc
 import numpy as np
 import numexpr as ne
-from scipy import linalg
+import scipy.linalg
 from scipy.sparse.linalg import spsolve
 from scipy.sparse import csc_matrix
 from sklearn.metrics import pairwise_distances
@@ -183,21 +183,26 @@ class Rbf():
 
         try:
             if self.method == 'solve':
-                # TODO: delete, no offseting self.c = np.zeros_like(self.di[0, :])
                 self.c = np.mean(self.di, axis=0)
                 di = self.di - self.c
-                if self._target_dim > 1:  
-                    # If we have more than one target dimension,
-                    # we first factorize the matrix then solve for each variable of di
+
+                # Numpy wrappers are not the best performance-wise
+                # if self._target_dim > 1:  
+                #     # If we have more than one target dimension,
+                #     # we first factorize the matrix then solve for each variable of di
                 
-                    with Timer('Solving RBF of size {} with numpy.linalg.lu_factor...'.format(A.shape)):
-                        lu, piv = linalg.lu_factor(A)
-                        self.nodes = np.zeros((self.N, self._target_dim), dtype=di.dtype)
-                        for i in range(self._target_dim):
-                            self.nodes[:, i] = linalg.lu_solve((lu, piv), di[:, i])
-                else:
-                    with Timer('Solving RBF if size {} with numpy.linalg.solve...'.format(A.shape)):
-                        self.nodes = linalg.solve(A, di)
+                #     with Timer('Solving RBF of size {} with numpy.linalg.lu_factor...'.format(A.shape)):
+                #         lu, piv = linalg.lu_factor(A)
+                #         self.nodes = np.zeros((self.N, self._target_dim), dtype=di.dtype)
+                #         for i in range(self._target_dim):
+                #             self.nodes[:, i] = linalg.lu_solve((lu, piv), di[:, i])
+                # else:
+                #     with Timer('Solving RBF if size {} with numpy.linalg.solve...'.format(A.shape)):
+                #         self.nodes = linalg.solve(A, di)
+
+                # Scipy Lapack wrapper
+                with Timer('Solving RBF of size {} with scipy.linalg.solve...'.format(A.shape)):
+                    self.nodes = scipy.linalg.solve(A, di, assume_a='sym')
             elif self.method == 'sparse':
                 self.c = np.mean(self.di, axis=0)
                 di = self.di - self.c

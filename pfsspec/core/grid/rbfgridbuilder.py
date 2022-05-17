@@ -81,6 +81,7 @@ class RbfGridBuilder(GridBuilder):
             
         m = m.flatten()
 
+        # Only use the first ˙self.top` grid points
         if self.top is not None:
             c = np.cumsum(m)
             t = np.where(c == self.top)

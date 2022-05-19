@@ -31,8 +31,8 @@ class Fit(Script):
         self.fit.threads = self.threads
         self.fit.init_from_args(config, self.args)
 
-    def open_data(self):
-        self.fit.open_data(self.args['in'], self.outdir, self.args['params'])
+    def open_data(self, args):
+        self.fit.open_data(args, args['in'], self.outdir, args['params'])
 
     def prepare(self):
         super(Fit, self).prepare()
@@ -42,11 +42,11 @@ class Fit(Script):
         self.init_logging(self.outdir)
 
         self.create_fit()
-        self.open_data()
+        self.open_data(self.args)
 
     def run(self):
         self.fit.run()
-        self.fit.save_data(self.outdir)
+        self.fit.save_data(self.args, self.outdir)
 
     def finish(self):
         self.fit.execute_notebooks(self)

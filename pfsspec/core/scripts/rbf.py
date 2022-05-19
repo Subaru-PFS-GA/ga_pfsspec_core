@@ -30,11 +30,11 @@ class Rbf(Script):
         self.rbf = self.create_plugin(config)
         self.rbf.init_from_args(config, self.args)
 
-    def open_data(self):
-        self.rbf.open_data(self.args['in'], self.outdir, self.args['params'])
+    def open_data(self, args):
+        self.rbf.open_data(args, args['in'], self.outdir, args['params'])
 
-    def save_data(self):
-        self.rbf.save_data(self.outdir)
+    def save_data(self, args):
+        self.rbf.save_data(args, self.outdir)
 
     def prepare(self):
         super(Rbf, self).prepare()
@@ -44,12 +44,12 @@ class Rbf(Script):
         self.init_logging(self.outdir)
 
         self.create_rbf()
-        self.open_data()
+        self.open_data(self.args)
 
     def run(self):
         
         self.rbf.run()
-        self.save_data()
+        self.save_data(self.args)
 
 def main():
     script = Rbf()

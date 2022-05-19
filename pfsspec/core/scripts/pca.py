@@ -28,11 +28,11 @@ class Pca(Script):
         self.pca = self.create_plugin(config)
         self.pca.init_from_args(config, self.args)
 
-    def open_data(self):
-        self.pca.open_data(self.args['in'], self.outdir, self.args['params'])
+    def open_data(self, args):
+        self.pca.open_data(args, args['in'], self.outdir, args['params'])
 
-    def save_data(self):
-        self.pca.save_data(self.outdir)
+    def save_data(self, args):
+        self.pca.save_data(args, self.outdir)
 
     def prepare(self):
         super(Pca, self).prepare()
@@ -42,11 +42,11 @@ class Pca(Script):
         self.init_logging(self.outdir)
 
         self.create_pca()
-        self.open_data()
+        self.open_data(self.args)
 
     def run(self):
         self.pca.run()
-        self.save_data()
+        self.save_data(self.args)
 
 def main():
     script = Pca()

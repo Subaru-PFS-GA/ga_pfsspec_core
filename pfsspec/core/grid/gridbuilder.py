@@ -43,26 +43,24 @@ class GridBuilder(PfsObject):
     def init_from_args(self, config, args):
         self.top = self.get_arg('top', self.top, args)
 
-        self.input_grid = self.create_input_grid()
-        self.input_grid.init_from_args(args)
-
-        self.output_grid = self.create_output_grid()
-
     def create_input_grid(self):
         raise NotImplementedError()
 
     def create_output_grid(self):
         raise NotImplementedError()
 
-    def open_data(self, input_path, output_path):
+    def open_data(self, args, input_path, output_path):
         # Open and preprocess input
         if input_path is not None:
+            self.input_grid = self.create_input_grid()
             self.open_input_grid(input_path)
+            self.input_grid.init_from_args(args)
             self.input_grid.build_axis_indexes()
             self.grid_shape = self.input_grid.get_shape()
 
         # Open and preprocess output
         if output_path is not None:
+            self.output_grid = self.create_output_grid()
             self.open_output_grid(output_path)
 
         self.build_data_index()
@@ -81,7 +79,7 @@ class GridBuilder(PfsObject):
     def open_output_grid(self, output_path):
         raise NotImplementedError()
 
-    def save_data(self, output_path):
+    def save_data(self, args, output_path):
         self.output_grid.save(self.output_grid.filename, format=self.output_grid.fileformat)
 
     def get_input_count(self):

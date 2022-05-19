@@ -36,8 +36,8 @@ class Import(Script):
         self.importer.resume = self.resume
         self.importer.init_from_args(config, self.args)
 
-    def open_data(self):
-        self.importer.open_data(self.args['in'], self.outdir)
+    def open_data(self, args):
+        self.importer.open_data(args, args['in'], self.outdir)
 
     def prepare(self):
         super(Import, self).prepare()
@@ -47,11 +47,11 @@ class Import(Script):
         self.init_logging(self.outdir)
 
         self.create_importer()
-        self.open_data()
+        self.open_data(self.args)
 
     def run(self):
         self.importer.run()
-        self.importer.save_data(self.outdir)
+        self.importer.save_data(self.args, self.outdir)
 
     def finish(self):
         self.importer.execute_notebooks(self)

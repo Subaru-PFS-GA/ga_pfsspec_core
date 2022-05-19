@@ -54,7 +54,7 @@ class GridReader(Importer):
     def get_array_grid(self):
         return self.grid
 
-    def save_data(self, output_path):
+    def save_data(self, args, output_path):
         raise NotImplementedError()
 
     def read_grid(self, resume=False):

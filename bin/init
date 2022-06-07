@@ -192,6 +192,12 @@ export TF_CPP_MIN_LOG_LEVEL=3
 # export NUMEXPR_MAX_THREADS=12
 # export OMP_NUM_THREADS=12
 
+################################################################################
+
+# Write bash history to project root
+export HISTFILE="$PFSSPEC_ROOT/.bash_history.$$"
+export HISTSIZE=10000
+
 cd $PFSSPEC_ROOT
 
 echo "Configured environment for PFS development."

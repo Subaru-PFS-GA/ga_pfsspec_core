@@ -525,6 +525,7 @@ class ArrayGrid(Grid):
 
         xxi = []
         for i, p, ax in enumerate_axes(axes):
+            xi = None
             if interpolation == 'ijk':
                 if ax.values.shape[0] == 1:
                     if not squeeze:
@@ -539,7 +540,8 @@ class ArrayGrid(Grid):
             else:
                 raise NotImplementedError()
 
-            xxi.append(xi)
+            if xi is not None:
+                xxi.append(xi)
         
         return xxi
 
@@ -551,7 +553,7 @@ class ArrayGrid(Grid):
 
         points = ArrayGrid.get_axis_points(axes, padding=padding, squeeze=squeeze, interpolation=interpolation)
         points = np.meshgrid(*points, indexing=indexing)
-        points = { p: points[i] for i, p, ax in enumerate_axes(axes) }
+        points = { p: points[i] for i, p, ax in enumerate_axes(axes, squeeze=squeeze) }
 
         return points
 

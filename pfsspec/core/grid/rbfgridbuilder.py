@@ -105,7 +105,7 @@ class RbfGridBuilder(GridBuilder):
         all_points = ArrayGrid.get_meshgrid_points(axes, padding=False, squeeze=True, interpolation=self.interpolation, indexing='ij')
         
         # Generate the grid from the axis points and apply the mask.
-        all_points = [ all_points[p].flatten() for i, p, ax in enumerate_axes(axes) ]
+        all_points = [ all_points[p].flatten() for i, p, ax in enumerate_axes(axes, squeeze=True) ]
         points = [ p[m] for p in all_points]
 
         # points: list of arrays of shape of (unmasked_count,), for each non-contracted axis

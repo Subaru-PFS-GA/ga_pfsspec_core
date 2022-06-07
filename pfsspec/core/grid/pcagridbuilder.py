@@ -36,7 +36,7 @@ class PcaGridBuilder(GridBuilder):
         super(PcaGridBuilder, self).add_args(parser)
 
         parser.add_argument('--pca-method', type=str, default='cov', choices=['svd', 'cov', 'dual'], help='PCA method\n')
-        parser.add_argument('--svd-method', type=str, default='svd', choices=['svd', 'trsvd'], help='Truncate PCA')
+        parser.add_argument('--svd-method', type=str, default='svd', choices=['svd', 'trsvd', 'skip'], help='Truncate PCA')
         parser.add_argument('--svd-truncate', type=int, default=None, help='Truncate SVD')
 
     def init_from_args(self, config, args):
@@ -93,6 +93,14 @@ class PcaGridBuilder(GridBuilder):
                 svd.fit(self.X)                          # shape: (items, dim)
                 self.S = svd.singular_values_            # shape: (truncate,)
                 self.V = svd.components_.T               # shape: (dim, truncate)
+            elif self.svd_method == 'skip':
+                logging.warn('Skipping SVD computation.')
+                M, N = self.X.shape[0], self.X.shape[1]
+                K = min(M, N)
+                self.S = np.zeros((K,))
+                self.V = np.zeros((N, K))
+            else:
+                raise NotImplementedError()
 
     def run_pca_cov(self):
         with Timer('Calculating covariance matrix...', logging.INFO):
@@ -109,6 +117,12 @@ class PcaGridBuilder(GridBuilder):
                 svd.fit(self.C)
                 self.S = svd.singular_values_            # shape: (truncate,)
                 self.V = svd.components_.transpose()     # shape: (dim, truncate)
+            elif self.svd_method == 'skip':
+                logging.warn('Skipping SVD computation.')
+                self.S = np.zeros(self.C.shape[0])
+                self.V = np.zeros(self.C.shape)
+            else:
+                raise NotImplementedError()
 
     def run_dual_pca(self):
         with Timer('Calculating X X^T matrix...', logging.INFO):

@@ -2,11 +2,12 @@ import numpy as np
 from scipy.interpolate import interp1d
 
 class GridAxis():
-    def __init__(self, name, values=None, orig=None):
+    def __init__(self, name, values=None, order=None, orig=None):
 
         if isinstance(orig, GridAxis):
             self.name = orig.name
             self.values = orig.values if values is None else values
+            self.order = orig.order
             self.index = orig.index
             self.min = orig.min
             self.max = orig.max
@@ -15,6 +16,7 @@ class GridAxis():
         else:
             self.name = name
             self.values = values
+            self.order = order
             self.index = None
             self.min = None
             self.max = None

@@ -4,45 +4,17 @@ from scipy import ndimage
 from scipy.interpolate import LinearNDInterpolator, RegularGridInterpolator, CubicSpline
 
 from pfsspec.core.grid import ArrayGrid
-
-# def get_value_padded(self, name, interpolation='ijk', s=None, fill_holes=False, filter=np.nanmean):
-#     """Returns a slice of the grid and pads with a single item in every direction using linearNd extrapolation.
-
-#     Extrapolation is done either in grid coordinates or in axis coordinates
-
-#     Args:
-#         name (str): Name of value array
-#         s (slice, optional): Slice to apply to value array. Defaults to None.
-#         interpolation: Whether to extrapolate based on array indices ('ijk', default)
-#             or axis coordinates ('xyz').
-#         **kwargs: Values of axis coordinates. Only exact values are supported. For
-#             missing direction, full, padded slices will be returned.
-#     """
-
-#     # If slicing is turned on, these functions will automatically return the sliced
-#     # value array and the sliced (and squeezed) axes.
-#     orig_axes = self.get_axes(squeeze=False)
-#     orig_value = self.get_value(name, s=s, squeeze=False)
-
-#     if fill_holes and self.has_value_index(name):
-#         mask = self.get_value_index(name)
-#         orig_value = orig_value.copy()
-#         orig_value[~mask] = np.nan
-#         orig_value = fill_holes_filter(orig_value, filter=filter)
-
-#     padded_value, padded_axes = pad_array(orig_axes, orig_value, interpolation=interpolation)
-            
-#     return padded_value, padded_axes
+from .array import *
 
 def fill_holes_interpnd(axes, value, mask, interpolation='ijk'):
     # Replace the masked values inside the convex hull with linear interpolation
 
-    orig_xi = ArrayGrid.get_grid_points(axes, padding=False, interpolation=interpolation)
+    orig_xi = ArrayGrid.get_axis_points(axes, padding=False, interpolation=interpolation)
 
     oijk = []
-    for p in orig_xi:
-        if orig_xi[p].shape[0] > 1:
-            oijk.append(orig_xi[p])
+    for i, p, ax in enumerate_axes(axes):
+        if orig_xi[i].shape[0] > 1:
+            oijk.append(orig_xi[i])
 
     oijk = np.stack(np.meshgrid(*oijk, indexing='ij'), axis=-1)
     oijk = oijk.reshape((-1, oijk.shape[-1]))
@@ -101,8 +73,8 @@ def pad_array(orig_axes, orig_value, mask=None, size=1, interpolation='ijk'):
 
     padded_axes = ArrayGrid.pad_axes(orig_axes, size=size)
 
-    orig_xi = ArrayGrid.get_grid_points(orig_axes, padding=False, interpolation=interpolation)
-    padded_xi = ArrayGrid.get_grid_points(padded_axes, padding=True, interpolation=interpolation)
+    orig_xi = ArrayGrid.get_axis_points(orig_axes, padding=False, interpolation=interpolation)
+    padded_xi = ArrayGrid.get_axis_points(padded_axes, padding=True, interpolation=interpolation)
 
     # Pad original slice with phantom cells
     # We a do a bit of extra work here because we interpolate the entire new slice, not just
@@ -113,12 +85,12 @@ def pad_array(orig_axes, orig_value, mask=None, size=1, interpolation='ijk'):
     pijk = []
     padding = []
     padded_shape = []
-    for p in orig_xi:
-        if orig_xi[p].shape[0] > 1:
-            oijk.append(orig_xi[p])
-            pijk.append(padded_xi[p])
+    for i, p, ax in enumerate_axes(orig_axes):
+        if orig_xi[i].shape[0] > 1:
+            oijk.append(orig_xi[i])
+            pijk.append(padded_xi[i])
             padding.append((size, size))
-            padded_shape.append(padded_xi[p].shape[0])
+            padded_shape.append(padded_xi[i].shape[0])
         else:
             padding.append((0, 0))
             padded_shape.append(1)

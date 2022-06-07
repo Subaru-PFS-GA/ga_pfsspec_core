@@ -92,14 +92,14 @@ class RbfGrid(Grid):
         # normal arrays because even though that dimension is not squeezed, the
         # RBF indexes are.
         
+        # Only include index along the axis if it's not a 1-length axis
         idx = ()
-        for k in self.axes:
-            # Only include index along the axis if it's not a 1-length axis
-            if self.axes[k].values.shape[0] > 1:
-                if k in kwargs:                
-                    idx += (self.axes[k].ip_to_index(kwargs[k]),)
-                else:
-                    idx += (None,)
+        for i, p, axis in self.enumerate_axes(squeeze=True):
+            if p in kwargs:
+                idx += (axis.ip_to_index(kwargs[p]),)
+            else:
+                idx += (None,)
+
         return idx
 
     def get_params(self, idx):
@@ -133,13 +133,10 @@ class RbfGrid(Grid):
         return True
 
     def check_extrapolation(self, idx):
-        i = 0
-        for k in self.axes:
-            # Only include index along the axis if it's not a 1-length axis
-            if self.axes[k].values.shape[0] > 1:
-                if np.any((idx[i] < 0) | (self.axes[k].values.shape[0] < idx[i])):
-                    return True
-                i += 1
+        # Only include index along the axis if it's not a 1-length axis
+        for i, k, axis in self.enumerate_axes(squeeze=True):
+            if np.any((idx[i] < 0) | (axis.values.shape[0] < idx[i])):
+                return True
         return False
 
     def get_value_at(self, name, idx, s=None, extrapolate=False):
@@ -235,14 +232,14 @@ class RbfGrid(Grid):
                 self.logger.info('Skipped loading RBF "{}" of size {}'.format(name, s))
             
     def set_object_params_idx(self, obj, idx):
-        # idx can be squeezed
+        # idx might be squeezed, use single values along those axes
         i = 0
-        for p in self.axes:
-            if self.axes[p].values.shape[0] > 1:
-                setattr(obj, p, float(self.axes[p].ip_to_value(idx[i])))
+        for j, p, axis in self.enumerate_axes():
+            if axis.values.shape[0] > 1:
+                setattr(obj, p, float(axis.ip_to_value(idx[i])))
                 i += 1
             else:
-                setattr(obj, p, float(self.axes[p].values[0]))
+                setattr(obj, p, float(axis.values[0]))
 
     def interpolate_value_rbf(self, name, **kwargs):
         return self.get_value(name, s=None, **kwargs)

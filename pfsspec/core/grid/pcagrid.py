@@ -46,8 +46,14 @@ class PcaGrid(PfsObject):
     def init_from_args(self, args):
         self.grid.init_from_args(args)
 
-    def get_shape(self):
-        return self.grid.get_shape()
+    def get_slice(self):
+        """
+        Returns the slicing of the grid.
+        """
+        return self.grid.get_slice()
+
+    def get_shape(self, s=None, squeeze=False):
+        return self.grid.get_shape(s=s, squeeze=squeeze)
 
     def get_constants(self):
         return self.grid.get_constants()
@@ -67,8 +73,8 @@ class PcaGrid(PfsObject):
     def set_axes(self, axes):
         self.grid.set_axes(axes)
 
-    def get_axes(self, squeeze=False):
-        return self.grid.get_axes(squeeze=squeeze)
+    def enumerate_axes(self, s=None, squeeze=False):
+        return self.grid.enumerate_axes(s=s, squeeze=squeeze)
 
     def build_axis_indexes(self):
         self.grid.build_axis_indexes()
@@ -127,8 +133,8 @@ class PcaGrid(PfsObject):
     def has_value_index(self, name):
         return self.grid.has_value_index(name)
 
-    def get_valid_value_count(self, name):
-        return self.grid.get_valid_value_count(name)
+    def get_valid_value_count(self, name, s=None):
+        return self.grid.get_valid_value_count(name, s=s)
 
     def has_value(self, name):
         return self.grid.has_value(name)

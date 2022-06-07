@@ -5,7 +5,8 @@ import numpy as np
 import time
 from tqdm import tqdm
 
-from pfsspec.core.util.interp import Rbf
+from ..util.array import *
+from ..util.interp import Rbf
 from .gridbuilder import GridBuilder
 from .arraygrid import ArrayGrid
 
@@ -67,13 +68,15 @@ class RbfGridBuilder(GridBuilder):
             method (string): use solve or nnls to fit data
         """
 
+        naxes = len(axes)
+
         # Since we must have the same number of grid points as unmasked elements,
         # we need to contract the mask along all value array dimensions that are
         # not along the axes. Since `value` is already squeezed, only use axes
         # that do not match axes in kwargs.
         m = ~np.isnan(value)
-        if len(m.shape) > len(axes):
-            m = np.all(m, axis=-(len(m.shape) - len(axes)))
+        if len(m.shape) > naxes:
+            m = np.all(m, axis=-(len(m.shape) - naxes))
 
         # We assume that the provided mask has the same shape as the grid
         if mask is not None:
@@ -91,20 +94,19 @@ class RbfGridBuilder(GridBuilder):
 
         # Flatten slice along axis dimensions
         sh = 1
-        for i in range(len(axes)):
+        for i in range(naxes):
             sh *= value.shape[i]
-        value = value.reshape((sh,) + value.shape[len(axes):])
+        value = value.reshape((sh,) + value.shape[naxes:])
         value = value[m]
 
         # Get the grid points along each axis. Padding must be False here because
         # we don't want to shift the grid indexes to calculate the RBF, otherwise the
         # index would need to be stored in the file to know if it is a padded grid.
-        all_points = ArrayGrid.get_grid_points(axes, padding=False, squeeze=True, interpolation=self.interpolation)
+        all_points = ArrayGrid.get_meshgrid_points(axes, padding=False, squeeze=True, interpolation=self.interpolation, indexing='ij')
         
         # Generate the grid from the axis points and apply the mask.
-        all_points = np.meshgrid(*[all_points[p] for p in all_points], indexing='ij')
-        all_points = [p.flatten() for p in all_points]
-        points = [p[m] for p in all_points]
+        all_points = [ all_points[p].flatten() for i, p, ax in enumerate_axes(axes) ]
+        points = [ p[m] for p in all_points]
 
         # points: list of arrays of shape of (unmasked_count,), for each non-contracted axis
         # value: shape: (unmasked_count, value_dim)

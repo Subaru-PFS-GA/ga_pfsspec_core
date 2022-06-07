@@ -71,6 +71,12 @@ class TestArrayGrid(TestBase):
 
         return grid
 
+    def test_enumerate_axes(self):
+        grid = self.create_new_grid()
+        self.init_full_grid(grid)
+
+        self.assertEqual(2, len(list(grid.enumerate_axes())))
+
     def test_get_valid_value_count(self):
         #    1 2 3 4 5
         # 10 * * * * *
@@ -79,7 +85,6 @@ class TestArrayGrid(TestBase):
         grid = self.create_new_grid()
         self.init_full_grid(grid)
 
-        grid.slice = None
         count = grid.get_valid_value_count('U')
         self.assertEqual(15, count)
 
@@ -89,8 +94,7 @@ class TestArrayGrid(TestBase):
         # 30 * * * * *
         grid.axes['b'].min = 20
         grid.axes['b'].max = 30
-        grid.slice = np.s_[:, 1:3]
-        count = grid.get_valid_value_count('U')
+        count = grid.get_valid_value_count('U', s=np.s_[:, 1:3])
         self.assertEqual(10, count)
 
         #    1 2 3 4 5
@@ -99,7 +103,6 @@ class TestArrayGrid(TestBase):
         # 30 * * o o o
         grid = self.create_new_grid()
         grid = self.init_jagged_grid(grid)
-        grid.slice = None
         count = grid.get_valid_value_count('U')
         self.assertEqual(12, count)
 
@@ -109,8 +112,7 @@ class TestArrayGrid(TestBase):
         # 30 * * o o o
         grid.axes['b'].min = 20
         grid.axes['b'].max = 30
-        grid.slice = np.s_[:, 1:3]
-        count = grid.get_valid_value_count('U')
+        count = grid.get_valid_value_count('U', s=np.s_[:, 1:3])
         self.assertEqual(7, count)
 
     def test_get_index(self):
@@ -352,40 +354,4 @@ class TestArrayGrid(TestBase):
         self.assertEquals((10,), value.shape)
         value = grid.get_value('U', s=slice(2, 5), a=2, b=20)
         self.assertEquals((3,), value.shape)
-
-    def test_get_value_padded(self):
-        grid = self.create_new_grid()
-        self.init_full_grid(grid)
-
-        padded, paxes = grid.get_value_padded('U', interpolation='ijk')
-        self.assertEqual((7, 5, 10), padded.shape)
-        self.assertEqual(2, len(paxes))
-        assert_array_equal(np.array([0., 1., 2., 3., 4., 5., 6.]), paxes['a'].values)
-        assert_array_equal(np.array([0., 10., 20., 30., 40.]), paxes['b'].values)
-
-        padded, paxes = grid.get_value_padded('U', interpolation='xyz')
-        self.assertEqual((7, 5, 10), padded.shape)
-        self.assertEqual(2, len(paxes))
-        assert_array_equal(np.array([0., 1., 2., 3., 4., 5., 6.]), paxes['a'].values)
-        assert_array_equal(np.array([ 0., 10., 20., 30., 40.]), paxes['b'].values)
-
-    def test_fit_rbf(self):
-        grid = self.create_new_grid()
-        self.init_full_grid(grid)
-
-        rbf, paxes = grid.fit_rbf('U')
-        self.assertEqual((2, 35), rbf.xi.shape)
-        self.assertEqual((35, 10), rbf.nodes.shape)
-
-        rbf, paxes = grid.fit_rbf('U', padding_mode=None)
-        self.assertEqual((2, 15), rbf.xi.shape)
-        self.assertEqual((15, 10), rbf.nodes.shape)
-
-        rbf, paxes = grid.fit_rbf('U', a=2)
-        self.assertEqual((1, 5), rbf.xi.shape)
-        self.assertEqual((5, 10), rbf.nodes.shape)
-
-        rbf, paxes = grid.fit_rbf('U', s=np.s_[1:3], padding_mode='xyz', a=2)
-        self.assertEqual((1, 5), rbf.xi.shape)
-        self.assertEqual((5, 2), rbf.nodes.shape)
 

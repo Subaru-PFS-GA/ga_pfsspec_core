@@ -66,7 +66,9 @@ class GridReader(Importer):
         if self.top is not None:
             self.logger.info("Reading grid will stop after {} items.".format(self.top))
 
-        g = GridEnumerator(self.get_array_grid(), top=self.top, resume=resume)
+        grid = self.get_array_grid()
+        slice = grid.get_slice()
+        g = GridEnumerator(grid, s=slice, top=self.top, resume=resume)
         t = tqdm(total=len(g))
         with SmartParallel(verbose=False, parallel=self.parallel, threads=self.threads) as p:
             for res in p.map(self.process_item, g):

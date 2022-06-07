@@ -1,17 +1,20 @@
 import numpy as np
 
 class GridEnumerator():
-    def __init__(self, grid=None, top=None, resume=False):
+    def __init__(self, grid=None, s=None, top=None, resume=False):
         self.grid = grid
-        self.axes = grid.get_axes()
-        self.limits = [self.axes[p].values.shape[0] for p in self.axes]
+        self.slice = s
         self.i = 0
         self.top = top
-        self.current = [0 for p in self.axes]
         self.stop = False
         self.resume = resume
 
+        self.limits = None
+        self.current = None
+
     def __iter__(self):
+        self.limits = [ a.values.shape[0] for i, p, a in self.grid.enumerate_axes(s=self.slice) ]
+        self.current = [ 0 for i, p, a in self.grid.enumerate_axes(s=self.slice) ]
         return self
 
     def __len__(self):
@@ -26,8 +29,8 @@ class GridEnumerator():
             s = np.sum(~mask)
         else:
             s = 1
-            for p in self.axes:
-                s *= self.axes[p].values.shape[0]
+            for i, p, axis in self.grid.enumerate_axes(s=self.slice):
+                s *= axis.values.shape[0]
 
         if self.top is not None:
             return min(s, self.top)
@@ -41,7 +44,7 @@ class GridEnumerator():
             # If in continue mode, we need to skip items that are already in the grid
             while True:
                 ci = self.current.copy()
-                cr = {p: self.axes[p].values[self.current[i]] for i, p in enumerate(self.axes)}
+                cr = { p: axis.values[self.current[i]] for i, p, axis in self.grid.enumerate_axes(s=self.slice) }
 
                 k = len(self.limits) - 1
                 while k >= 0:

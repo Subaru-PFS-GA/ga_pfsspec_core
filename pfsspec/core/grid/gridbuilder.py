@@ -13,14 +13,13 @@ class GridBuilder(PfsObject):
         if isinstance(orig, GridBuilder):
             self.parallel = orig.parallel
             self.threads = orig.threads
+            self.top = orig.top
 
             self.input_grid = input_grid if input_grid is not None else orig.input_grid
             self.output_grid = output_grid if output_grid is not None else orig.output_grid
             self.input_grid_index = None
             self.output_grid_index = None
             self.grid_shape = None
-
-            self.top = orig.top
         else:
             self.parallel = True
             self.threads = multiprocessing.cpu_count() // 2
@@ -56,7 +55,8 @@ class GridBuilder(PfsObject):
             self.open_input_grid(input_path)
             self.input_grid.init_from_args(args)
             self.input_grid.build_axis_indexes()
-            self.grid_shape = self.input_grid.get_shape()
+
+            self.grid_shape = self.input_grid.get_shape(s=self.input_grid.get_slice(), squeeze=False)
 
         # Open and preprocess output
         if output_path is not None:

@@ -7,6 +7,7 @@ from scipy import ndimage
 from scipy.interpolate import LinearNDInterpolator, RegularGridInterpolator, CubicSpline
 from scipy.interpolate import interp1d, interpn
 
+from ..util.array import *
 from .grid import Grid
 from .gridaxis import GridAxis
 
@@ -81,34 +82,16 @@ class ArrayGrid(Grid):
         if not self.preload_arrays and self.fileformat != 'h5':
             raise NotImplementedError()
 
-    def get_axes(self, squeeze=False):
-        # Return axes that are limited by the slices
-        if self.slice is not None:
-            axes = {}
-            for i, k in enumerate(self.axes):
-                if type(self.slice[i]) is slice:
-                    v = self.axes[k].values[self.slice[i]]
-                    if not squeeze or v.shape[0] > 1:
-                        axes[k] = GridAxis(k, v)
-                        axes[k].build_index()
-            return axes
-        else:
-            return super(ArrayGrid, self).get_axes()
+    def get_slice(self):
+        """
+        Returns the slicing of the grid.
+        """
+        return self.slice
 
-    def get_shape(self):
-        if self.slice is not None:
-            ss = []
-            for i, k in enumerate(self.axes):
-                if type(self.slice[i]) is slice:
-                    s = self.axes[k].values[self.slice[i]].shape[0]
-                    ss.append(s)
-            return tuple(ss)
-        else:
-            return super(ArrayGrid, self).get_shape()
-
-    def get_shape_unsliced(self):
-        return super(ArrayGrid, self).get_shape()
-
+    def get_shape(self, s=None, squeeze=False):
+        shape = tuple(axis.values.shape[0] for i, p, axis in self.enumerate_axes(s=s, squeeze=squeeze))
+        return shape
+        
     def get_value_path(self, name):
         return '/'.join([self.PREFIX_GRID, self.PREFIX_ARRAYS, name, self.POSTFIX_VALUE])
 
@@ -120,7 +103,7 @@ class ArrayGrid(Grid):
     def get_value_shape(self, name):
         # Gets the full shape of the grid. It assumes different last
         # dimensions for each data array.
-        shape = self.get_shape() + self.value_shapes[name]
+        shape = self.get_shape(s=self.slice, squeeze=False) + self.value_shapes[name]
         return shape
 
     # TODO: add support for dtype
@@ -133,23 +116,23 @@ class ArrayGrid(Grid):
             if len(shape) != 1:
                 raise NotImplementedError()
 
-            gridshape = self.get_shape()
-            valueshape = gridshape + tuple(shape)
+            grid_shape = self.get_shape(s=self.slice, squeeze=False)
+            value_shape = grid_shape + tuple(shape)
 
             self.value_shapes[name] = shape
 
             if self.preload_arrays:
-                self.logger.info('Initializing memory for grid "{}" of size {}...'.format(name, valueshape))
-                self.values[name] = np.full(valueshape, np.nan)
-                self.value_indexes[name] = np.full(gridshape, False, dtype=np.bool)
-                self.logger.info('Initialized memory for grid "{}" of size {}.'.format(name, valueshape))
+                self.logger.info('Initializing memory for grid "{}" of size {}...'.format(name, value_shape))
+                self.values[name] = np.full(value_shape, np.nan)
+                self.value_indexes[name] = np.full(grid_shape, False, dtype=np.bool)
+                self.logger.info('Initialized memory for grid "{}" of size {}.'.format(name, value_shape))
             else:
                 self.values[name] = None
                 self.value_indexes[name] = None
-                self.logger.info('Initializing data file for grid "{}" of size {}...'.format(name, valueshape))
+                self.logger.info('Initializing data file for grid "{}" of size {}...'.format(name, value_shape))
                 if not self.has_item(self.get_value_path(name)):
-                    self.allocate_item(self.get_value_path(name), valueshape, dtype=np.float)
-                    self.allocate_item(self.get_index_path(name), gridshape, dtype=np.bool)
+                    self.allocate_item(self.get_value_path(name), value_shape, dtype=np.float)
+                    self.allocate_item(self.get_index_path(name), grid_shape, dtype=np.bool)
                 self.logger.info('Skipped memory initialization for grid "{}". Will read random slices from storage.'.format(name))
 
     def allocate_value(self, name, shape=None):
@@ -177,8 +160,8 @@ class ArrayGrid(Grid):
             self.logger.debug('Skipped building indexes on grid "{}" of size {}'.format(name, self.value_shapes[name]))
         self.logger.debug('{} valid vectors in grid "{}" found'.format(np.sum(self.value_indexes[name]), name))
 
-    def get_valid_value_count(self, name):
-        return np.sum(self.get_value_index(name))
+    def get_valid_value_count(self, name, s=None):
+        return np.sum(self.get_value_index(name, s=s))
            
     def get_index(self, **kwargs):
         """Returns the indexes along all axes corresponding to the values specified.
@@ -188,24 +171,34 @@ class ArrayGrid(Grid):
         Returns:
             [type]: [description]
         """
+
         idx = ()
-        for i, p in enumerate(self.axes):
+        for i, p, axis in self.enumerate_axes():
             if p in kwargs:
-                idx += (self.axes[p].index[kwargs[p]],)
+                idx += (axis.index[kwargs[p]],)
             else:
                 if self.slice is None:
                     idx += (slice(None),)
                 else:
                     idx += (self.slice[i],)
+
         return idx
 
     def get_nearest_index(self, **kwargs):
+        """
+        Returns the nearest indexes along all axes correspondint to the values
+        specified in `kwargs`.
+
+        If an axis name is missing, a whole slice is returned.
+        """
+
         idx = ()
-        for p in self.axes:
+        for i, p, axis in self.enumerate_axes():
             if p in kwargs:
-                idx += (self.axes[p].get_nearest_index(kwargs[p]),)
+                idx += (axis.get_nearest_index(kwargs[p]),)
             else:
                 idx += (slice(None),)
+
         return idx
 
     def get_nearby_indexes(self, **kwargs):
@@ -217,22 +210,19 @@ class ArrayGrid(Grid):
         idx1 = list(self.get_nearest_index(**kwargs))
         idx2 = list((0, ) * len(idx1))
 
-        i = 0
-        for p in self.axes:
-            if self.axes[p].values.shape[0] == 1:
+        for i, p, axis in self.enumerate_axes():
+            if axis.values.shape[0] == 1:
                 # If the grid has a single value along an axis (not squeezed)
                 idx1[i], idx2[i] = idx1[i], idx1[i]
-            elif kwargs[p] < self.axes[p].values[idx1[i]]:
+            elif kwargs[p] < axis.values[idx1[i]]:
                 idx1[i], idx2[i] = idx1[i] - 1, idx1[i]
             else:
                 idx1[i], idx2[i] = idx1[i], idx1[i] + 1
 
             # Verify if indexes are inside bounds
-            if idx1[i] < 0 or self.axes[p].values.shape[0] <= idx1[i] or \
-               idx2[i] < 0 or self.axes[p].values.shape[0] <= idx2[i]:
+            if idx1[i] < 0 or axis.values.shape[0] <= idx1[i] or \
+               idx2[i] < 0 or axis.values.shape[0] <= idx2[i]:
                 return None
-
-            i += 1
 
         return tuple(idx1), tuple(idx2)
 
@@ -243,33 +233,32 @@ class ArrayGrid(Grid):
         else:
             return name in self.value_indexes and self.has_item(self.get_index_path(name))
 
-    def get_value_index(self, name):
+    def get_value_index(self, name, s=None):
         if self.has_value_index(name):
             index = self.value_indexes[name]
-            if self.slice is not None:
-                return index[self.slice]
-            else:
-                return index
+            return index[s or ()]
         else:
             return None
 
-    def get_value_index_unsliced(self, name):
+    def get_value_index_unsliced(self, name, s=None):
         # Return a boolean index that is limited by the axis bound overrides.
         # The shape will be the same as the original array. Use this index to
         # load a limited subset of the data directly from the disk.
-        if self.slice is not None:
+        if s is not None:
             index = np.full(self.value_indexes[name].shape, False)
-            index[self.slice] = self.value_indexes[name][self.slice]
+            index[s] = self.value_indexes[name][s]
             return index
         else:
             return self.value_indexes[name]
 
     def get_mask_unsliced(self):
+        shape = self.get_shape()
         if self.slice is not None:
-            mask = np.full(self.get_shape_unsliced(), False)
+            mask = np.full(shape, False)
             mask[self.slice] = True
         else:
-            mask = np.full(self.get_shape(), True)
+            mask = np.full(shape, True)
+
         return mask
 
     def get_chunk_shape(self, name, shape, s=None):
@@ -383,7 +372,7 @@ class ArrayGrid(Grid):
                     self.logger.info('Allocated grid "{}" with size {}. Will write directly to storage.'.format(name, shape))
 
     def load_values(self, s=None):
-        gridshape = self.get_shape()
+        grid_shape = self.get_shape()
         for name in self.values:
             # If not running in memory saver mode, load entire array
             if self.preload_arrays:
@@ -395,12 +384,12 @@ class ArrayGrid(Grid):
                     self.logger.info('Loading grid "{}" of size {}'.format(name, self.value_shapes[name]))
                     self.values[name] = self.load_item(self.get_value_path(name), np.ndarray)
                     self.logger.info('Loaded grid "{}" of size {}'.format(name, self.value_shapes[name]))
-                self.value_shapes[name] = self.values[name].shape[len(gridshape):]
+                self.value_shapes[name] = self.values[name].shape[len(grid_shape):]
             else:
                 # When lazy-loading, we simply ignore the slice
                 shape = self.get_item_shape(self.get_value_path(name))
                 if shape is not None:
-                    self.value_shapes[name] = shape[len(gridshape):]
+                    self.value_shapes[name] = shape[len(grid_shape):]
                 else:
                     self.value_shapes[name] = None
                 
@@ -460,12 +449,11 @@ class ArrayGrid(Grid):
                 return None
 
         # Parameter values to interpolate between
+        # Only keep dimensions where interpolation is necessary, i.e. skip
+        # where axis has a single value only
         x = []
-        for i, p in enumerate(self.axes):
-            # Only keep dimensions where interpolation is necessary, i.e. skip
-            # where axis has a single value only
-            if self.axes[p].values.shape[0] > 1:
-                x.append([self.axes[p].values[idx1[i]], self.axes[p].values[idx2[i]]])
+        for i, p, axis in self.enumerate_axes(squeeze=True): 
+            x.append([axis.values[idx1[i]], axis.values[idx2[i]]])
         x = tuple(x)
 
         # Will hold data values
@@ -480,7 +468,7 @@ class ArrayGrid(Grid):
         V[ii] = np.squeeze(self.get_value_at(name, kk))
 
         fn = RegularGridInterpolator(x, V)
-        pp = tuple([kwargs[p] for p in self.axes if self.axes[p].values.shape[0] > 1])
+        pp = tuple([ kwargs[p] for i, p, axis in self.enumerate_axes(squeeze=True) ])
         value = fn(pp)
         return value, kwargs
 
@@ -530,27 +518,42 @@ class ArrayGrid(Grid):
         return fn(kwargs[free_param]), kwargs
 
     @staticmethod
-    def get_grid_points(axes, padding=False, squeeze=False, interpolation='ijk'):
-        # Return a dictionary of the grid points, either by ijk index or xyz coordinates.
-        # When sqeeze=True, only axis with more than 1 grid point will be included.
+    def get_axis_points(axes, padding=False, squeeze=False, interpolation='ijk'):
+        # Return a dictionary of the points along each axis, either by ijk index or xyz coordinates.
+        # When squeeze=True, only axes with more than 1 grid point will be included.
         # The result can be used to call np.meshgrid.
 
-        xi = {}
-        for p in axes:
+        xxi = []
+        for i, p, ax in enumerate_axes(axes):
             if interpolation == 'ijk':
-                if axes[p].values.shape[0] == 1:
+                if ax.values.shape[0] == 1:
                     if not squeeze:
-                        xi[p] = np.array([0.0])
+                        xi = np.array([0.0])
                 else:
-                    xi[p] = np.arange(axes[p].values.shape[0], dtype=np.float64)
+                    xi = np.arange(ax.values.shape[0], dtype=np.float64)
                     if padding:
-                        xi[p] -= 1.0
+                        xi -= 1.0
             elif interpolation == 'xyz':
-                if axes[p].values.shape[0] > 1 or not squeeze:
-                    xi[p] = axes[p].values
+                if ax.values.shape[0] > 1 or not squeeze:
+                    xi = ax.values
             else:
                 raise NotImplementedError()
-        return xi
+
+            xxi.append(xi)
+        
+        return xxi
+
+    @staticmethod
+    def get_meshgrid_points(axes, padding=False, squeeze=False, interpolation='ijk', indexing='ij'):
+        # Returns a mesh grid - as a dictionary indexed by the axis names - that
+        # lists all grid points, either as indexes or axis values. Meshgrid can be
+        # created with any indexing method supported by numpy.
+
+        points = ArrayGrid.get_axis_points(axes, padding=padding, squeeze=squeeze, interpolation=interpolation)
+        points = np.meshgrid(*points, indexing=indexing)
+        points = { p: points[i] for i, p, ax in enumerate_axes(axes) }
+
+        return points
 
     @staticmethod
     def pad_axes(orig_axes, size=1):
@@ -563,7 +566,7 @@ class ArrayGrid(Grid):
                 for i in range(size - 1, -1, -1):
                     paxis[i] = paxis[i + 1] - (paxis[i + 2] - paxis[i + 1])
                     paxis[-1 - i] = paxis[-2 - i] + (paxis[-2 - i] - paxis[-3 - i])
-                padded_axes[p] = GridAxis(p, paxis)
+                padded_axes[p] = GridAxis(p, paxis, order=orig_axes[p].order)
             else:
                 padded_axes[p] = orig_axes[p]
         return padded_axes

@@ -4,7 +4,8 @@ import numbers
 import numpy as np
 from collections import Iterable
 
-from pfsspec.core.pfsobject import PfsObject
+from ..util.array import *
+from ..pfsobject import PfsObject
 from .gridaxis import GridAxis
 
 class Grid(PfsObject):
@@ -31,8 +32,14 @@ class Grid(PfsObject):
             self.init_axes()
             self.init_constants()
 
-    def get_shape(self):
-        shape = tuple(self.axes[p].values.shape[0] for p in self.axes)
+    def get_slice(self):
+        """
+        Returns the slicing of the grid.
+        """
+        return None
+
+    def get_shape(self, s=None, squeeze=False):
+        shape = tuple(axis.values.shape[0] for i, p, axis in self.enumerate_axes(s=s, squeeze=squeeze))
         return shape
 
     def get_constants(self):
@@ -44,8 +51,9 @@ class Grid(PfsObject):
     def init_axes(self):
         pass
 
-    def init_axis(self, name, values=None):
-        self.axes[name] = GridAxis(name, values)
+    def init_axis(self, name, values=None, order=None):
+        order = order or len(self.axes)
+        self.axes[name] = GridAxis(name, values, order=order)
 
     def build_axis_indexes(self):
         for p in self.axes:
@@ -57,13 +65,25 @@ class Grid(PfsObject):
             self.axes[k] = type(axes[k])(k, orig=axes[k])
             self.axes[k].build_index()
 
-    def get_axes(self, squeeze=False):
-        axes = {}
-        for k in self.axes:
-            if not squeeze or self.axes[k].values.shape[0] > 1:
-                axes[k] = self.axes[k]
-        return axes
+    def enumerate_axes(self, s=None, squeeze=False):
+        # Return axes that are optionally limited by slices
 
+        j = 0
+        for i, k, axis in enumerate_axes(self.axes):
+            if s is None:
+                v = axis.values
+            else:
+                v = axis.values[s[i]]
+
+            if not isinstance(v, np.ndarray):
+                v = np.array([v])
+
+            if not squeeze or v.shape[0] > 1:
+                axis = GridAxis(k, v, order=j)
+                axis.build_index()
+                yield j, k, axis
+                j += 1
+        
     def save_params(self):
         self.save_item('/'.join((self.PREFIX_GRID, 'type')), type(self).__name__)
 
@@ -123,24 +143,50 @@ class Grid(PfsObject):
                     self.axes[k].max = args[k][0]
 
     def save_axes(self):
-        # Call `get_axes` to write out correct value range when grid is sliced.
-        axes = self.get_axes()
-        for p in axes:
-            path = '/'.join((self.PREFIX_GRID, self.PREFIX_AXIS, p))
-            self.save_item(path, axes[p].values)
+        # Make sure to write out correct value range when grid is sliced.
+        slice = self.get_slice()
+        for i, p, axis in self.enumerate_axes(s=slice, squeeze=False):
+            path = '/'.join((self.PREFIX_GRID, self.PREFIX_AXIS, str(i), p))
+            self.save_item(path, axis.values)
 
     def load_axes(self):
-        # TODO: This might not be the best solution
-        # Throw away axes that are not in the data grid, a reason might be
-        # that the grid was squeezed during transformation
+        # Old scheme: axes order is not available in the file
+        # New scheme: axes names are prefixed with an order number
+        
+        path = '/'.join((self.PREFIX_GRID, self.PREFIX_AXIS, str(0)))
+        if self.has_item(path):
+            self.axes = self.load_axes_new()
+        else:
+            self.axes = self.load_axes_old()
+        
+        self.build_axis_indexes()
+
+    def load_axes_new(self):
         axes = {}
+
+        for i, p, axis in self.enumerate_axes():
+            path = '/'.join((self.PREFIX_GRID, self.PREFIX_AXIS, str(i), p))
+            if self.has_item(path):
+                self.axes[p].order = i
+                self.axes[p].values = self.load_item(path, np.ndarray)
+                axes[p] = self.axes[p]
+
+        return axes
+
+    def load_axes_old(self):
+        # We must keep the ordering of the axes so go with the existing
+        # axis list instead of reading from the file which doesn't store
+        # axes in order.
+
+        axes = {}
+
         for p in self.axes:
             path = '/'.join((self.PREFIX_GRID, self.PREFIX_AXIS, p))
             if self.has_item(path):
                 self.axes[p].values = self.load_item(path, np.ndarray)
                 axes[p] = self.axes[p]
-        self.axes = axes
-        self.build_axis_indexes()
+
+        return axes
 
     def save_items(self):
         self.save_params()
@@ -184,7 +230,7 @@ class Grid(PfsObject):
                     setattr(obj, p, kwargs[p])
 
     def set_object_params_idx(self, obj, idx):
-        for i, p in enumerate(self.axes):
-            setattr(obj, p, float(self.axes[p].values[idx[i]]))
+        for i, p, axis in self.enumerate_axes():
+            setattr(obj, p, float(axis.values[idx[i]]))
 
 #endregion

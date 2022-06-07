@@ -301,13 +301,9 @@ class PfsObject():
                     self.logger.debug('Saving item {} with chunks {}'.format(name, chunks))
                 else:
                     g.create_dataset(name, data=item)
-        elif isinstance(item, numbers.Number):
-            # TODO: now storing a single number in a separate dataset. Change this
-            #       to store as an attribute. Keeping it now for compatibility.
-            if name in g.keys():
-                del g[name]
-            g.create_dataset(name, data=item)
-        elif isinstance(item, str):
+        elif isinstance(item, numbers.Number) or \
+             isinstance(item, bool) or \
+             isinstance(item, str):
             g.attrs[name] = item
         else:
             raise NotImplementedError('Unsupported type: {}'.format(type(item).__name__))
@@ -391,7 +387,7 @@ class PfsObject():
 
         raise NotImplementedError()
 
-    def load_item(self, name, type, s=None):
+    def load_item(self, name, type, s=None, default=None):
         """
         Loads a data item which can be a simple type, array or pandas data frame.
 
@@ -426,7 +422,7 @@ class PfsObject():
             else:
                 return None
         elif self.fileformat == 'h5':
-            return self.load_item_hdf5(name, type, s=s)
+            return self.load_item_hdf5(name, type, s=s, default=default)
         else:
             raise NotImplementedError()
 
@@ -452,7 +448,7 @@ class PfsObject():
                 g = g[part]
         return g, parts[-1]
 
-    def load_item_hdf5(self, path, type, s=None):
+    def load_item_hdf5(self, path, type, s=None, default=None):
         """
         Loads an item from an HDF5 file. Supports partial arrays.
 
@@ -533,7 +529,7 @@ class PfsObject():
 
                     return data
                 else:
-                    return None
+                    return default
         elif type == np.float or type == np.int:
             # Try attributes first, then dataset, otherwise return None
             with h5py.File(self.filename, 'r') as f:
@@ -544,7 +540,7 @@ class PfsObject():
                     data = g[name][()]
                     return data
                 else:
-                    return None
+                    return default
         elif type == np.bool or type == bool:
             # Try attributes first, then dataset, otherwise return None
             with h5py.File(self.filename, 'r') as f:
@@ -555,14 +551,14 @@ class PfsObject():
                     data = g[name][()]
                     return data
                 else:
-                    return None
+                    return default
         elif type == str:
             with h5py.File(self.filename, 'r') as f:
                 g, name = self.get_hdf5_group(f, path, create=False)
                 if g is not None and name in g.attrs:
                     return g.attrs[name]
                 else:
-                    return None
+                    return default
         else:
             raise NotImplementedError()
 

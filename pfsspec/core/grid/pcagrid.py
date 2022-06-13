@@ -10,6 +10,7 @@ class PcaGrid(PfsObject):
     POSTFIX_PCA = 'pca'
     POSTFIX_EIGS = 'eigs'
     POSTFIX_EIGV = 'eigv'
+    POSTFIX_MEAN = 'mean'
 
     def __init__(self, grid, orig=None):
         super(PcaGrid, self).__init__(orig=orig)
@@ -19,12 +20,14 @@ class PcaGrid(PfsObject):
 
             self.eigs = orig.eigs
             self.eigv = orig.eigv
+            self.mean = orig.mean
             self.k = orig.k
         else:
             self.grid = grid
 
             self.eigs = {}
             self.eigv = {}
+            self.mean = {}
             self.k = None
 
     @property
@@ -97,6 +100,7 @@ class PcaGrid(PfsObject):
                 self.grid.init_value(name)
             self.eigs[name] = None
             self.eigv[name] = None
+            self.mean[name] = None
         else:
             self.grid.init_value(name, shape=shape)
 
@@ -111,10 +115,12 @@ class PcaGrid(PfsObject):
                 #       the size of these arrays
                 self.eigs[name] = np.full(shape[:-1], np.nan)
                 self.eigv[name] = np.full(shape[:-1], np.nan)
+                self.mean[name] = np.full(shape[:-1], np.nan)
             else:
                 self.grid.allocate_value(name)
                 self.eigs[name] = None
                 self.eigv[name] = None
+                self.mean[name] = None
         else:
             self.grid.allocate_value(name, shape=shape)
 
@@ -150,6 +156,10 @@ class PcaGrid(PfsObject):
             self.grid.set_value(name, value[0], s=s, **kwargs)
             self.eigs[name] = value[1]
             self.eigv[name] = value[2]
+            if len(value) > 3:
+                self.mean[name] = value[3]
+            else:
+                self.mean[name] = None
 
     def get_value_at(self, name, idx, s=None, raw=False):
         if not raw and name in self.eigs:
@@ -158,6 +168,10 @@ class PcaGrid(PfsObject):
                 v = np.dot(self.eigv[name], pc)
             else:
                 v = np.dot(self.eigv[name][:, :self.k], pc[:self.k])
+
+            if self.mean[name] is not None:
+                v += self.mean[name]
+
             return v[s or slice(None)]
         else:
             return self.grid.get_value_at(name, idx, s=s)
@@ -184,6 +198,7 @@ class PcaGrid(PfsObject):
                 path = self.get_value_path(name)
                 self.save_item('/'.join([path, self.POSTFIX_EIGS]), self.eigs[name])
                 self.save_item('/'.join([path, self.POSTFIX_EIGV]), self.eigv[name])
+                self.save_item('/'.join([path, self.POSTFIX_MEAN]), self.mean[name])
 
     def load_items(self, s=None):
         self.grid.filename = self.filename
@@ -194,6 +209,7 @@ class PcaGrid(PfsObject):
             path = self.get_value_path(name)
             self.eigs[name] = self.load_item('/'.join([path, self.POSTFIX_EIGS]), np.ndarray)
             self.eigv[name] = self.load_item('/'.join([path, self.POSTFIX_EIGV]), np.ndarray)
+            self.mean[name] = self.load_item('/'.join([path, self.POSTFIX_MEAN]), np.ndarray)
 
     def set_object_params(self, obj, idx=None, **kwargs):
         self.grid.set_object_params(obj, idx=idx, **kwargs)

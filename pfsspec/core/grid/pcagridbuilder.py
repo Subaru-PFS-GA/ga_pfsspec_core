@@ -13,20 +13,26 @@ class PcaGridBuilder(GridBuilder):
 
         if isinstance(orig, PcaGridBuilder):
             self.pca_method = orig.pca_method
+            self.pca_subtract_mean = orig.pca_subtract_mean
+            self.pca_norm = orig.pca_norm
             self.svd_method = orig.svd_method
             self.svd_truncate = orig.svd_truncate
 
             self.X = orig.X
+            self.M = orig.M
             self.C = orig.C
             self.S = orig.S
             self.V = orig.V
             self.PC = orig.PC
         else:
             self.pca_method = 'cov'
+            self.pca_subtract_mean = False
+            self.pca_norm = 'none'
             self.svd_method = 'svd'
             self.svd_truncate = None
 
             self.X = None
+            self.M = None
             self.C = None
             self.S = None
             self.V = None
@@ -36,6 +42,8 @@ class PcaGridBuilder(GridBuilder):
         super(PcaGridBuilder, self).add_args(parser)
 
         parser.add_argument('--pca-method', type=str, default='cov', choices=['svd', 'cov', 'dual'], help='PCA method\n')
+        parser.add_argument('--pca-subtract-mean', action='store_true', help='Subtract mean from data matrix\n')
+        parser.add_argument('--pca-norm', type=str, default='none', choices=['none', 'sum'], help='Method of normalization before PCA.')
         parser.add_argument('--svd-method', type=str, default='svd', choices=['svd', 'trsvd', 'skip'], help='Truncate PCA')
         parser.add_argument('--svd-truncate', type=int, default=None, help='Truncate SVD')
 
@@ -43,6 +51,8 @@ class PcaGridBuilder(GridBuilder):
         super(PcaGridBuilder, self).init_from_args(config, args)
 
         self.pca_method = self.get_arg('pca_method', self.pca_method, args)
+        self.pca_subtract_mean = self.get_arg('pca_subtract_mean', self.pca_subtract_mean, args)
+        self.pca_norm = self.get_arg('pca_norm', self.pca_norm, args)
         self.svd_method = self.get_arg('svd_method', self.svd_method, args)
         self.svd_truncate = self.get_arg('svd_truncate', self.svd_truncate, args)
 
@@ -67,6 +77,17 @@ class PcaGridBuilder(GridBuilder):
             for i in tqdm(range(vector_count)):
                 v = self.get_vector(i)
                 self.X[i, :] = v
+
+        # Normalize
+        if self.pca_norm == 'sum':
+            self.X = self.X / self.X.sum(axis=1)[..., np.newaxis]
+
+        # Subtract mean
+        if self.pca_subtract_mean:
+            self.M = self.X.mean(axis=0)
+            self.X = self.X - self.M
+        else:
+            self.M = np.zeros(self.X.shape[1], dtype=self.X.dtype)
 
         if self.pca_method == 'svd':
             self.run_pca_svd()

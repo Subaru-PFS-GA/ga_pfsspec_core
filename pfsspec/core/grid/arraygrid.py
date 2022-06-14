@@ -384,7 +384,9 @@ class ArrayGrid(Grid):
                     self.logger.info('Loading grid "{}" of size {}'.format(name, self.value_shapes[name]))
                     self.values[name] = self.load_item(self.get_value_path(name), np.ndarray)
                     self.logger.info('Loaded grid "{}" of size {}'.format(name, self.value_shapes[name]))
-                self.value_shapes[name] = self.values[name].shape[len(grid_shape):]
+                    
+                if self.values[name] is not None:
+                    self.value_shapes[name] = self.values[name].shape[len(grid_shape):]
             else:
                 # When lazy-loading, we simply ignore the slice
                 shape = self.get_item_shape(self.get_value_path(name))

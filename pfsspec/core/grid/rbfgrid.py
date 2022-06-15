@@ -40,6 +40,10 @@ class RbfGrid(Grid):
     def rbf_grid(self):
         return self
 
+    @property
+    def pca_grid(self):
+        return None
+
     def ensure_lazy_load(self):
         # This works with HDF5 format only!
         if not self.preload_arrays and self.fileformat != 'h5':

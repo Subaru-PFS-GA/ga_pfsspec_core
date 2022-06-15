@@ -52,6 +52,10 @@ class ArrayGrid(Grid):
     def rbf_grid(self):
         return None
 
+    @property
+    def pca_grid(self):
+        return None
+
 #region Support slicing via command-line arguments
 
     def init_from_args(self, args):

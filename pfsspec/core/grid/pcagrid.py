@@ -7,6 +7,23 @@ from pfsspec.core.grid import Grid
 class PcaGrid(PfsObject):
     # Wraps an ArrayGrid or an RbfGrid and adds PCA decompression support
 
+    TRANSFORM_FUNCTIONS = {
+        'sqrt': [
+            lambda x: np.sign(x) * np.sqrt(np.sign(x) *x),
+            lambda x: np.sign(x) * x**2
+        ],
+        'square': [
+            lambda x: np.sign(x) * x**2,
+            lambda x: np.sign(x) * np.sqrt(np.sign(x) *x)
+        ],
+        'log': [np.log, np.exp],
+        'exp': [np.exp, np.log],
+        'safelog': [
+            lambda x: np.log(np.where(x < 1e-10, 1e-10, x)), 
+            lambda x: np.exp(np.where(x > 1e2, 1e2, x))
+        ]
+    }
+
     POSTFIX_PCA = 'pca'
     POSTFIX_EIGS = 'eigs'
     POSTFIX_EIGV = 'eigv'
@@ -18,12 +35,16 @@ class PcaGrid(PfsObject):
         if isinstance(orig, PcaGrid):
             self.grid = grid if grid is not None else orig.grid
 
+            self.transform = orig.transform
+
             self.eigs = orig.eigs
             self.eigv = orig.eigv
             self.mean = orig.mean
             self.k = orig.k
         else:
             self.grid = grid
+
+            self.transform = 'none'
 
             self.eigs = {}
             self.eigv = {}
@@ -41,6 +62,10 @@ class PcaGrid(PfsObject):
     @property
     def array_grid(self):
         return self.grid.array_grid
+
+    @property
+    def pca_grid(self):
+        return self
 
     @property
     def rbf_grid(self):
@@ -169,8 +194,13 @@ class PcaGrid(PfsObject):
             else:
                 v = np.dot(self.eigv[name][:, :self.k], pc[:self.k])
 
+            # Add mean
             if self.mean[name] is not None:
                 v += self.mean[name]
+
+            # Inverse transform
+            if self.transform is not None and self.transform != 'none':
+                v = PcaGrid.TRANSFORM_FUNCTIONS[self.transform][1](v)
 
             return v[s or slice(None)]
         else:
@@ -193,6 +223,8 @@ class PcaGrid(PfsObject):
         self.grid.fileformat = self.fileformat
         self.grid.save_items()
 
+        self.save_item('/'.join([Grid.PREFIX_GRID, self.POSTFIX_PCA, 'transform']), self.transform)
+
         for name in self.eigs:
             if self.eigs[name] is not None:
                 path = self.get_value_path(name)
@@ -204,6 +236,8 @@ class PcaGrid(PfsObject):
         self.grid.filename = self.filename
         self.grid.fileformat = self.fileformat
         self.grid.load_items(s=s)
+
+        self.transform = self.load_item('/'.join([Grid.PREFIX_GRID, self.POSTFIX_PCA, 'transform']), str)
 
         for name in self.eigs:
             path = self.get_value_path(name)

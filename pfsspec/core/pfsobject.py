@@ -525,7 +525,7 @@ class PfsObject():
 
                     # If data is a scalar, wrap it into an array.
                     if not isinstance(data, np.ndarray):
-                        data = np.ndarray(data)
+                        data = np.array(data)
 
                     return data
                 else:
@@ -590,6 +590,26 @@ class PfsObject():
                 with h5py.File(self.filename, 'r') as f:
                     g, name = self.get_hdf5_group(f, name, create=False)
                     return (g is not None) and (name in g)
+        else:
+            raise NotImplementedError()
+
+    def enum_items(self, name):
+        """
+        Checks if a dataset exists in an HDF5 file.
+        """
+
+        if self.fileformat == 'h5':
+            if not os.path.isfile(self.filename):
+                return
+            else:
+                with h5py.File(self.filename, 'r') as f:
+                    g, name = self.get_hdf5_group(f, name, create=False)
+                    if name not in g:
+                        return
+                    else:
+                        g = g[name]
+                        for k in g:
+                            yield k
         else:
             raise NotImplementedError()
 

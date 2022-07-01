@@ -362,8 +362,18 @@ class ArrayGrid(Grid):
         s = s or self.slice
         super(ArrayGrid, self).load(filename, s=s, format=format)
 
+    def enum_values(self):
+        # Figure out values from the file, if possible
+        values = list(self.enum_items('/'.join([self.PREFIX_GRID, self.PREFIX_ARRAYS])))
+
+        if len(values) == 0:
+            values = list(self.values.keys())
+
+        for k in values:
+            yield k
+
     def save_values(self):
-        for name in self.values:
+        for name in self.enum_values():
             if self.values[name] is not None:
                 if self.preload_arrays:
                     self.logger.info('Saving grid "{}" of size {}'.format(name, self.values[name].shape))
@@ -377,7 +387,8 @@ class ArrayGrid(Grid):
 
     def load_values(self, s=None):
         grid_shape = self.get_shape()
-        for name in self.values:
+
+        for name in self.enum_values():
             # If not running in memory saver mode, load entire array
             if self.preload_arrays:
                 if s is not None:
@@ -394,6 +405,7 @@ class ArrayGrid(Grid):
             else:
                 # When lazy-loading, we simply ignore the slice
                 shape = self.get_item_shape(self.get_value_path(name))
+                self.values[name] = None
                 if shape is not None:
                     self.value_shapes[name] = shape[len(grid_shape):]
                 else:
@@ -406,7 +418,7 @@ class ArrayGrid(Grid):
             self.save_item(self.get_index_path(name), self.value_indexes[name])
 
     def load_value_indexes(self):
-        for name in self.value_indexes:
+        for name in self.enum_values():
             self.value_indexes[name] = self.load_item(self.get_index_path(name), np.ndarray, s=None)
 
     def save_items(self):

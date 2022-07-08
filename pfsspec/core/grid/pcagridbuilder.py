@@ -63,7 +63,10 @@ class PcaGridBuilder(GridBuilder):
         self.pca_transform = self.get_arg('pca_transform', self.pca_transform, args)
         self.pca_norm = self.get_arg('pca_norm', self.pca_norm, args)
         self.svd_method = self.get_arg('svd_method', self.svd_method, args)
+        
         self.svd_truncate = self.get_arg('svd_truncate', self.svd_truncate, args)
+        if self.svd_truncate == 0:
+            self.svd_truncate = None
 
     def get_vector_shape(self):
         # Return the shape of data vectors, a one element tuple

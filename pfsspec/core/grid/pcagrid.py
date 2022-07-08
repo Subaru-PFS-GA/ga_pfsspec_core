@@ -12,6 +12,10 @@ class PcaGrid(PfsObject):
             lambda x: np.sign(x) * np.sqrt(np.sign(x) *x),
             lambda x: np.sign(x) * x**2
         ],
+        'asinhsqrt': [
+            lambda x: np.arcsinh(np.sign(x) * np.sqrt(np.sign(x) *x)),
+            lambda x: np.sign(x) * np.sinh(x)**2
+        ],
         'square': [
             lambda x: np.sign(x) * x**2,
             lambda x: np.sign(x) * np.sqrt(np.sign(x) *x)
@@ -188,21 +192,23 @@ class PcaGrid(PfsObject):
 
     def get_value_at(self, name, idx, s=None, raw=False):
         if not raw and name in self.eigs:
+            s = s or slice(None)
+
             pc = self.grid.get_value_at(name, idx)
             if self.k is None:
-                v = np.dot(self.eigv[name], pc)
+                v = np.dot(self.eigv[name][s], pc)
             else:
-                v = np.dot(self.eigv[name][:, :self.k], pc[:self.k])
+                v = np.dot(self.eigv[name][s][:, :self.k], pc[:self.k])
 
             # Add mean
             if self.mean[name] is not None:
-                v += self.mean[name]
+                v += self.mean[name][s]
 
             # Inverse transform
             if self.transform is not None and self.transform != 'none':
                 v = PcaGrid.TRANSFORM_FUNCTIONS[self.transform][1](v)
 
-            return v[s or slice(None)]
+            return v
         else:
             return self.grid.get_value_at(name, idx, s=s)
 

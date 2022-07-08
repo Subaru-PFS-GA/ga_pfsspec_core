@@ -19,6 +19,7 @@ class Pca(Script):
         parser.add_argument('--in', type=str, help="Input data path.\n")
         parser.add_argument('--out', type=str, help='Output data path.\n')
         parser.add_argument('--params', type=str, help='Parameters grid, if different from input.\n')
+        parser.add_argument('--weights', type=str, help='Weights grid, if different from input.\n')
 
     def create_plugin(self, config):
         return config[self.CONFIG_TYPE](config['config'])
@@ -29,7 +30,7 @@ class Pca(Script):
         self.pca.init_from_args(config, self.args)
 
     def open_data(self, args):
-        self.pca.open_data(args, args['in'], self.outdir, args['params'])
+        self.pca.open_data(args, args['in'], self.outdir, args['params'], args['weights'])
 
     def save_data(self, args):
         self.pca.save_data(args, self.outdir)

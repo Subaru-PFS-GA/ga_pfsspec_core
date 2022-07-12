@@ -49,7 +49,7 @@ class PcaGridBuilder(GridBuilder):
         parser.add_argument('--pca-method', type=str, default='cov', choices=['svd', 'cov', 'dual'], help='PCA method\n')
         parser.add_argument('--pca-subtract-mean', action='store_true', help='Subtract mean from data matrix\n')
         parser.add_argument('--pca-use-weights', action='store_true', help='Use vector weights (if available).\n')
-        parser.add_argument('--pca-transform', type=str, default='none', choices=['none'] + list(PcaGrid.TRANSFORM_FUNCTIONS.keys()), help='Transformation before PCA.')
+        parser.add_argument('--pca-transform', type=str, default='none', choices=['none'] + list(PcaGrid.PCA_TRANSFORM_FUNCTIONS.keys()), help='Transformation before PCA.')
         parser.add_argument('--pca-norm', type=str, default='none', choices=['none', 'sum'], help='Method of normalization before PCA.')
         parser.add_argument('--svd-method', type=str, default='svd', choices=['svd', 'trsvd', 'skip'], help='Truncate PCA')
         parser.add_argument('--svd-truncate', type=int, default=None, help='Truncate SVD')
@@ -77,30 +77,11 @@ class PcaGridBuilder(GridBuilder):
         raise NotImplementedError()
 
     def run(self):
-        # Copy all data vectors into a single matrix
-        vector_count = self.get_input_count()
-        vector_shape = self.get_vector_shape()
-        data_shape = (vector_count,) + vector_shape
-
-        # Build the data matrix
-        self.X = np.empty(data_shape)
-        self.logger.info('Allocated {} bytes for data matrix of shape {}.'.format(self.X.size * self.X.itemsize, self.X.shape))
-        with Timer('Assembling data matrix...', logging.INFO):
-            for i in tqdm(range(vector_count)):
-                v, w = self.get_vector(i)
-                
-                self.X[i, :] = v
-                
-                if w is not None:
-                    if self.W is None:
-                        self.W = np.empty((vector_count,))
-                    self.W[i] = w
-                elif self.W is None:
-                    self.W[i] = np.ones((vector_count,))
+        self.X, self.W = self.get_data_matrix()
 
         # Transform
         if self.pca_transform is not None and self.pca_transform != 'none':
-            self.X = PcaGrid.TRANSFORM_FUNCTIONS[self.pca_transform][0](self.X)
+            self.X = PcaGrid.PCA_TRANSFORM_FUNCTIONS[self.pca_transform]['forward'](self.X)
 
         # Normalize the data vectors
         if self.pca_norm == 'none':
@@ -131,9 +112,39 @@ class PcaGridBuilder(GridBuilder):
         # Save options to the grid
         self.output_grid.pca_grid.transform = self.pca_transform
 
+    def get_data_matrix(self, step='pca'):
+        # Copy all data vectors into a single matrix
+        vector_count = self.get_input_count()
+        vector_shape = self.get_vector_shape()
+        data_shape = (vector_count,) + vector_shape
+
+        # Build the data matrix
+        X = np.empty(data_shape)
+        self.logger.info('Allocated {} bytes for data matrix of shape {}.'.format(X.size * X.itemsize, X.shape))
+
+        W = np.ones((vector_count,))
+        self.logger.info('Allocated {} bytes for weight vector of shape {}.'.format(W.size * W.itemsize, W.shape))
+
+        with Timer('Assembling data matrix...', logging.INFO):
+            for i in tqdm(range(vector_count)):
+                v, w = self.get_vector(i)
+                
+                X[i, :] = v
+                W[i] = w
+
+        # Verify data matrix
+        if np.isnan(X).sum() > 0:
+            raise Exception("Nan found in data matrix.")
+
+        if np.isnan(W).sum() > 0:
+            raise Exception("Nan found in weight matrix.")
+
+        return X, W
+
     def run_pca_svd(self):
         with Timer('Computing SVD with method `{}`, truncated at {}...'.format(self.svd_method, self.svd_truncate), logging.INFO):
-            WX = 1 / np.sqrt(np.sum(self.W)) * np.sqrt(self.W[:, np.newaxis]) * self.X
+            mask = (self.W > 0)
+            WX = 1 / np.sqrt(np.sum(self.W[mask])) * np.sqrt(self.W[mask][:, np.newaxis]) * self.X[mask]
 
             if self.svd_method == 'svd' or self.svd_truncate is None:
                 _, self.S, Vh = np.linalg.svd(WX, full_matrices=False)
@@ -145,7 +156,7 @@ class PcaGridBuilder(GridBuilder):
                 self.V = svd.components_.T               # shape: (dim, truncate)
             elif self.svd_method == 'skip':
                 logging.warn('Skipping SVD computation.')
-                M, N = self.X.shape[0], self.X.shape[1]
+                M, N = self.X[mask].shape
                 K = min(M, N)
                 self.S = np.zeros((K,))
                 self.V = np.zeros((N, K))
@@ -153,6 +164,9 @@ class PcaGridBuilder(GridBuilder):
                 raise NotImplementedError()
 
     def run_pca_cov(self):
+
+        # TODO: use weights
+
         with Timer('Calculating covariance matrix...', logging.INFO):
             C = 1 / np.sum(self.W) *  np.matmul(self.X.T, np.diag(self.W), self.X)        # shape: (dim, dim)
         self.logger.info('Allocated {} bytes for covariance matrix.'.format(C.size * C.itemsize))
@@ -175,6 +189,9 @@ class PcaGridBuilder(GridBuilder):
                 raise NotImplementedError()
 
     def run_dual_pca(self):
+
+        # TODO: use weights
+
         with Timer('Calculating X X^T matrix...', logging.INFO):
             self.D = np.matmul(self.X, self.X.T)        # shape: (items, items)
         self.logger.info('Allocated {} bytes for X X^T matrix.'.format(self.D.size * self.D.itemsize))

@@ -7,25 +7,32 @@ from pfsspec.core.grid import Grid
 class PcaGrid(PfsObject):
     # Wraps an ArrayGrid or an RbfGrid and adds PCA decompression support
 
-    TRANSFORM_FUNCTIONS = {
-        'sqrt': [
-            lambda x: np.sign(x) * np.sqrt(np.sign(x) *x),
-            lambda x: np.sign(x) * x**2
-        ],
-        'asinhsqrt': [
-            lambda x: np.arcsinh(np.sign(x) * np.sqrt(np.sign(x) *x)),
-            lambda x: np.sign(x) * np.sinh(x)**2
-        ],
-        'square': [
-            lambda x: np.sign(x) * x**2,
-            lambda x: np.sign(x) * np.sqrt(np.sign(x) *x)
-        ],
-        'log': [np.log, np.exp],
-        'exp': [np.exp, np.log],
-        'safelog': [
-            lambda x: np.log(np.where(x < 1e-10, 1e-10, x)), 
-            lambda x: np.exp(np.where(x > 1e2, 1e2, x))
-        ]
+    PCA_TRANSFORM_FUNCTIONS = {
+        'sqrt': {
+            'forward': lambda x: np.sign(x) * np.sqrt(np.sign(x) *x),
+            'backward': lambda x: np.sign(x) * x**2,
+            'backward-error': lambda x, s2: 2 * x**2 * s2
+        },
+        'asinhsqrt': {
+            'forward': lambda x: np.arcsinh(np.sign(x) * np.sqrt(np.sign(x) *x)),
+            'backward': lambda x: np.sign(x) * np.sinh(x)**2
+        },
+        'square': {
+            'forward': lambda x: np.sign(x) * x**2,
+            'backward': lambda x: np.sign(x) * np.sqrt(np.sign(x) *x)
+        },
+        'log': {
+            'forward': np.log,
+            'backward': np.exp
+        },
+        'exp': {
+            'forward': np.exp,
+            'backward': np.log
+        },
+        'safelog': {
+            'forward': lambda x: np.log(np.where(x < 1e-10, 1e-10, x)), 
+            'backward': lambda x: np.exp(np.where(x > 1e2, 1e2, x))
+        }
     }
 
     POSTFIX_PCA = 'pca'
@@ -206,7 +213,7 @@ class PcaGrid(PfsObject):
 
             # Inverse transform
             if self.transform is not None and self.transform != 'none':
-                v = PcaGrid.TRANSFORM_FUNCTIONS[self.transform][1](v)
+                v = PcaGrid.PCA_TRANSFORM_FUNCTIONS[self.transform]['backward'](v)
 
             return v
         else:

@@ -29,6 +29,7 @@ class Spectrum(PfsObject):
             # TODO: these should go elsewhere
             self.exp_count = None
             self.exp_time = None
+            self.seeing = None
             self.extinction = None
             self.target_zenith_angle = None
             self.target_field_angle = None
@@ -62,6 +63,7 @@ class Spectrum(PfsObject):
             self.redshift_err = orig.redshift_err
             self.exp_count = orig.exp_count
             self.exp_time = orig.exp_time
+            self.seeing = orig.seeing
             self.extinction = orig.extinction
             self.target_zenith_angle = orig.target_zenith_angle
             self.target_field_angle = orig.target_field_angle

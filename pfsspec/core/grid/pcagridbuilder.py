@@ -12,36 +12,38 @@ class PcaGridBuilder(GridBuilder):
     def __init__(self, input_grid=None, output_grid=None, orig=None):
         super(PcaGridBuilder, self).__init__(input_grid=input_grid, output_grid=output_grid, orig=orig)
 
-        if isinstance(orig, PcaGridBuilder):
-            self.pca_method = orig.pca_method
-            self.pca_subtract_mean = orig.pca_subtract_mean
-            self.pca_use_weights = orig.pca_use_weights
-            self.pca_transform = orig.pca_transform
-            self.pca_norm = orig.pca_norm
-            self.svd_method = orig.svd_method
-            self.svd_truncate = orig.svd_truncate
-
-            self.X = orig.X
-            self.W = orig.W
-            self.M = orig.M
-            self.S = orig.S
-            self.V = orig.V
-            self.PC = orig.PC
-        else:
+        if not isinstance(orig, PcaGridBuilder):
             self.pca_method = 'cov'
             self.pca_subtract_mean = False
             self.pca_use_weights = True
             self.pca_transform = 'none'
             self.pca_norm = 'none'
+            self.pca_truncate = None
             self.svd_method = 'svd'
-            self.svd_truncate = None
 
-            self.X = None
-            self.W = None
-            self.M = None
-            self.S = None
-            self.V = None
-            self.PC = None
+            self.X = None           # Data matrix
+            self.R = None           # Residual after truncation
+            self.W = None           # Weight vector
+            self.M = None           # Mean vector
+            self.S = None           # Singular values (square root of covariance matrix eigenvalues)
+            self.V = None           # Singular vectors (covariance matrix eigenvector)
+            self.PC = None          # Principal components
+        else:
+            self.pca_method = orig.pca_method
+            self.pca_subtract_mean = orig.pca_subtract_mean
+            self.pca_use_weights = orig.pca_use_weights
+            self.pca_transform = orig.pca_transform
+            self.pca_norm = orig.pca_norm
+            self.pca_truncate = orig.pca_truncate
+            self.svd_method = orig.svd_method
+
+            self.X = orig.X
+            self.R = orig.R
+            self.W = orig.W
+            self.M = orig.M
+            self.S = orig.S
+            self.V = orig.V
+            self.PC = orig.PC
 
     def add_args(self, parser):
         super(PcaGridBuilder, self).add_args(parser)
@@ -51,8 +53,8 @@ class PcaGridBuilder(GridBuilder):
         parser.add_argument('--pca-use-weights', action='store_true', help='Use vector weights (if available).\n')
         parser.add_argument('--pca-transform', type=str, default='none', choices=['none'] + list(PcaGrid.PCA_TRANSFORM_FUNCTIONS.keys()), help='Transformation before PCA.')
         parser.add_argument('--pca-norm', type=str, default='none', choices=['none', 'sum'], help='Method of normalization before PCA.')
+        parser.add_argument('--pca-truncate', type=int, default=None, help='Truncate SVD')
         parser.add_argument('--svd-method', type=str, default='svd', choices=['svd', 'trsvd', 'skip'], help='Truncate PCA')
-        parser.add_argument('--svd-truncate', type=int, default=None, help='Truncate SVD')
 
     def init_from_args(self, config, args):
         super(PcaGridBuilder, self).init_from_args(config, args)
@@ -64,9 +66,10 @@ class PcaGridBuilder(GridBuilder):
         self.pca_norm = self.get_arg('pca_norm', self.pca_norm, args)
         self.svd_method = self.get_arg('svd_method', self.svd_method, args)
         
-        self.svd_truncate = self.get_arg('svd_truncate', self.svd_truncate, args)
-        if self.svd_truncate == 0:
-            self.svd_truncate = None
+        # Rename to pca-truncate
+        self.pca_truncate = self.get_arg('pca_truncate', self.pca_truncate, args)
+        if self.pca_truncate == 0:
+            self.pca_truncate = None
 
     def get_vector_shape(self):
         # Return the shape of data vectors, a one element tuple
@@ -107,10 +110,9 @@ class PcaGridBuilder(GridBuilder):
         else:
             raise NotImplementedError()
 
-        self.truncate_and_calculate_pc()
-
-        # Save options to the grid
-        self.output_grid.pca_grid.transform = self.pca_transform
+        self.truncate_basis()
+        self.calculate_pc()
+        self.calculate_residual()
 
     def get_data_matrix(self, step='pca'):
         # Copy all data vectors into a single matrix
@@ -142,18 +144,18 @@ class PcaGridBuilder(GridBuilder):
         return X, W
 
     def run_pca_svd(self):
-        with Timer('Computing SVD with method `{}`, truncated at {}...'.format(self.svd_method, self.svd_truncate), logging.INFO):
+        with Timer('Computing SVD with method `{}`, truncated at {}...'.format(self.svd_method, self.pca_truncate), logging.INFO):
             mask = (self.W > 0)
             WX = 1 / np.sqrt(np.sum(self.W[mask])) * np.sqrt(self.W[mask][:, np.newaxis]) * self.X[mask]
 
-            if self.svd_method == 'svd' or self.svd_truncate is None:
+            if self.svd_method == 'svd' or self.pca_truncate is None:
                 _, self.S, Vh = np.linalg.svd(WX, full_matrices=False)
                 self.V = Vh.T
             elif self.svd_method == 'trsvd':
-                svd = TruncatedSVD(n_components=self.svd_truncate)
-                svd.fit(WX)                          # shape: (items, dim)
-                self.S = svd.singular_values_            # shape: (truncate,)
-                self.V = svd.components_.T               # shape: (dim, truncate)
+                svd = TruncatedSVD(n_components=self.pca_truncate)
+                svd.fit(WX)                             # shape: (items, dim)
+                self.S = svd.singular_values_           # shape: (truncate,)
+                self.V = svd.components_.T              # shape: (dim, truncate)
             elif self.svd_method == 'skip':
                 logging.warn('Skipping SVD computation.')
                 M, N = self.X[mask].shape
@@ -166,18 +168,19 @@ class PcaGridBuilder(GridBuilder):
     def run_pca_cov(self):
 
         # TODO: use weights
+        raise NotImplementedError()
 
         with Timer('Calculating covariance matrix...', logging.INFO):
             C = 1 / np.sum(self.W) *  np.matmul(self.X.T, np.diag(self.W), self.X)        # shape: (dim, dim)
         self.logger.info('Allocated {} bytes for covariance matrix.'.format(C.size * C.itemsize))
 
         # Compute the SVD of the covariance matrix
-        with Timer('Computing SVD with method `{}`, truncated at {}...'.format(self.svd_method, self.svd_truncate), logging.INFO):
-            if self.svd_method == 'svd' or self.svd_truncate is None:
+        with Timer('Computing SVD with method `{}`, truncated at {}...'.format(self.svd_method, self.pca_truncate), logging.INFO):
+            if self.svd_method == 'svd' or self.pca_truncate is None:
                 _, self.S, Vh = np.linalg.svd(C, full_matrices=False)
                 self.V = Vh.T
             elif self.svd_method == 'trsvd':
-                svd = TruncatedSVD(n_components=self.svd_truncate)
+                svd = TruncatedSVD(n_components=self.pca_truncate)
                 svd.fit(C)
                 self.S = svd.singular_values_            # shape: (truncate,)
                 self.V = svd.components_.transpose()     # shape: (dim, truncate)
@@ -191,24 +194,32 @@ class PcaGridBuilder(GridBuilder):
     def run_dual_pca(self):
 
         # TODO: use weights
+        raise NotImplementedError()
 
         with Timer('Calculating X X^T matrix...', logging.INFO):
             self.D = np.matmul(self.X, self.X.T)        # shape: (items, items)
         self.logger.info('Allocated {} bytes for X X^T matrix.'.format(self.D.size * self.D.itemsize))
 
-        with Timer('Computing SVD with method `{}`, truncated at {}...'.format(self.svd_method, self.svd_truncate), logging.INFO):
-            if self.svd_method == 'svd' or self.svd_truncate is None:
+        with Timer('Computing SVD with method `{}`, truncated at {}...'.format(self.svd_method, self.pca_truncate), logging.INFO):
+            if self.svd_method == 'svd' or self.pca_truncate is None:
                 raise NotImplementedError()
             elif self.svd_method == 'trsvd':
                 raise NotImplementedError()
 
-    def truncate_and_calculate_pc(self):
+    def truncate_basis(self):
+        # Truncated basis
+        if self.pca_truncate is None:
+            pass
+        else:
+            self.S = self.S[:self.pca_truncate]
+            self.V = self.V[:, :self.pca_truncate]
+
+    def calculate_pc(self):
         # Calculate principal components and truncated basis
         with Timer('Calculating principal components...', logging.INFO):
-            if self.svd_truncate is None:
-                self.PC = np.dot(self.X, self.V)
-            else:
-                self.S = self.S[:self.svd_truncate]
-                self.V = self.V[:, :self.svd_truncate]
-                self.PC = np.dot(self.X, self.V)       # shape: (items, truncate)
+            self.PC = np.dot(self.X, self.V)
 
+    def calculate_residual(self):
+        # Calculate the residual and from the truncated basis
+        # shape: (count, wave)
+        self.R = self.X - np.matmul(self.PC, self.V.T)

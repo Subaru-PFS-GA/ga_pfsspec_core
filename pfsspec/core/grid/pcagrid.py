@@ -39,28 +39,30 @@ class PcaGrid(PfsObject):
     POSTFIX_EIGS = 'eigs'
     POSTFIX_EIGV = 'eigv'
     POSTFIX_MEAN = 'mean'
+    POSTFIX_ERROR = 'error'
+    POSTFIX_TRANSFORM = 'transform'
 
     def __init__(self, grid, orig=None):
         super(PcaGrid, self).__init__(orig=orig)
 
-        if isinstance(orig, PcaGrid):
-            self.grid = grid if grid is not None else orig.grid
-
-            self.transform = orig.transform
-
-            self.eigs = orig.eigs
-            self.eigv = orig.eigv
-            self.mean = orig.mean
-            self.k = orig.k
-        else:
+        if not isinstance(orig, PcaGrid):
             self.grid = grid
-
-            self.transform = 'none'
 
             self.eigs = {}
             self.eigv = {}
             self.mean = {}
+            self.error = {}
+            self.transform = {}
             self.k = None
+        else:
+            self.grid = grid if grid is not None else orig.grid
+
+            self.eigs = orig.eigs
+            self.eigv = orig.eigv
+            self.mean = orig.mean
+            self.error = orig.error
+            self.transform = orig.transform
+            self.k = orig.k
 
     @property
     def preload_arrays(self):
@@ -137,6 +139,7 @@ class PcaGrid(PfsObject):
             self.eigs[name] = None
             self.eigv[name] = None
             self.mean[name] = None
+            self.error[name] = None
         else:
             self.grid.init_value(name, shape=shape)
 
@@ -152,11 +155,13 @@ class PcaGrid(PfsObject):
                 self.eigs[name] = np.full(shape[:-1], np.nan)
                 self.eigv[name] = np.full(shape[:-1], np.nan)
                 self.mean[name] = np.full(shape[:-1], np.nan)
+                self.error[name] = np.full(shape[:-1], np.nan)
             else:
                 self.grid.allocate_value(name)
                 self.eigs[name] = None
                 self.eigv[name] = None
                 self.mean[name] = None
+                self.error[name] = None
         else:
             self.grid.allocate_value(name, shape=shape)
 
@@ -181,22 +186,22 @@ class PcaGrid(PfsObject):
     def has_value(self, name):
         return self.grid.has_value(name)
 
+    def has_error(self, name):
+        return self.has_value(name) and self.error[name] is not None
+
     def has_value_at(self, name, idx, mode='any'):
         return self.grid.has_value_at(name, idx, mode=mode)
 
-    def set_value(self, name, value, s=None, pca=False, **kwargs):
-        if not pca:
-            self.grid.set_value(name, value, s=s, **kwargs)
-        else:
-            # TODO: slicing?
-            self.grid.set_value(name, value[0], s=s, **kwargs)
-            self.eigs[name] = value[1]
-            self.eigv[name] = value[2]
-            if len(value) > 3:
-                self.mean[name] = value[3]
-            else:
-                self.mean[name] = None
+    def set_value(self, name, value, s=None, **kwargs):
+        # TODO: slicing?
+        self.eigs[name] = kwargs.pop('eigs', None)
+        self.eigv[name] = kwargs.pop('eigv', None)
+        self.mean[name] = kwargs.pop('mean', None)
+        self.error[name] = kwargs.pop('error', None)
+        self.transform[name] = kwargs.pop('transform', None)
 
+        self.grid.set_value(name, value, s=s, **kwargs)
+        
     def get_value_at(self, name, idx, s=None, raw=False):
         if not raw and name in self.eigs:
             s = s or slice(None)
@@ -212,12 +217,26 @@ class PcaGrid(PfsObject):
                 v += self.mean[name][s]
 
             # Inverse transform
-            if self.transform is not None and self.transform != 'none':
-                v = PcaGrid.PCA_TRANSFORM_FUNCTIONS[self.transform]['backward'](v)
+            if self.transform[name] is not None and self.transform[name] != 'none':
+                v = PcaGrid.PCA_TRANSFORM_FUNCTIONS[self.transform[name]]['backward'](v)
 
             return v
         else:
             return self.grid.get_value_at(name, idx, s=s)
+
+    def get_error_at(self, name, idx, s=None, raw=None):
+        """Return the error associated to the value `name`."""
+
+        s = s or slice(None)
+
+        # Error is the same everywhere over the grid for PCA, that's how it works
+        error = self.error[name][s]
+
+        # Propage uncertainty through the transformation
+        if self.transform[name] is not None and self.transform[name] != 'none':
+            error = PcaGrid.PCA_TRANSFORM_FUNCTIONS[self.transform[name]]['backward-error'](error)
+
+        return error
 
     def get_value(self, name, s=None, **kwargs):
         idx = self.get_index(**kwargs)
@@ -236,27 +255,27 @@ class PcaGrid(PfsObject):
         self.grid.fileformat = self.fileformat
         self.grid.save_items()
 
-        self.save_item('/'.join([Grid.PREFIX_GRID, self.POSTFIX_PCA, 'transform']), self.transform)
-
         for name in self.eigs:
             if self.eigs[name] is not None:
                 path = self.get_value_path(name)
                 self.save_item('/'.join([path, self.POSTFIX_EIGS]), self.eigs[name])
                 self.save_item('/'.join([path, self.POSTFIX_EIGV]), self.eigv[name])
                 self.save_item('/'.join([path, self.POSTFIX_MEAN]), self.mean[name])
+                self.save_item('/'.join([path, self.POSTFIX_ERROR]), self.error[name])
+                self.save_item('/'.join([path, self.POSTFIX_TRANSFORM]), self.transform[name])
 
     def load_items(self, s=None):
         self.grid.filename = self.filename
         self.grid.fileformat = self.fileformat
         self.grid.load_items(s=s)
 
-        self.transform = self.load_item('/'.join([Grid.PREFIX_GRID, self.POSTFIX_PCA, 'transform']), str)
-
         for name in self.eigs:
             path = self.get_value_path(name)
             self.eigs[name] = self.load_item('/'.join([path, self.POSTFIX_EIGS]), np.ndarray)
             self.eigv[name] = self.load_item('/'.join([path, self.POSTFIX_EIGV]), np.ndarray)
             self.mean[name] = self.load_item('/'.join([path, self.POSTFIX_MEAN]), np.ndarray)
+            self.error[name] = self.load_item('/'.join([path, self.POSTFIX_ERROR]), np.ndarray)
+            self.transform[name] = self.load_item('/'.join([path, self.POSTFIX_TRANSFORM]), str)
 
     def set_object_params(self, obj, idx=None, **kwargs):
         self.grid.set_object_params(obj, idx=idx, **kwargs)

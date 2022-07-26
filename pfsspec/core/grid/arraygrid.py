@@ -279,6 +279,9 @@ class ArrayGrid(Grid):
             return name in self.values and self.has_item(self.get_value_path(name)) and \
                    name in self.value_indexes and self.value_indexes[name] is not None
 
+    def has_error(self, name):
+        return False
+
     def has_value_at(self, name, idx, mode='any'):
         # Returns true if the specified grid point or points are filled, i.e. the
         # corresponding index values are all set to True
@@ -341,6 +344,15 @@ class ArrayGrid(Grid):
             v = np.squeeze(v)
         return v
 
+    def get_error(self, name, s=None, squeeze=False, **kwargs):
+        """Return the error associated to the value `name`."""
+
+        idx = self.get_index(**kwargs)
+        v = self.get_error_at(name, idx, s)
+        if squeeze:
+            v = np.squeeze(v)
+        return v
+
     def get_nearest_value(self, name, s=None, **kwargs):
         idx = self.get_nearest_index(**kwargs)
         return self.get_value_at(name, idx, s)
@@ -357,6 +369,12 @@ class ArrayGrid(Grid):
                 return self.load_item(self.get_value_path(name), np.ndarray, idx)
         else:
             return None
+
+    def get_error_at(self, name, idx, s=None, raw=None):
+        """Return the error associated to the value `name`."""
+
+        # Pure array grids do not currently support error.
+        raise NotImplementedError()
 
     def load(self, filename, s=None, format=None):
         s = s or self.slice

@@ -176,9 +176,6 @@ export PYTHONPATH=.:../pysynphot:../SciScript-Python/py3
 
 # Other settings
 
-# PySynPhot data directories
-export PYSYN_CDBS=$PFSSPEC_DATA/cdbs
-
 # Work around issues with saving weights when running on multiple threads
 export HDF5_USE_FILE_LOCKING=FALSE
 

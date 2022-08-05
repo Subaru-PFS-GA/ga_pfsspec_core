@@ -122,6 +122,10 @@ class RbfGrid(Grid):
         else:
             return name in self.values and self.has_item(name + '/rbf/xi')
 
+    def has_error(self, name):
+        # TODO: implement error propagation if error is available
+        raise NotImplementedError()
+
     def set_values(self, values, s=None, **kwargs):
         for k in values:
             self.set_value(k, values[k], s=s, **kwargs)
@@ -149,6 +153,12 @@ class RbfGrid(Grid):
             return None
         value = self.values[name](*idx)
         return value[s or ()]
+
+    def get_error_at(self, name, idx):
+        """Return the error associated to the value `name`."""
+
+        # TODO: implement
+        raise NotImplementedError()
 
     def get_value(self, name, s=None, extrapolate=False, **kwargs):
         idx = self.get_index(**kwargs)

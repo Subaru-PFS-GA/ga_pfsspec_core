@@ -482,18 +482,26 @@ class PfsObject():
                     shape = None
                     idxshape = None
                     if isinstance(s, Iterable):
-                        for i in range(len(s)):
-                            if isinstance(s[i], (np.int32, np.int64)):
+                        # TODO: also handle when ellipsis in the middle
+                        if not isinstance(s[0], np.ndarray) and s[0] == Ellipsis:
+                            slice_idx = range(1, len(s))
+                            array_idx = range(len(g[name].shape) - len(s) + 1, len(g[name].shape))
+                        else:
+                            slice_idx = range(len(s))
+                            array_idx = range(len(s))
+
+                        for si, ai in zip(slice_idx, array_idx):
+                            if isinstance(s[si], (np.int32, np.int64)):
                                 if shape is None:
                                     shape = (1,)
-                            elif isinstance(s[i], np.ndarray):
+                            elif isinstance(s[si], np.ndarray):
                                 if shape is None or shape == (1,):
-                                    shape = s[i].shape
-                                if idxshape is not None and idxshape != s[i].shape:
+                                    shape = s[si].shape
+                                if idxshape is not None and idxshape != s[si].shape:
                                     raise Exception('Incompatible shapes')
-                                idxshape = s[i].shape
-                            elif isinstance(s[i], slice):
-                                k = len(range(*s[i].indices(g[name].shape[i])))
+                                idxshape = s[si].shape
+                            elif isinstance(s[si], slice):
+                                k = len(range(*s[si].indices(g[name].shape[ai])))
                                 if shape is None:
                                     shape = (k, )
                                 else:

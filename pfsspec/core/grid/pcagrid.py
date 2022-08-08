@@ -168,8 +168,12 @@ class PcaGrid(PfsObject):
     def add_args(self, parser):
         self.grid.add_args(parser)
 
+        parser.add_argument('--pca-truncate', type=int, default=None, help='PCA truncate.')
+
     def init_from_args(self, args):
         self.grid.init_from_args(args)
+
+        self.k = self.get_arg('pca_truncate', self.k, args)
 
     def get_index(self, **kwargs):
         return self.grid.get_index(**kwargs)
@@ -271,8 +275,14 @@ class PcaGrid(PfsObject):
 
         for name in self.eigs:
             path = self.get_value_path(name)
-            self.eigs[name] = self.load_item('/'.join([path, self.POSTFIX_EIGS]), np.ndarray)
-            self.eigv[name] = self.load_item('/'.join([path, self.POSTFIX_EIGV]), np.ndarray)
+
+            if self.k is not None:
+                pca_slice = np.s_[..., :self.k]
+            else:
+                pca_slice = None
+
+            self.eigs[name] = self.load_item('/'.join([path, self.POSTFIX_EIGS]), np.ndarray, s=pca_slice)
+            self.eigv[name] = self.load_item('/'.join([path, self.POSTFIX_EIGV]), np.ndarray, s=pca_slice)
             self.mean[name] = self.load_item('/'.join([path, self.POSTFIX_MEAN]), np.ndarray)
             self.error[name] = self.load_item('/'.join([path, self.POSTFIX_ERROR]), np.ndarray)
             self.transform[name] = self.load_item('/'.join([path, self.POSTFIX_TRANSFORM]), str)

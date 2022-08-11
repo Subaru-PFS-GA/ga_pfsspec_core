@@ -12,7 +12,7 @@ source ~/.bashrc
 # Parse arguments
 
 PFSSPEC_ENV="default"
-INIT_GIT="1"
+INIT_GIT_KEY="0"
 
 while (( "$#" )); do
     case "$1" in
@@ -21,11 +21,11 @@ while (( "$#" )); do
         shift 2
         ;;
       -g|--init-git)
-        INIT_GIT="1"
+        INIT_GIT_KEY="1"
         shift
         ;;
       --no-init-git)
-        INIT_GIT="0"
+        INIT_GIT_KEY="0"
         shift
         ;;
       --) # end argument parsing
@@ -142,7 +142,7 @@ function check_ssh_key() {
 
 # Initialize SSH key for github access, if requested
 
-if [[ $INIT_GIT -eq "1" ]]; then
+if [[ $INIT_GIT_KEY -eq "1" ]]; then
   SSH_KEY=$HOME/.ssh/id_rsa
   SSH_ENV=$HOME/.ssh/environment-$HOSTNAME
 

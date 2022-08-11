@@ -29,9 +29,14 @@ class Test_mmaparray(testbase):
     def test_slice(self):
         with self.get_test_hdf5() as f:
             d = f['grid']['arrays']['flux']['pca']['eigv']
-            mi = mmapinfo.from_hdf5(d)
+            mi = mmapinfo.from_hdf5(d, slice=np.s_[:100])
             
         a = mmaparray(mi)
+
+        self.assertIsInstance(a, mmaparray)
+        self.assertEqual(a.shape, (100, 9725))
+        self.assertIsNotNone(a.mmapinfo)
+
         b = a[:5, :5]
 
         self.assertIsInstance(b, mmaparray)

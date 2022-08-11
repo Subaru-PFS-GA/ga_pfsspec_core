@@ -30,8 +30,13 @@ class mmaparray(np.ndarray):
 
         a = a.reshape(mi.shape)
 
+        # "Cast" to mmaparray
         # This will call __array_finalize__
         a = a.view(mmaparray)
+
+        # Create a sliced view
+        if mi.slice is not None:
+            a = a[mi.slice]
     
         # Set mmapinfo here, this will set the field only when a new mmaparray is
         # created via the constructor and never else

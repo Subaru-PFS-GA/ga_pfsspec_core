@@ -9,7 +9,7 @@ class Test_mmapinfo(testbase):
 
     def create_mmapinfo(self):
         fn = self.get_test_hdf5_filename()
-        mi = mmapinfo(fn)
+        mi = mmapinfo(fn, slice=np.s_[:100])
         return mi
 
     def test_init(self):

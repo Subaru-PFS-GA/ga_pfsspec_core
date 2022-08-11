@@ -148,7 +148,13 @@ class PcaGridBuilder(GridBuilder):
             mask = (self.W > 0)
             WX = 1 / np.sqrt(np.sum(self.W[mask])) * np.sqrt(self.W[mask][:, np.newaxis]) * self.X[mask]
 
-            if self.svd_method == 'svd' or self.pca_truncate is None:
+            if self.svd_method == 'skip':
+                logging.warn('Skipping SVD computation.')
+                M, N = self.X[mask].shape
+                K = min(M, N)
+                self.S = np.zeros((K,))
+                self.V = np.zeros((N, K))
+            elif self.svd_method == 'svd' or self.pca_truncate is None:
                 _, self.S, Vh = np.linalg.svd(WX, full_matrices=False)
                 self.V = Vh.T
             elif self.svd_method == 'trsvd':
@@ -156,12 +162,6 @@ class PcaGridBuilder(GridBuilder):
                 svd.fit(WX)                             # shape: (items, dim)
                 self.S = svd.singular_values_           # shape: (truncate,)
                 self.V = svd.components_.T              # shape: (dim, truncate)
-            elif self.svd_method == 'skip':
-                logging.warn('Skipping SVD computation.')
-                M, N = self.X[mask].shape
-                K = min(M, N)
-                self.S = np.zeros((K,))
-                self.V = np.zeros((N, K))
             else:
                 raise NotImplementedError()
 

@@ -6,23 +6,24 @@ _mmapinfo__mmaps = {}
 
 class mmapinfo():
 
-    def __init__(self, filename, offset=0, size=None, dtype=np.float64, shape=None):
+    def __init__(self, filename, offset=0, size=None, dtype=np.float64, shape=None, slice=None):
         self.__filename = filename
 
         self.__offset = offset
         self.__size = size
         self.__dtype = dtype
         self.__shape = shape
+        self.__slice = slice
 
     @staticmethod
-    def from_hdf5(dataset):
+    def from_hdf5(dataset, slice=None):
         filename = dataset.file.filename
         offset = dataset.id.get_offset()
         size = dataset.id.get_storage_size()
         dtype = dataset.dtype
         shape = dataset.shape
 
-        return mmapinfo(filename, offset=offset, size=size, dtype=dtype, shape=shape)
+        return mmapinfo(filename, offset=offset, size=size, dtype=dtype, shape=shape, slice=slice)
 
     def __get_filename(self):
         return self.__filename
@@ -49,6 +50,11 @@ class mmapinfo():
 
     shape = property(__get_shape)
 
+    def __get_slice(self):
+        return self.__slice
+
+    slice = property(__get_slice)
+
     def __get_closed(self):
         global __mmaps
 
@@ -64,20 +70,8 @@ class mmapinfo():
         state.update(self.__dict__)
         return state
 
-        # return {'_mmapinfo__filename': self.__filename,
-        #         '_mmapinfo__offset': self.__offset,
-        #         '_mmapinfo__size': self.__size,
-        #         '_mmapinfo__dtype': self.__dtype,
-        #         '_mmapinfo__shape': self.__shape}
-
     def __setstate__(self, state):
         self.__dict__.update(state)
-
-        # self.__dict__['_mmapinfo__filename'] = state.pop('_mmapinfo__filename', None)
-        # self.__dict__['_mmapinfo__offset'] = state.pop('_mmapinfo__offset', None)
-        # self.__dict__['_mmapinfo__size'] = state.pop('_mmapinfo__size', None)
-        # self.__dict__['_mmapinfo__dtype'] = state.pop('_mmapinfo__dtype', None)
-        # self.__dict__['_mmapinfo__shape'] = state.pop('_mmapinfo__shape', None)
 
     def open_or_get(self):
         global __mmaps

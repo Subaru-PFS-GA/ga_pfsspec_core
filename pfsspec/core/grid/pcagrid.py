@@ -254,6 +254,12 @@ class PcaGrid(PfsObject):
         idx = self.get_index(**kwargs)
         return self.get_values_at(idx, s, names=names)
 
+    def get_chunk_shape(self, name, shape, s=None):
+        if name == 'eigv':
+            return None
+        else:
+            return super().get_chunk_shape(name, shape, s)
+
     def save_items(self):
         self.grid.filename = self.filename
         self.grid.fileformat = self.fileformat
@@ -282,7 +288,7 @@ class PcaGrid(PfsObject):
                 pca_slice = None
 
             self.eigs[name] = self.load_item('/'.join([path, self.POSTFIX_EIGS]), np.ndarray, s=pca_slice)
-            self.eigv[name] = self.load_item('/'.join([path, self.POSTFIX_EIGV]), np.ndarray, s=pca_slice)
+            self.eigv[name] = self.load_item('/'.join([path, self.POSTFIX_EIGV]), np.ndarray, s=pca_slice, mmap=True)
             self.mean[name] = self.load_item('/'.join([path, self.POSTFIX_MEAN]), np.ndarray)
             self.error[name] = self.load_item('/'.join([path, self.POSTFIX_ERROR]), np.ndarray)
             self.transform[name] = self.load_item('/'.join([path, self.POSTFIX_TRANSFORM]), str)

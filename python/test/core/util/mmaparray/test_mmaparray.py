@@ -5,7 +5,7 @@ import h5py
 import mmap
 
 from .testbase import testbase
-from pfsspec.core.util.mmaparray import mmaparray, mmapinfo
+from pfs.ga.pfsspec.core.util.mmaparray import mmaparray, mmapinfo
 
 def multiprocessing_worker(a):
     assert a.mmapinfo is not None

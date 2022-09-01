@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from pfsspec.core.pfsobject import PfsObject
+from pfs.ga.pfsspec.core.pfsobject import PfsObject
 
 class Dataset(PfsObject):
 

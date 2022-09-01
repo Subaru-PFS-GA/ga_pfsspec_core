@@ -2,13 +2,13 @@ import h5py
 import os
 import numpy as np
 import pandas as pd
-from pfsspec.core.dataset.spectrumdataset import SpectrumDataset
+from pfs.ga.pfsspec.core.dataset.spectrumdataset import SpectrumDataset
 
 from test.core import TestBase
-from pfsspec.core import PfsObject
-from pfsspec.core import Spectrum
-from pfsspec.core.dataset import ArrayDataset
-from pfsspec.core.dataset import DatasetConfig
+from pfs.ga.pfsspec.core import PfsObject
+from pfs.ga.pfsspec.core import Spectrum
+from pfs.ga.pfsspec.core.dataset import ArrayDataset
+from pfs.ga.pfsspec.core.dataset import DatasetConfig
 
 class TestArrayDataset(TestBase):
     #region Helper functions

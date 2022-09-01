@@ -2,10 +2,10 @@
 
 import os
 
-from pfsspec.scripts.import_ import Import
-from pfsspec.stellarmod.kuruczgrid import KuruczGrid
-from pfsspec.stellarmod.kuruczgridreader import KuruczGridReader
-from pfsspec.stellarmod.kuruczspectrumreader import KuruczSpectrumReader
+from pfs.ga.pfsspec.scripts.import_ import Import
+from pfs.ga.pfsspec.stellarmod.kuruczgrid import KuruczGrid
+from pfs.ga.pfsspec.stellarmod.kuruczgridreader import KuruczGridReader
+from pfs.ga.pfsspec.stellarmod.kuruczspectrumreader import KuruczSpectrumReader
 
 class ImportKurucz(Import):
     # TODO: Convert into an import module

@@ -4,8 +4,8 @@ from numpy.testing import assert_array_equal
 import h5py
 
 from test.core import TestBase
-from pfsspec.core.grid import ArrayGrid
-from pfsspec.core.grid import GridAxis
+from pfs.ga.pfsspec.core.grid import ArrayGrid
+from pfs.ga.pfsspec.core.grid import GridAxis
 
 class TestArrayGrid(TestBase):
     def create_new_grid(self, preload_arrays=True):

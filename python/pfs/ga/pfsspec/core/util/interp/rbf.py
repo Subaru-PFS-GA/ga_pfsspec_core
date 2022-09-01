@@ -7,11 +7,11 @@ from scipy.sparse import csc_matrix
 from sklearn.metrics import pairwise_distances
 from scipy.special import xlogy
 
-from pfsspec.core.util.linalg.nnls import nnls as nnls
-# from pfsspec.util.linalg.tntnn import tntnn
+from pfs.ga.pfsspec.core.util.linalg.nnls import nnls as nnls
+# from pfs.ga.pfsspec.util.linalg.tntnn import tntnn
 
-from pfsspec.core.util.name import func_fullname
-from pfsspec.core.util.timer import Timer
+from pfs.ga.pfsspec.core.util.name import func_fullname
+from pfs.ga.pfsspec.core.util.timer import Timer
 
 class Rbf():
     # This is a modified version of the original SciPy RBF that supports

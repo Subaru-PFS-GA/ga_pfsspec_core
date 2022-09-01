@@ -1,7 +1,7 @@
 import numpy as np
 
 from test.core import TestBase
-from pfsspec.core import Spectrum
+from pfs.ga.pfsspec.core import Spectrum
 
 class TestSpectrum(TestBase):
     def test_set_redshift(self):

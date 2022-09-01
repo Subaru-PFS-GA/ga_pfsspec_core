@@ -5,9 +5,9 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-import pfsspec.core.util as util
-from pfsspec.core.util.smartparallel import SmartParallel
-from pfsspec.core import PfsObject
+import pfs.ga.pfsspec.core.util as util
+from pfs.ga.pfsspec.core.util.smartparallel import SmartParallel
+from pfs.ga.pfsspec.core import PfsObject
 from .dataset import Dataset
 
 class DatasetBuilder(PfsObject):

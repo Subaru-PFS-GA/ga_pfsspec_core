@@ -21,7 +21,7 @@ while (( "$#" )); do
         shift 2
         ;;
       -g|--init-git)
-        INIT_GIT_KEY="1"
+        INIT_GIT_KEY="0"
         shift
         ;;
       --no-init-git)
@@ -63,6 +63,9 @@ function init_git_module() {
     echo "Configuring git for repo $mod"
     pushd "modules/pfsspec-$dir" >/dev/null
 
+    # Configure git filter to remove notebook output
+    # It requires a .gitattributes file under each submodule with contents:
+    # `nb/**/*.ipynb filter=ipynb_stripout`
     git config --local filter.ipynb_stripout.clean "$(which python) $(git rev-parse --show-toplevel)/../pfsspec-core/bin/ipynb_stripout"
     git config --local filter.ipynb_stripout.smudge cat
     git config --local filter.ipynb_stripout.required true
@@ -74,14 +77,14 @@ function link_module() {
     mod="$1"
     dir="$2"
 
-    if [[ ! -L pfsspec/$dir ]]; then
+    if [[ ! -L python/pfs/ga/pfsspec/$dir ]]; then
         echo "Creating symlink to module $mod, directory $dir"
-        ln -s ../modules/pfsspec-$mod/pfsspec/$dir pfsspec/$dir
+        ln -s ../../../../modules/pfsspec-$mod/python/pfs/ga/pfsspec/$dir python/pfs/ga/pfsspec/$dir
     fi
 
-    if [[ ! -L test/$dir ]]; then
+    if [[ ! -L python/test/$dir ]]; then
       echo "Creating symlink to tests for module $mod, directory $dir"
-        ln -s ../modules/pfsspec-$mod/test/$dir test/$dir
+        ln -s ../../modules/pfsspec-$mod/python/test/$dir python/test/$dir
     fi
 
     if [[ ! -L scripts/$dir ]]; then
@@ -101,16 +104,6 @@ function link_module() {
 
     init_git_module "$mod" "$dir"
 }
-
-if [[ ! -d pfsspec ]]; then
-    echo "Creating directory for modules."
-    mkdir -p pfsspec
-fi
-
-if [[ ! -d test ]]; then
-    echo "Creating directory for unit tests."
-    mkdir -p test
-fi
 
 link_module core core
 link_module stellar stellar
@@ -172,7 +165,7 @@ fi
 ################################################################################
 
 # PFS related settings
-export PYTHONPATH=.:../pysynphot:../SciScript-Python/py3
+export PYTHONPATH=./python:../pysynphot:../SciScript-Python/py3
 
 # Other settings
 

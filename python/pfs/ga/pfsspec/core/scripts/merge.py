@@ -6,11 +6,11 @@ import json
 import numpy as np
 import pandas as pd
 
-from pfsspec.constants import Constants
-from pfsspec.data.dataset import Dataset
-from pfsspec.scripts.script import Script
+from pfs.ga.pfsspec.constants import Constants
+from pfs.ga.pfsspec.data.dataset import Dataset
+from pfs.ga.pfsspec.scripts.script import Script
 
-from pfsspec.data.datasetmerger import DatasetMerger
+from pfs.ga.pfsspec.data.datasetmerger import DatasetMerger
 
 class Merge(Script):
     MERGER_TYPES = {

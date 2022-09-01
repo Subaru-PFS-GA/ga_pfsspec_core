@@ -12,8 +12,8 @@ import numbers
 from collections import Iterable
 
 from .constants import Constants
-from pfsspec.core.util.args import get_arg, is_arg
-from pfsspec.core.util.mmaparray import mmapinfo, mmaparray
+from pfs.ga.pfsspec.core.util.args import get_arg, is_arg
+from pfs.ga.pfsspec.core.util.mmaparray import mmapinfo, mmaparray
 
 class PfsObject():
     """

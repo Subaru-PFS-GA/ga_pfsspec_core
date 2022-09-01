@@ -4,9 +4,9 @@ import numpy as np
 from tqdm import tqdm
 import multiprocessing
 
-from pfsspec.core.grid import GridEnumerator
-from pfsspec.core.util.smartparallel import SmartParallel
-from pfsspec.core.io import Importer
+from pfs.ga.pfsspec.core.grid import GridEnumerator
+from pfs.ga.pfsspec.core.util.smartparallel import SmartParallel
+from pfs.ga.pfsspec.core.io import Importer
 
 class GridReader(Importer):
     def __init__(self, grid=None, orig=None):

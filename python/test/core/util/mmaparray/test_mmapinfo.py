@@ -3,7 +3,7 @@ import pickle
 from unittest import TestCase
 
 from .testbase import testbase
-from pfsspec.core.util.mmaparray import mmapinfo
+from pfs.ga.pfsspec.core.util.mmaparray import mmapinfo
 
 class Test_mmapinfo(testbase):
 

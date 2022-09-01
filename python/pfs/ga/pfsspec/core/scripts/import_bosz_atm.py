@@ -4,11 +4,11 @@ import os
 import glob
 import logging
 
-from pfsspec.scripts.import_ import Import
-from pfsspec.stellarmod.boszspectrumreader import BoszSpectrumReader
-from pfsspec.stellarmod.boszatmreader import BoszAtmReader
-from pfsspec.stellarmod.boszatmgridreader import BoszAtmGridReader
-from pfsspec.stellarmod.boszatmgrid import BoszAtmGrid
+from pfs.ga.pfsspec.scripts.import_ import Import
+from pfs.ga.pfsspec.stellarmod.boszspectrumreader import BoszSpectrumReader
+from pfs.ga.pfsspec.stellarmod.boszatmreader import BoszAtmReader
+from pfs.ga.pfsspec.stellarmod.boszatmgridreader import BoszAtmGridReader
+from pfs.ga.pfsspec.stellarmod.boszatmgrid import BoszAtmGrid
 
 class ImportBoszAtm(Import):
     # TODO: Convert into an import module

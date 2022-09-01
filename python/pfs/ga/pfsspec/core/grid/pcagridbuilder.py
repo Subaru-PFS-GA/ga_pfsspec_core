@@ -4,7 +4,7 @@ from sklearn.decomposition import TruncatedSVD
 import logging
 from tqdm import tqdm
 
-from pfsspec.core.util.timer import Timer
+from pfs.ga.pfsspec.core.util.timer import Timer
 from .pcagrid import PcaGrid
 from .gridbuilder import GridBuilder
 

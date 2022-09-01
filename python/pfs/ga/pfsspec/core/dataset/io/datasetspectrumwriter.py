@@ -1,8 +1,8 @@
 import os
 import logging
 
-from pfsspec.util.parallel import SmartParallel
-from pfsspec.data.spectrumwriter import SpectrumWriter
+from pfs.ga.pfsspec.util.parallel import SmartParallel
+from pfs.ga.pfsspec.data.spectrumwriter import SpectrumWriter
 
 class DatasetSpectrumWriter(SpectrumWriter):
     # TODO: consider making DatasetSpectrumWriter a new branch of classes

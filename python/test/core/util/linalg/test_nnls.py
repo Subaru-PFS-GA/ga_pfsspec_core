@@ -2,7 +2,7 @@ from unittest import TestCase
 import numpy as np
 import scipy.optimize
 
-from pfsspec.core.util.linalg.nnls import svd_solve, nnls
+from pfs.ga.pfsspec.core.util.linalg.nnls import svd_solve, nnls
 
 class TestNnls(TestCase):
     def test_svd_solve(self):

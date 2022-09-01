@@ -11,9 +11,9 @@ from multiprocessing import set_start_method
 import socket
 from collections.abc import Iterable
 
-import pfsspec
-import pfsspec.core.util as util
-from pfsspec.core.util.notebookrunner import NotebookRunner
+import pfs.ga.pfsspec
+import pfs.ga.pfsspec.core.util as util
+from pfs.ga.pfsspec.core.util.notebookrunner import NotebookRunner
 
 class Script():
 
@@ -53,8 +53,8 @@ class Script():
 
         merged_config = {}
 
-        for m in pkgutil.iter_modules(pfsspec.__path__):
-            module = importlib.import_module('pfsspec.{}.configurations'.format(m.name))
+        for m in pkgutil.iter_modules(pfs.ga.pfsspec.__path__):
+            module = importlib.import_module('pfs.ga.pfsspec.{}.configurations'.format(m.name))
             if hasattr(module, self.CONFIG_NAME):
                 config = getattr(module, self.CONFIG_NAME)
                 merged_config.update(config)

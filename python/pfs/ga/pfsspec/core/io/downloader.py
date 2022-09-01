@@ -1,4 +1,4 @@
-from pfsspec.core import PfsObject
+from pfs.ga.pfsspec.core import PfsObject
 
 class Downloader(PfsObject):
     def __init__(self, orig=None):

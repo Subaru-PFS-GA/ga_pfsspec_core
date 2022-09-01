@@ -1,7 +1,7 @@
 import logging
 import numpy as np
 
-from pfsspec.core.util.interp import Rbf
+from pfs.ga.pfsspec.core.util.interp import Rbf
 from .grid import Grid
 
 class RbfGrid(Grid):

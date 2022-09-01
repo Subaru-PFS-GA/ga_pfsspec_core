@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-import pfsspec.core.util as util
+import pfs.ga.pfsspec.core.util as util
 from .dataset import Dataset
 
 class DatasetMerger():

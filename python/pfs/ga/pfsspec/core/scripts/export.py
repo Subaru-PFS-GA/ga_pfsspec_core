@@ -2,9 +2,9 @@ import os
 import logging
 import numpy as np
 
-from pfsspec.scripts.script import Script
-from pfsspec.data.dataset import Dataset
-from pfsspec.data.datasetspectrumwriter import DatasetSpectrumWriter
+from pfs.ga.pfsspec.scripts.script import Script
+from pfs.ga.pfsspec.data.dataset import Dataset
+from pfs.ga.pfsspec.data.datasetspectrumwriter import DatasetSpectrumWriter
 
 class Export(Script):
     def __init__(self):

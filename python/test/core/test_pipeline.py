@@ -1,8 +1,8 @@
 import numpy as np
 
 from test.core import TestBase
-from pfsspec.core import Spectrum
-from pfsspec.core import Pipeline
+from pfs.ga.pfsspec.core import Spectrum
+from pfs.ga.pfsspec.core import Pipeline
 
 class TestPipeline(TestBase):
 

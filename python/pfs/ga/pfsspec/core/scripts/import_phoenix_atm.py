@@ -4,12 +4,12 @@ import os
 import glob
 import logging
 
-from pfsspec.scripts.import_ import Import
-from pfsspec.stellarmod.phoenixspectrumreader import PhoenixSpectrumReader
-from pfsspec.stellarmod.phoenixatmreader import PhoenixAtmReader
-from pfsspec.stellarmod.phoenixatmgridreader import PhoenixAtmGridReader
-from pfsspec.stellarmod.phoenixatmgrid import PhoenixAtmGrid
-from pfsspec.stellarmod.modelgridconfig import ModelGridConfig
+from pfs.ga.pfsspec.scripts.import_ import Import
+from pfs.ga.pfsspec.stellarmod.phoenixspectrumreader import PhoenixSpectrumReader
+from pfs.ga.pfsspec.stellarmod.phoenixatmreader import PhoenixAtmReader
+from pfs.ga.pfsspec.stellarmod.phoenixatmgridreader import PhoenixAtmGridReader
+from pfs.ga.pfsspec.stellarmod.phoenixatmgrid import PhoenixAtmGrid
+from pfs.ga.pfsspec.stellarmod.modelgridconfig import ModelGridConfig
 
 
 

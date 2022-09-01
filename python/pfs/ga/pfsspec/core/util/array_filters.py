@@ -3,7 +3,7 @@ from scipy.interpolate import interp1d, interpn
 from scipy import ndimage
 from scipy.interpolate import LinearNDInterpolator, RegularGridInterpolator, CubicSpline
 
-from pfsspec.core.grid import ArrayGrid
+from pfs.ga.pfsspec.core.grid import ArrayGrid
 from .array import *
 
 def fill_holes_interpnd(axes, value, mask, interpolation='ijk'):

@@ -1,7 +1,7 @@
 import os
 
 from test.core import TestBase
-from pfsspec.core.scripts import Script
+from pfs.ga.pfsspec.core.scripts import Script
 
 class TestScript(TestBase):
     def test_substitute_env_vars(self):

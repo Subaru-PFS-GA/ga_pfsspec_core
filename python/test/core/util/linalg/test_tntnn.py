@@ -1,7 +1,7 @@
 from unittest import TestCase
 import numpy as np
 
-from pfsspec.core.util.linalg.tntnn import tntnn, TntNN
+from pfs.ga.pfsspec.core.util.linalg.tntnn import tntnn, TntNN
 
 class TestNnls(TestCase):
     def test_tntnn(self):

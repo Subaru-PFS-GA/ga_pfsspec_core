@@ -87,7 +87,7 @@ class SpectrumDataset(ArrayDataset):
         if self.constant_wave:
             self.wave = wave
             if not self.preload_arrays:
-                self.save_item('wave', wave)
+                self.save_item('/'.join([self.PREFIX_SPECTRUMDATASET, 'wave']), self.wave)
         else:
             self.set_value('wave', wave, idx, chunk_size, chunk_id)
 

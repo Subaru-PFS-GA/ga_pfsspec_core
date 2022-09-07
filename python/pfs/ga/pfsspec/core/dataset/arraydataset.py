@@ -163,8 +163,8 @@ class ArrayDataset(Dataset):
                 self.values[name] = None
 
                 self.logger.info('Initializing data file for dataset value array "{}" of size {}...'.format(name, full_shape))
-                if not self.has_item(name):
-                    self.allocate_item(name, full_shape, dtype=dtype)
+                if not self.has_item(self.get_value_path(name)):
+                    self.allocate_item(self.get_value_path(name), full_shape, dtype=dtype)
                 self.logger.info('Skipped memory initialization for dataset value array "{}". Will read random slices from storage.'.format(name))
 
     def allocate_value(self, name, shape=None, dtype=None, **kwargs):
@@ -215,6 +215,16 @@ class ArrayDataset(Dataset):
     def get_value_path(self, name):
         return '/'.join([self.PREFIX_DATASET, self.PREFIX_ARRAYS, name, self.POSTFIX_VALUE])
 
+    def enum_values(self):
+        # Figure out values from the file, if possible
+        values = list(self.enum_items('/'.join([self.PREFIX_DATASET, self.PREFIX_ARRAYS])))
+
+        if len(values) == 0:
+            values = list(self.values.keys())
+
+        for k in values:
+            yield k
+
     def load_values(self, s=None):
         """
         Loads dataset value arrays from a file. When `preload_arrays` is True,
@@ -224,7 +234,7 @@ class ArrayDataset(Dataset):
         :param s: Optional slice.
         """
 
-        for name in self.values:
+        for name in self.enum_values():
             if self.preload_arrays:
                 if s is not None:
                     self.logger.info('Loading dataset value array "{}" of size {}'.format(name, s))
@@ -234,8 +244,10 @@ class ArrayDataset(Dataset):
                     self.logger.info('Loading dataset value array "{}" of size {}'.format(name, self.value_shapes[name]))
                     self.values[name] = self.load_item(self.get_value_path(name), np.ndarray)
                     self.logger.info('Loaded dataset value array "{}" of size {}'.format(name, self.value_shapes[name]))
-                self.value_shapes[name] = self.values[name].shape[1:]
-                self.value_dtypes[name] = self.values[name].dtype
+
+                if self.values[name] is not None:
+                    self.value_shapes[name] = self.values[name].shape[1:]
+                    self.value_dtypes[name] = self.values[name].dtype
             else:
                 # When lazy-loading, we simply ignore the slice
                 shape = self.get_item_shape(name)
@@ -295,11 +307,11 @@ class ArrayDataset(Dataset):
                 # so sort and reshuffle here
                 if isinstance(idx, np.ndarray):
                     srt = np.argsort(idx)
-                    data = self.load_item(name, np.ndarray, s=idx[srt])
+                    data = self.load_item(self.get_value_path(name), np.ndarray, s=idx[srt])
                     srt = np.argsort(srt)
                     return data[srt]
                 else:
-                    data = self.load_item(name, np.ndarray, s=idx)
+                    data = self.load_item(self.get_value_path(name), np.ndarray, s=idx)
                     return data
             else:
                 # Chunked lazy loading, use cache
@@ -333,9 +345,9 @@ class ArrayDataset(Dataset):
                 # so sort and reshuffle here
                 if isinstance(idx, np.ndarray):
                     srt = np.argsort(idx)
-                    self.save_item(name, data[srt], s=idx[srt])
+                    self.save_item(self.get_value_path(name), data[srt], s=idx[srt])
                 else:
-                    self.save_item(name, data, s=idx)
+                    self.save_item(self.get_value_path(name), data, s=idx)
             else:
                 self.read_cache(name, chunk_size, chunk_id)
                 self.values[name][idx if idx is not None else ()] = data
@@ -362,7 +374,7 @@ class ArrayDataset(Dataset):
         if data is None:
             self.logger.debug('Reading dataset chunk `{}:{}` from disk.'.format(name, chunk_id))
             s = self.get_chunk_slice(chunk_size, chunk_id)
-            data = self.load_item(name, np.ndarray, s=s)
+            data = self.load_item(self.get_value_path(name), np.ndarray, s=s)
             self.cache_dirty = False
         
         self.values[name] = data
@@ -391,7 +403,7 @@ class ArrayDataset(Dataset):
         s = self.get_chunk_slice(self.cache_chunk_size, self.cache_chunk_id)
         data = self.values[name]
         if data is not None:
-            self.save_item(name, data, s=s)
+            self.save_item(self.get_value_path(name), data, s=s)
         self.values[name] = None
 
     def flush_cache_all(self, chunk_size, chunk_id, id_key='id'):

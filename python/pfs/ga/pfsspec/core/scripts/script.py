@@ -33,11 +33,14 @@ class Script():
         self.random_seed = None
         self.log_level = None
         self.log_dir = None
+        self.log_copy = False
         self.logging_enabled = logging_enabled
         self.logging_console_handler = None
         self.logging_file_handler = None
+        self.dump_config = True
         self.dir_history = []
         self.outdir = None
+        self.skip_notebooks = False
         self.is_batch = 'SLURM_JOBID' in os.environ
         if 'SLURM_CPUS_PER_TASK' in os.environ:
             self.threads = int(os.environ['SLURM_CPUS_PER_TASK'])
@@ -103,6 +106,8 @@ class Script():
         parser.add_argument('--threads', type=int, help='Number of processing threads.\n')
         parser.add_argument('--log-level', type=str, default=None, help='Logging level\n')
         parser.add_argument('--log-dir', type=str, default=None, help='Log directory\n')
+        parser.add_argument('--log-copy', action='store_true', help='Copy logfiles to output directory.\n')
+        parser.add_argument('--skip-notebooks', action='store_true', help='Skip notebook step.\n')
         parser.add_argument('--random-seed', type=int, default=None, help='Set random seed\n')
 
     def get_configs(self, path, args):
@@ -143,6 +148,8 @@ class Script():
             self.threads = self.get_arg('threads', self.threads)
             self.log_level = self.get_arg('log_level', self.log_level)
             self.log_dir = self.get_arg('log_dir', self.log_dir)
+            self.log_copy = self.get_arg('log_copy', self.log_copy)
+            self.skip_notebooks = self.get_arg('skip_notebooks', self.skip_notebooks)
             self.random_seed = self.get_arg('random_seed', self.random_seed)
 
     def merge_args(self, path, other_args, override=True, recursive=False):
@@ -335,9 +342,10 @@ class Script():
         logfile = os.path.join(logdir, logfile)
         self.setup_logging(logfile)
 
-        self.save_command_line(os.path.join(outdir, 'command.sh'))
-        self.dump_env(os.path.join(outdir, 'env.sh'))
-        self.dump_args_json(os.path.join(outdir, 'args.json'))
+        if self.dump_config:
+            self.save_command_line(os.path.join(outdir, 'command.sh'))
+            self.dump_env(os.path.join(outdir, 'env.sh'))
+            self.dump_args_json(os.path.join(outdir, 'args.json'))
 
     def execute(self):
         self.prepare()
@@ -374,7 +382,7 @@ class Script():
         self.logger.info('Executing notebook {}'.format(notebook_path))
 
         if outdir is None:
-            outdir = self.args['out']
+            outdir = self.outdir
 
         # Project path is added so that the pfsspec lib can be called without
         # installing it

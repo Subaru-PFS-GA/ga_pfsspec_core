@@ -6,9 +6,9 @@ import json
 import numpy as np
 import pandas as pd
 
-from pfs.ga.pfsspec.constants import Constants
-from pfs.ga.pfsspec.data.dataset import Dataset
-from pfs.ga.pfsspec.scripts.script import Script
+from pfs.ga.pfsspec.core import Constants
+from pfs.ga.pfsspec.core.dataset import Dataset
+from pfs.ga.pfsspec.core.scripts import Script
 
 from pfs.ga.pfsspec.data.datasetmerger import DatasetMerger
 

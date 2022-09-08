@@ -250,12 +250,12 @@ class ArrayDataset(Dataset):
                     self.value_dtypes[name] = self.values[name].dtype
             else:
                 # When lazy-loading, we simply ignore the slice
-                shape = self.get_item_shape(name)
+                shape = self.get_item_shape(self.get_value_path(name))
                 if shape is not None:
                     self.value_shapes[name] = shape[1:]
                 else:
                     self.value_shapes[name] = None
-                self.value_dtypes[name] = self.get_item_dtype(name)
+                self.value_dtypes[name] = self.get_item_dtype(self.get_value_path(name))
                 
                 self.logger.info('Skipped loading dataset value array "{}". Will read directly from storage.'.format(name))
 

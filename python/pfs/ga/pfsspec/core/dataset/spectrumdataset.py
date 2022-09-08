@@ -55,6 +55,12 @@ class SpectrumDataset(ArrayDataset):
         if self.constant_wave:
             self.save_item('/'.join([self.PREFIX_SPECTRUMDATASET, 'wave']), self.wave)
 
+    def get_value_shape(self, name=None):
+        if name is None:
+            return self.get_shape() + self.value_shapes['flux']
+        else:
+            return super().get_value_shape(name)
+
     def create_spectrum(self):
         # Override this function to return a specific kind of class derived from Spectrum.
         return Spectrum()

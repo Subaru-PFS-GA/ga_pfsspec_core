@@ -11,7 +11,9 @@ from multiprocessing import set_start_method
 import socket
 from collections.abc import Iterable
 
-import pfs.ga.pfsspec
+import pfs.ga.pfsspec   # NOTE: required by module discovery
+# TODO: python 3.8 has this built-in, replace import
+import pfs.ga.pfsspec.core.util.shutil as shutil
 import pfs.ga.pfsspec.core.util as util
 from pfs.ga.pfsspec.core.util.notebookrunner import NotebookRunner
 
@@ -373,7 +375,18 @@ class Script():
         raise NotImplementedError()
 
     def finish(self):
-        pass
+        # Copy logfiles (including tensorboard events)
+        if self.log_copy and \
+            os.path.abspath(self.outdir) != os.path.abspath(self.log_dir) and \
+            os.path.isdir(self.log_dir):
+
+            # TODO: python 3.8 has shutil function for this
+            outlogdir = os.path.join(self.outdir, 'logs')
+            logging.info('Copying log files to `{}`'.format(outlogdir))
+            ignore = None
+            shutil.copytree(self.log_dir, outlogdir, ignore=ignore, dirs_exist_ok=True)
+        else:
+            logging.info('Skipped copying log files to output directory.')
 
     def execute_notebook(self, notebook_path, output_notebook_path=None, output_html=True, parameters={}, kernel='python3', outdir=None):
         # Note that jupyter kernels in the current env might be different from the ones

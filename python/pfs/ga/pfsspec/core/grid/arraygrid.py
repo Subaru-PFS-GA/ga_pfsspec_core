@@ -541,7 +541,7 @@ class ArrayGrid(Grid):
             value = self.values[name][idx][valid_value]
         else:
             self.ensure_lazy_load()
-            value = self.load_item(name, np.ndarray, idx)
+            value = self.load_item(self.get_value_path(name), np.ndarray, idx)
             value = value[valid_value]
 
         self.logger.debug('Interpolating values to {} using cubic splines along {}.'.format(kwargs, free_param))

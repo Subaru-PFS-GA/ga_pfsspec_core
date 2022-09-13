@@ -124,7 +124,7 @@ class RbfGrid(Grid):
 
     def has_error(self, name):
         # TODO: implement error propagation if error is available
-        raise NotImplementedError()
+        return False
 
     def set_values(self, values, s=None, **kwargs):
         for k in values:

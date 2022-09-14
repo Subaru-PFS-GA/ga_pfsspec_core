@@ -12,7 +12,7 @@ from .constants import Constants
 from .pfsobject import PfsObject
 from .filter import Filter
 from .spectrum import Spectrum
-from .psf import Psf
+from .psf.psf import Psf
 
 class Pipeline(PfsObject):
     """

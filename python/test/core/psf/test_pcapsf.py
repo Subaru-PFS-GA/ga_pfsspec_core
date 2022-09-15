@@ -4,7 +4,7 @@ import numpy as np
 from test.core import TestBase
 from pfs.ga.pfsspec.core.psf import GaussPsf, PcaPsf
 
-class TestGaussPsf(TestBase):
+class TestPcaPsf(TestBase):
     def test_save(self):
         pass
 
@@ -42,19 +42,22 @@ class TestGaussPsf(TestBase):
         wave = np.linspace(3000, 9000, 6001)
         value1 = np.random.normal(size=wave.shape)
         value2 = np.random.normal(size=wave.shape)
-        error = np.full_like(value1, 1.0)
+        error1 = np.full_like(value1, 1.0)
+        error2 = np.full_like(value2, 1.0)
         sigma = np.linspace(3, 5, 6001)
 
         g = GaussPsf(wave=wave, sigma=sigma)
-
         psf = PcaPsf.from_psf(g, wave, 11, normalize=True, truncate=4)
 
-        v, e, s = psf.convolve(wave, value1, error)
+        w, v, e, s = psf.convolve(wave, value1, error1)
         self.assertIsInstance(v, np.ndarray)
 
-        v, e, s = psf.convolve(wave, [ value1 ], error)
+        w, v, e, s = psf.convolve(wave, [ value1 ], error1)
         self.assertIsInstance(v, list)
 
-        v, e, s = psf.convolve(wave, [ value1, value2 ], error)
+        w, v, e, s = psf.convolve(wave, [ value1, value2 ], [ error1, error2 ])
         self.assertIsInstance(v, list)
         self.assertEqual(2, len(v))
+        
+
+        

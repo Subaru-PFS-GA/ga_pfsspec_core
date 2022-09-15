@@ -109,4 +109,6 @@ class Psf(PfsObject):
         if isinstance(errors, np.ndarray):
             re = re[0]
 
-        return rv, re, shift
+        w = wave[-shift:+shift]
+
+        return w, rv, re, shift

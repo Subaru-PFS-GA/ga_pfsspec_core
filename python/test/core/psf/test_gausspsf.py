@@ -49,12 +49,14 @@ class TestGaussPsf(TestBase):
 
         psf = GaussPsf(wave=wave, sigma=sigma)
 
-        v, e, s = psf.convolve(wave, value1, error)
+        w, v, e, s = psf.convolve(wave, value1, error)
         self.assertIsInstance(v, np.ndarray)
 
-        v, e, s = psf.convolve(wave, [ value1 ], error)
+        w, v, e, s = psf.convolve(wave, [ value1 ], error)
         self.assertIsInstance(v, list)
 
-        v, e, s = psf.convolve(wave, [ value1, value2 ], error)
+        w, v, e, s = psf.convolve(wave, [ value1, value2 ], error)
         self.assertIsInstance(v, list)
         self.assertEqual(2, len(v))
+
+        

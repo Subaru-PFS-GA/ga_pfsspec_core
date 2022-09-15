@@ -74,12 +74,19 @@ class PcaPsf(Psf):
         return self.mean.shape[0] // 2
 
     def get_kernel_impl(self, wave, size=None, normalize=False):
+        """
+        Return the matrix necessary to calculate the convolution with a varying kernel 
+        using the direct matrix product method. This function is for compatibility with the
+        base class and not used by the `convolve` implementation itself.
+        """
+
         if size is not None:
             logging.warning('PCA PSF does not support overriding kernel size.')
 
         shift = -(self.eigs.shape[-1] // 2)
         w = wave[-shift:+shift]
         pc = self.pc[-shift:+shift]
+
         k = self.mean + np.matmul(pc, self.eigs)
         
         if normalize:
@@ -134,4 +141,6 @@ class PcaPsf(Psf):
         if isinstance(errors, np.ndarray):
             re = re[0]
 
-        return rv, re, shift
+        w = wave[-shift:+shift]
+
+        return w, rv, re, shift

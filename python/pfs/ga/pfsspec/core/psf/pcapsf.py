@@ -2,6 +2,7 @@ import logging
 import numpy as np
 import pandas as pd
 from scipy.interpolate import interp1d
+from sklearn.decomposition import TruncatedSVD
 
 from .psf import Psf
 
@@ -22,13 +23,15 @@ class PcaPsf(Psf):
             self.wave = None            # wavelength grid
             self.wave_edges = None
             self.mean = None            # mean kernel
-            self.eigs = None            # eigenvectors        
+            self.eigs = None            # eigenvalues
+            self.eigv = None            # eigenvectors
             self.pc = None              # coeffs as functions of wavelength
         else:
             self.wave = orig.wave
             self.wave_edges = orig.wave_edges
             self.mean = orig.mean
             self.eigs = orig.eigs
+            self.eigv = orig.eigv
             self.pc = orig.pc
 
     def save_items(self):
@@ -37,6 +40,7 @@ class PcaPsf(Psf):
         self.save_item('dwave', self.dwave)
         self.save_item('mean', self.mean)
         self.save_item('eigs', self.eigs)
+        self.save_item('eigv', self.eigv)
         self.save_item('pc', self.pc)
 
     def load_items(self, s=None):
@@ -45,35 +49,39 @@ class PcaPsf(Psf):
         self.dwave = self.load_item('dwave', np.ndarray, None)
         self.mean = self.load_item('mean', np.ndarray, None)
         self.eigs = self.load_item('eigs', np.ndarray, None)
+        self.eigv = self.load_item('eigv', np.ndarray, None)
         self.pc = self.load_item('pc', np.ndarray, None)
 
     @staticmethod
-    def from_psf(source_psf, wave, size, normalize=False, truncate=None):
+    def from_psf(source_psf, wave, size, normalize=True, truncate=None):
         # Precomputes the kernel as a function of wavelength on the provided grid
         
         s = np.s_[:truncate] if truncate is not None else np.s_[:]
 
-        k, shift = source_psf.get_kernel(wave, size, normalize=normalize)
+        k, idx, shift = source_psf.eval_kernel(wave, size, normalize=normalize)
         
         M = np.mean(k, axis=0)
-        U, S, Vt = np.linalg.svd(k - M)
+
+        if truncate is not None and truncate < size // 2:
+            svd = TruncatedSVD(n_components=truncate * 2)
+            svd.fit(k - M)
+            Vt = svd.components_
+            S = svd.singular_values_
+        else:
+            U, S, Vt = np.linalg.svd(k - M)
+            
         PC = np.matmul(k, Vt[s].T)
 
         pca_psf = PcaPsf()
         pca_psf.wave = wave[-shift:shift]
         pca_psf.mean = M
-        pca_psf.eigs = Vt[s]
+        pca_psf.eigs = S[s]
+        pca_psf.eigv = Vt[s]
         pca_psf.pc = PC
         
         return pca_psf
 
-    def get_size(self):
-        return self.mean.shape[0]
-
-    def get_shape(self, size=None):
-        return self.mean.shape[0] // 2
-
-    def get_kernel_impl(self, wave, size=None, normalize=False):
+    def eval_kernel_impl(self, wave, size=None, normalize=True):
         """
         Return the matrix necessary to calculate the convolution with a varying kernel 
         using the direct matrix product method. This function is for compatibility with the
@@ -83,16 +91,17 @@ class PcaPsf(Psf):
         if size is not None:
             logging.warning('PCA PSF does not support overriding kernel size.')
 
-        shift = -(self.eigs.shape[-1] // 2)
+        shift = -(self.eigv.shape[-1] // 2)
+        idx = (np.arange(size) + shift) + np.arange(-shift, wave.size + shift)[:, np.newaxis]
         w = wave[-shift:+shift]
         pc = self.pc[-shift:+shift]
 
-        k = self.mean + np.matmul(pc, self.eigs)
+        k = self.mean + np.matmul(pc, self.eigv)
         
         if normalize:
             k /= np.sum(k, axis=-1, keepdims=True)
 
-        return k, shift
+        return k, idx, shift
 
     def convolve(self, wave, values, errors=None, size=None, normalize=None):
         if size is not None:
@@ -114,23 +123,23 @@ class PcaPsf(Psf):
         else:
             ee = errors
 
-        shift = self.eigs.shape[1] // 2
+        shift = -(self.eigv.shape[1] // 2)
 
         rv = []
         for v in vv:
             m = np.convolve(v, self.mean, mode='valid')
-            c = np.empty((m.shape[0], self.eigs.shape[0]))
-            for i in range(self.eigs.shape[0]):
-                c[..., i] = np.convolve(v, self.eigs[i], mode='valid')
+            c = np.empty((m.shape[0], self.eigv.shape[0]))
+            for i in range(self.eigv.shape[0]):
+                c[..., i] = np.convolve(v, self.eigv[i], mode='valid')
             rv.append(m + np.sum(self.pc * c, axis=-1))
 
         if ee is not None:
             re = []
             for e in ee:
                 m = np.convolve(e**2, self.mean**2, mode='valid')
-                c = np.empty((m.shape[0], self.eigs.shape[0]))
-                for i in range(self.eigs.shape[0]):
-                    c[..., i] = np.convolve(e**2, self.eigs[i]**2, mode='valid')
+                c = np.empty((m.shape[0], self.eigv.shape[0]))
+                for i in range(self.eigv.shape[0]):
+                    c[..., i] = np.convolve(e**2, self.eigv[i]**2, mode='valid')
                 re.append(np.sqrt(m + np.sum(self.pc**2 * c, axis=-1)))
         else:
             re = None

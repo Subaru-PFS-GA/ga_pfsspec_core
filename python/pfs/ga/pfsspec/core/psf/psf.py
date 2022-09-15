@@ -16,31 +16,19 @@ class Psf(PfsObject):
             self.reuse_kernel = reuse_kernel
 
             self.cached_kernel = None
+            self.cached_idx = None
             self.cached_shift = None
         else:
             self.reuse_kernel = reuse_kernel if reuse_kernel is not None else orig.reuse_kernel
 
             self.cached_kernel = orig.cached_kernel
+            self.cached_idx = orig.cached_idx
             self.cached_shift = orig.cached_shift
 
-    def get_size(self):
-        if self.cached_kernel is not None:
-            return self.cached_kernel.shape[-1]
-        else:
-            return None
-
-    def get_shift(self, size=None):
-        if self.cached_shift is not None:
-            return self.cached_shift
-        elif size is not None:
-            return size // 2
-        else:
-            return None
-
-    def get_kernel_at(self, lam, dwave, normalize=False):
+    def eval_kernel_at(self, lam, dwave, normalize=True):
         raise NotImplementedError()
 
-    def get_kernel_impl(self, wave, size=None, normalize=None):
+    def eval_kernel_impl(self, wave, size=None, normalize=None):
         """
         Calculate the kernel at each value of the wave vector, using the wave grid.
         Assume an odd value for size.
@@ -53,29 +41,30 @@ class Psf(PfsObject):
         idx = (np.arange(size) + shift) + np.arange(-shift, wave.size + shift)[:, np.newaxis]
         w = wave[-shift:+shift, np.newaxis]
         dw = wave[idx] - w
-        k = self.get_kernel_at(w, dw, normalize=normalize)
+        k = self.eval_kernel_at(w, dw, normalize=normalize)
 
-        return k, shift
+        return k, idx, shift
 
-    def get_kernel(self, wave, size=None, normalize=None):
+    def eval_kernel(self, wave, size=None, normalize=None):
 
         if self.reuse_kernel and self.cached_kernel is not None:
-            return self.cached_kernel, self.cached_shift
+            return self.cached_kernel, self.cached_idx, self.cached_shift
 
-        k, shift = self.get_kernel_impl(wave, size=size, normalize=normalize)
+        k, idx, shift = self.eval_kernel_impl(wave, size=size, normalize=normalize)
 
         if self.reuse_kernel:
             self.cached_kernel = k
+            self.cached_idx = idx
             self.cached_shift = shift
                 
-        return k, shift
+        return k, idx, shift
 
     def normalize(self, k):
         return k / np.sum(k, axis=-1, keepdims=True)
 
     def convolve(self, wave, values, errors=None, size=None, normalize=None):
         """
-        Convolve the vectors of the `values` list with a kernel returned by `get_kernel`.
+        Convolve the vectors of the `values` list with a kernel returned by `eval_kernel`.
         Works as numpy convolve with the option `valid`, i.e. the results will be shorter.
         """
         
@@ -89,17 +78,17 @@ class Psf(PfsObject):
         else:
             ee = errors
         
-        k, shift = self.get_kernel(wave, size=size, normalize=normalize)
+        k, idx, shift = self.eval_kernel(wave, size=size, normalize=normalize)
 
         rv = []
         for v in vv:
-            rv.append(np.sum(v[-shift:+shift, np.newaxis] * k, axis=-1))
+            rv.append(np.sum(v[idx] * k, axis=-1))
 
         # Also convolve the error vector assuming it contains uncorrelated sigmas
         if ee is not None:
             re = []
             for e in ee:
-                re.append(np.sqrt(np.sum((e[-shift:+shift, np.newaxis] * k)**2, axis=-1)))
+                re.append(np.sqrt(np.sum((e[idx] * k)**2, axis=-1)))
         else:
             re = None
 

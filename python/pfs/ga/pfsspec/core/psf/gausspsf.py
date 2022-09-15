@@ -43,7 +43,7 @@ class GaussPsf(Psf):
         # Interpolate sigma
         self.ip = interp1d(self.wave, self.sigma, bounds_error=False, fill_value=(self.wave[0], self.wave[-1]))
 
-    def get_kernel_at(self, lam, dwave, normalize=False):
+    def eval_kernel_at(self, lam, dwave, normalize=True):
         """
         Calculate the kernel around `lam` at `dwave` offsets.
         """

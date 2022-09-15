@@ -10,15 +10,15 @@ class LambdaPsf(Psf):
     as a callable.
     """
 
-    def __init__(self, func, orig=None):
-        super().__init__(orig=orig)
+    def __init__(self, func, reuse_kernel=False, orig=None):
+        super().__init__(reuse_kernel=reuse_kernel, orig=orig)
 
         if isinstance(orig, LambdaPsf):
             self.func = func
         else:
             self.func = func if func is not None else orig.func
 
-    def get_kernel_at(self, lam, dwave, normalize=False):
+    def eval_kernel_at(self, lam, dwave, normalize=True):
         """
         Calculate the kernel around `lam` at `dwave` offsets.
         """

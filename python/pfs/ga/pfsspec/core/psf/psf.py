@@ -1,3 +1,4 @@
+from collections import Iterable
 import numpy as np
 
 from ..pfsobject import PfsObject
@@ -21,6 +22,20 @@ class Psf(PfsObject):
 
             self.cached_kernel = orig.cached_kernel
             self.cached_shift = orig.cached_shift
+
+    def get_size(self):
+        if self.cached_kernel is not None:
+            return self.cached_kernel.shape[-1]
+        else:
+            return None
+
+    def get_shift(self, size=None):
+        if self.cached_shift is not None:
+            return self.cached_shift
+        elif size is not None:
+            return size // 2
+        else:
+            return None
 
     def get_kernel_at(self, lam, dwave, normalize=False):
         raise NotImplementedError()
@@ -58,19 +73,40 @@ class Psf(PfsObject):
     def normalize(self, k):
         return k / np.sum(k, axis=-1, keepdims=True)
 
-    def convolve(self, wave, value, error=None, size=None, normalize=None):
+    def convolve(self, wave, values, errors=None, size=None, normalize=None):
         """
-        Convolve the `value` vector with a kernel returned by `get_kernel`. Values
-        at the edge will not be convolved.
+        Convolve the vectors of the `values` list with a kernel returned by `get_kernel`.
+        Works as numpy convolve with the option `valid`, i.e. the results will be shorter.
         """
         
+        if isinstance(values, np.ndarray):
+            vv = [ values ]
+        else:
+            vv = values
+        
+        if isinstance(errors, np.ndarray):
+            ee = [ errors ]
+        else:
+            ee = errors
+        
         k, shift = self.get_kernel(wave, size=size, normalize=normalize)
-        v = np.sum(value[-shift:+shift, np.newaxis] * k, axis=-1)
+
+        rv = []
+        for v in vv:
+            rv.append(np.sum(v[-shift:+shift, np.newaxis] * k, axis=-1))
 
         # Also convolve the error vector assuming it contains uncorrelated sigmas
-        if error is not None:
-            e = np.sqrt(np.sum((error[-shift:+shift, np.newaxis] * k)**2, axis=-1))
+        if ee is not None:
+            re = []
+            for e in ee:
+                re.append(np.sqrt(np.sum((e[-shift:+shift, np.newaxis] * k)**2, axis=-1)))
         else:
-            e = None
+            re = None
 
-        return v, e, shift
+        if isinstance(values, np.ndarray):
+            rv = rv[0]
+
+        if isinstance(errors, np.ndarray):
+            re = re[0]
+
+        return rv, re, shift

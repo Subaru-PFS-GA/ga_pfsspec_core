@@ -42,10 +42,19 @@ class TestGaussPsf(TestBase):
 
     def test_convolve(self):
         wave = np.linspace(3000, 9000, 6001)
-        value = np.random.normal(size=wave.shape)
-        error = np.full_like(value, 1.0)
+        value1 = np.random.normal(size=wave.shape)
+        value2 = np.random.normal(size=wave.shape)
+        error = np.full_like(value1, 1.0)
         sigma = np.linspace(3, 5, 6001)
 
         psf = GaussPsf(wave=wave, sigma=sigma)
 
-        v, e, s = psf.convolve(wave, value, error)
+        v, e, s = psf.convolve(wave, value1, error)
+        self.assertIsInstance(v, np.ndarray)
+
+        v, e, s = psf.convolve(wave, [ value1 ], error)
+        self.assertIsInstance(v, list)
+
+        v, e, s = psf.convolve(wave, [ value1, value2 ], error)
+        self.assertIsInstance(v, list)
+        self.assertEqual(2, len(v))

@@ -67,6 +67,12 @@ class PcaPsf(Psf):
         
         return pca_psf
 
+    def get_size(self):
+        return self.mean.shape[0]
+
+    def get_shape(self, size=None):
+        return self.mean.shape[0] // 2
+
     def get_kernel_impl(self, wave, size=None, normalize=False):
         if size is not None:
             logging.warning('PCA PSF does not support overriding kernel size.')
@@ -81,7 +87,7 @@ class PcaPsf(Psf):
 
         return k, shift
 
-    def convolve(self, wave, value, error=None, size=None, normalize=None):
+    def convolve(self, wave, values, errors=None, size=None, normalize=None):
         if size is not None:
             logging.warning('PCA PSF does not support overriding kernel size.')
 
@@ -91,21 +97,41 @@ class PcaPsf(Psf):
         # Convolve value vector with each eigenfunction, than take linear combination with
         # the wave-dependent principal components
 
+        if isinstance(values, np.ndarray):
+            vv = [ values ]
+        else:
+            vv = values
+        
+        if isinstance(errors, np.ndarray):
+            ee = [ errors ]
+        else:
+            ee = errors
+
         shift = self.eigs.shape[1] // 2
 
-        m = np.convolve(value, self.mean, mode='valid')
-        c = np.empty((m.shape[0], self.eigs.shape[0]))
-        for i in range(self.eigs.shape[0]):
-            c[..., i] = np.convolve(value, self.eigs[i], mode='valid')
-        v = m + np.sum(self.pc * c, axis=-1)
-
-        if error is not None:
-            m = np.convolve(value**2, self.mean**2, mode='valid')
+        rv = []
+        for v in vv:
+            m = np.convolve(v, self.mean, mode='valid')
             c = np.empty((m.shape[0], self.eigs.shape[0]))
             for i in range(self.eigs.shape[0]):
-                c[..., i] = np.convolve(value**2, self.eigs[i]**2, mode='valid')
-            e = np.sqrt(m + np.sum(self.pc**2 * c, axis=-1))
-        else:
-            e = None
+                c[..., i] = np.convolve(v, self.eigs[i], mode='valid')
+            rv.append(m + np.sum(self.pc * c, axis=-1))
 
-        return v, e, shift
+        if ee is not None:
+            re = []
+            for e in ee:
+                m = np.convolve(e**2, self.mean**2, mode='valid')
+                c = np.empty((m.shape[0], self.eigs.shape[0]))
+                for i in range(self.eigs.shape[0]):
+                    c[..., i] = np.convolve(e**2, self.eigs[i]**2, mode='valid')
+                re.append(np.sqrt(m + np.sum(self.pc**2 * c, axis=-1)))
+        else:
+            re = None
+
+        if isinstance(values, np.ndarray):
+            rv = rv[0]
+
+        if isinstance(errors, np.ndarray):
+            re = re[0]
+
+        return rv, re, shift

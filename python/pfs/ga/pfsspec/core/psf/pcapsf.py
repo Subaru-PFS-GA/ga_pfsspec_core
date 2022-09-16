@@ -70,16 +70,17 @@ class PcaPsf(Psf):
         w, k, idx, shift = source_psf.eval_kernel(wave, size, s=s, normalize=normalize)
         
         M = np.mean(k, axis=0)
+        X = k - M
 
-        if truncate is not None and truncate < size // 5:
+        if truncate is not None and truncate > 100 and truncate < size // 4:
             svd = TruncatedSVD(n_components=truncate * 2)
-            svd.fit(k - M)
+            svd.fit(X)
             Vt = svd.components_
             S = svd.singular_values_
         else:
-            U, S, Vt = np.linalg.svd(k - M)
+            U, S, Vt = np.linalg.svd(X)
             
-        PC = np.matmul(k, Vt[tr].T)
+        PC = np.matmul(X, Vt[tr].T)
 
         pca_psf = PcaPsf()
         pca_psf.wave = w

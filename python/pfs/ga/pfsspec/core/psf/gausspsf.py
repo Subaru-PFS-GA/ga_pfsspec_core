@@ -48,6 +48,9 @@ class GaussPsf(Psf):
         Calculate the kernel around `lam` at `dwave` offsets.
         """
 
+        if not isinstance(lam, np.ndarray):
+            lam = np.array([lam])
+
         sigma = self.sigma_ip(lam[:, np.newaxis] + dwave)
         k = gauss(dwave, s=sigma)
 

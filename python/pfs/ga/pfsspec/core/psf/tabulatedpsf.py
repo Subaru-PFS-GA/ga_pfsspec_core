@@ -36,7 +36,8 @@ class TabulatedPsf(Psf):
 
     def eval_kernel_impl(self, wave, size=None, s=slice(None), normalize=True):
         """
-        Return the tabulated kernel.
+        Return the tabulated kernel, regardless of the value of `wave` and `size`,
+        these are for compatibility only.
         """
 
         # TODO: do we want to allow interpolation?

@@ -34,6 +34,11 @@ class PcaPsf(Psf):
             self.eigv = orig.eigv
             self.pc = orig.pc
 
+        if self.wave is not None and self.pc is not None:
+            self.init_ip()
+        else:
+            self.pc_ip = None
+
     def save_items(self):
         self.save_item('wave', self.wave)
         self.save_item('wave_edges', self.wave_edges)
@@ -52,13 +57,19 @@ class PcaPsf(Psf):
         self.eigv = self.load_item('eigv', np.ndarray, None)
         self.pc = self.load_item('pc', np.ndarray, None)
 
+        self.init_ip()
+
+    def init_ip(self):
+        # Interpolate PCs
+        self.pc_ip = interp1d(self.wave, self.pc.T, bounds_error=False, fill_value=(self.pc[0], self.pc[-1]))
+
     @staticmethod
-    def from_psf(source_psf, wave, size, normalize=True, truncate=None):
+    def from_psf(source_psf, wave, size, s=slice(None), normalize=True, truncate=None):
         # Precomputes the kernel as a function of wavelength on the provided grid
         
-        s = np.s_[:truncate] if truncate is not None else np.s_[:]
+        tr = np.s_[:truncate] if truncate is not None else np.s_[:]
 
-        k, idx, shift = source_psf.eval_kernel(wave, size, normalize=normalize)
+        w, k, idx, shift = source_psf.eval_kernel(wave, size, s=s, normalize=normalize)
         
         M = np.mean(k, axis=0)
 
@@ -70,18 +81,20 @@ class PcaPsf(Psf):
         else:
             U, S, Vt = np.linalg.svd(k - M)
             
-        PC = np.matmul(k, Vt[s].T)
+        PC = np.matmul(k, Vt[tr].T)
 
         pca_psf = PcaPsf()
-        pca_psf.wave = wave[-shift:shift]
+        pca_psf.wave = w
         pca_psf.mean = M
-        pca_psf.eigs = S[s]
-        pca_psf.eigv = Vt[s]
+        pca_psf.eigs = S[tr]
+        pca_psf.eigv = Vt[tr]
         pca_psf.pc = PC
+
+        pca_psf.init_ip()
         
         return pca_psf
 
-    def eval_kernel_impl(self, wave, size=None, normalize=True):
+    def eval_kernel_impl(self, wave, size=None, s=slice(None), normalize=True):
         """
         Return the matrix necessary to calculate the convolution with a varying kernel 
         using the direct matrix product method. This function is for compatibility with the
@@ -92,16 +105,16 @@ class PcaPsf(Psf):
             logging.warning('PCA PSF does not support overriding kernel size.')
 
         shift = -(self.eigv.shape[-1] // 2)
-        idx = (np.arange(size) + shift) + np.arange(-shift, wave.size + shift)[:, np.newaxis]
-        w = wave[-shift:+shift]
-        pc = self.pc[-shift:+shift]
-
+        idx = (np.arange(self.eigv.shape[-1]) + shift) + np.arange(-shift, wave.size + shift)[:, np.newaxis]
+        
+        w = wave[-shift:+shift][s]
+        pc = self.pc_ip(w).T
         k = self.mean + np.matmul(pc, self.eigv)
         
         if normalize:
             k /= np.sum(k, axis=-1, keepdims=True)
 
-        return k, idx, shift
+        return w, k, idx[s], shift
 
     def convolve(self, wave, values, errors=None, size=None, normalize=None):
         if size is not None:
@@ -124,6 +137,8 @@ class PcaPsf(Psf):
             ee = errors
 
         shift = -(self.eigv.shape[1] // 2)
+        w = wave[-shift:+shift]
+        pc = self.pc_ip(w).T
 
         rv = []
         for v in vv:
@@ -131,7 +146,7 @@ class PcaPsf(Psf):
             c = np.empty((m.shape[0], self.eigv.shape[0]))
             for i in range(self.eigv.shape[0]):
                 c[..., i] = np.convolve(v, self.eigv[i], mode='valid')
-            rv.append(m + np.sum(self.pc * c, axis=-1))
+            rv.append(m + np.sum(pc * c, axis=-1))
 
         if ee is not None:
             re = []
@@ -140,7 +155,7 @@ class PcaPsf(Psf):
                 c = np.empty((m.shape[0], self.eigv.shape[0]))
                 for i in range(self.eigv.shape[0]):
                     c[..., i] = np.convolve(e**2, self.eigv[i]**2, mode='valid')
-                re.append(np.sqrt(m + np.sum(self.pc**2 * c, axis=-1)))
+                re.append(np.sqrt(m + np.sum(pc**2 * c, axis=-1)))
         else:
             re = None
 
@@ -149,7 +164,5 @@ class PcaPsf(Psf):
 
         if isinstance(errors, np.ndarray):
             re = re[0]
-
-        w = wave[-shift:+shift]
 
         return w, rv, re, shift

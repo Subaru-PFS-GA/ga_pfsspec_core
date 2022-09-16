@@ -17,19 +17,19 @@ class TestGaussPsf(TestBase):
 
         psf = GaussPsf(wave=wave, sigma=sigma)
 
-        k = psf.eval_kernel_at(4000, dwave=np.linspace(-5, 5, 11))
+        k = psf.eval_kernel_at(np.array([4000]), dwave=np.linspace(-5, 5, 11))
         self.assertTrue(np.all(~np.isnan(k)))
 
-        k = psf.eval_kernel_at(4000, dwave=np.linspace(-5, 5, 11), normalize=True)
+        k = psf.eval_kernel_at(np.array([4000]), dwave=np.linspace(-5, 5, 11), normalize=True)
         self.assertTrue(np.all(~np.isnan(k)))
 
-        k = psf.eval_kernel_at(2500, dwave=np.linspace(-5, 5, 11))
+        k = psf.eval_kernel_at(np.array([2500]), dwave=np.linspace(-5, 5, 11))
         self.assertTrue(np.all(~np.isnan(k)))
 
-        k = psf.eval_kernel_at(2500, dwave=np.linspace(-5, 5, 11), normalize=True)
+        k = psf.eval_kernel_at(np.array([2500]), dwave=np.linspace(-5, 5, 11), normalize=True)
         self.assertTrue(np.all(~np.isnan(k)))
 
-        k = psf.eval_kernel_at(9500, dwave=np.linspace(-5, 5, 11))
+        k = psf.eval_kernel_at(np.array([9500]), dwave=np.linspace(-5, 5, 11))
         self.assertTrue(np.all(~np.isnan(k)))
 
     def test_eval_kernel(self):
@@ -38,7 +38,15 @@ class TestGaussPsf(TestBase):
 
         psf = GaussPsf(wave=wave, sigma=sigma)
 
-        k, idx, shift = psf.eval_kernel(wave, 11, normalize=True)
+        w, k, idx, shift = psf.eval_kernel(wave, 11, normalize=True)
+        self.assertEqual((5991, 11), k.shape)
+        self.assertEqual((5991, 11), idx.shape)
+        self.assertEqual(-5, shift)
+
+        w, k, idx, shift = psf.eval_kernel(wave, 11, s=np.s_[::10], normalize=True)
+        self.assertEqual((600, 11), k.shape)
+        self.assertEqual((600, 11), idx.shape)
+        self.assertEqual(-5, shift)
 
     def test_convolve(self):
         wave = np.linspace(3000, 9000, 6001)

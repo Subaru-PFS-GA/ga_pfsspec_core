@@ -20,13 +20,14 @@ class TestPcaPsf(TestBase):
         g = GaussPsf(wave=wave, sigma=sigma)
 
         psf = PcaPsf.from_psf(g, wave, 11, normalize=True, truncate=4)
+        psf = PcaPsf.from_psf(g, wave, 11, s=np.s_[::10], normalize=True, truncate=4)
 
     def test_eval_kernel(self):
         filename = os.path.join(self.PFSSPEC_DATA_PATH, 'subaru/pfs/psf/import/r/pca.h5')
         psf = PcaPsf()
         psf.load(filename)
 
-        k, idx, shift = psf.eval_kernel(psf.wave)
+        w, k, idx, shift = psf.eval_kernel(psf.wave)
 
     def test_eval_kernel_from_psf(self):
         wave = np.linspace(3000, 9000, 6001)
@@ -35,8 +36,10 @@ class TestPcaPsf(TestBase):
         g = GaussPsf(wave=wave, sigma=sigma)
 
         psf = PcaPsf.from_psf(g, wave, 11, normalize=True, truncate=4)
+        w, k, idx, shift = psf.eval_kernel(wave, normalize=True)
 
-        k, idx, shift = psf.eval_kernel(wave, normalize=True)
+        psf = PcaPsf.from_psf(g, wave, 11, s=np.s_[:10], normalize=True, truncate=4)
+        w, k, idx, shift = psf.eval_kernel(wave, normalize=True)
 
     def test_convolve(self):
         wave = np.linspace(3000, 9000, 6001)

@@ -15,12 +15,14 @@ class Psf(PfsObject):
         if not isinstance(orig, Psf):
             self.reuse_kernel = reuse_kernel
 
+            self.cached_wave = None
             self.cached_kernel = None
             self.cached_idx = None
             self.cached_shift = None
         else:
             self.reuse_kernel = reuse_kernel if reuse_kernel is not None else orig.reuse_kernel
 
+            self.cached_wave = orig.chached_wave
             self.cached_kernel = orig.cached_kernel
             self.cached_idx = orig.cached_idx
             self.cached_shift = orig.cached_shift
@@ -28,7 +30,7 @@ class Psf(PfsObject):
     def eval_kernel_at(self, lam, dwave, normalize=True):
         raise NotImplementedError()
 
-    def eval_kernel_impl(self, wave, size=None, normalize=None):
+    def eval_kernel_impl(self, wave, size=None, s=slice(None), normalize=None):
         """
         Calculate the kernel at each value of the wave vector, using the wave grid.
         Assume an odd value for size.
@@ -37,27 +39,29 @@ class Psf(PfsObject):
         size = size if size is not None else 5
         normalize = normalize if normalize is not None else False
 
+        # TODO: apply s earlier for speed
         shift = -(size // 2)
         idx = (np.arange(size) + shift) + np.arange(-shift, wave.size + shift)[:, np.newaxis]
-        w = wave[-shift:+shift, np.newaxis]
-        dw = wave[idx] - w
-        k = self.eval_kernel_at(w, dw, normalize=normalize)
+        w = wave[-shift:+shift]
+        dw = wave[idx] - w[:, np.newaxis]
+        k = self.eval_kernel_at(w[s, np.newaxis], dw[s], normalize=normalize)
 
-        return k, idx, shift
+        return w[s], k, idx[s], shift
 
-    def eval_kernel(self, wave, size=None, normalize=None):
+    def eval_kernel(self, wave, size=None, s=slice(None), normalize=None):
 
         if self.reuse_kernel and self.cached_kernel is not None:
-            return self.cached_kernel, self.cached_idx, self.cached_shift
+            return self.cached_wave, self.cached_kernel, self.cached_idx, self.cached_shift
 
-        k, idx, shift = self.eval_kernel_impl(wave, size=size, normalize=normalize)
+        w, k, idx, shift = self.eval_kernel_impl(wave, size=size, s=s, normalize=normalize)
 
         if self.reuse_kernel:
+            self.cached_wave = w
             self.cached_kernel = k
             self.cached_idx = idx
             self.cached_shift = shift
                 
-        return k, idx, shift
+        return w, k, idx, shift
 
     def normalize(self, k):
         return k / np.sum(k, axis=-1, keepdims=True)
@@ -78,7 +82,7 @@ class Psf(PfsObject):
         else:
             ee = errors
         
-        k, idx, shift = self.eval_kernel(wave, size=size, normalize=normalize)
+        w, k, idx, shift = self.eval_kernel(wave, size=size, normalize=normalize)
 
         rv = []
         for v in vv:
@@ -97,7 +101,5 @@ class Psf(PfsObject):
 
         if isinstance(errors, np.ndarray):
             re = re[0]
-
-        w = wave[-shift:+shift]
 
         return w, rv, re, shift

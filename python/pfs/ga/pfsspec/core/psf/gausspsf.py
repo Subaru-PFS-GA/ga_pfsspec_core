@@ -26,7 +26,7 @@ class GaussPsf(Psf):
         if self.wave is not None and self.sigma is not None:
             self.init_ip()
         else:
-            self.ip = None
+            self.sigma_ip = None
 
     def save_items(self):
         self.save_item('wave', self.wave)
@@ -41,13 +41,14 @@ class GaussPsf(Psf):
 
     def init_ip(self):
         # Interpolate sigma
-        self.ip = interp1d(self.wave, self.sigma, bounds_error=False, fill_value=(self.wave[0], self.wave[-1]))
+        self.sigma_ip = interp1d(self.wave, self.sigma, bounds_error=False, fill_value=(self.wave[0], self.wave[-1]))
 
     def eval_kernel_at(self, lam, dwave, normalize=True):
         """
         Calculate the kernel around `lam` at `dwave` offsets.
         """
-        sigma = self.ip(lam + dwave)
+
+        sigma = self.sigma_ip(lam[:, np.newaxis] + dwave)
         k = gauss(dwave, s=sigma)
 
         if normalize:

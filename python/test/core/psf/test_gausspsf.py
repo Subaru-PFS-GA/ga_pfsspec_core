@@ -41,12 +41,12 @@ class TestGaussPsf(TestBase):
         w, k, idx, shift = psf.eval_kernel(wave, 11, normalize=True)
         self.assertEqual((5991, 11), k.shape)
         self.assertEqual((5991, 11), idx.shape)
-        self.assertEqual(-5, shift)
+        self.assertEqual(5, shift)
 
         w, k, idx, shift = psf.eval_kernel(wave, 11, s=np.s_[::10], normalize=True)
         self.assertEqual((600, 11), k.shape)
         self.assertEqual((600, 11), idx.shape)
-        self.assertEqual(-5, shift)
+        self.assertEqual(5, shift)
 
     def test_convolve(self):
         wave = np.linspace(3000, 9000, 6001)

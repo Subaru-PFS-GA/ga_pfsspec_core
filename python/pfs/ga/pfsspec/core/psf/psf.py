@@ -40,11 +40,11 @@ class Psf(PfsObject):
         normalize = normalize if normalize is not None else False
 
         # TODO: apply s earlier for speed
-        shift = -(size // 2)
-        idx = (np.arange(size) + shift) + np.arange(-shift, wave.size + shift)[:, np.newaxis]
-        w = wave[-shift:+shift]
+        shift = size // 2
+        idx = (np.arange(size) - shift) + np.arange(shift, wave.size - shift)[:, np.newaxis]
+        w = wave[shift:-shift]
         dw = wave[idx] - w[:, np.newaxis]
-        k = self.eval_kernel_at(w[s, np.newaxis], dw[s], normalize=normalize)
+        k = self.eval_kernel_at(w[s], dw[s], normalize=normalize)
 
         return w[s], k, idx[s], shift
 

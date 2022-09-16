@@ -22,7 +22,10 @@ class LambdaPsf(Psf):
         """
         Calculate the kernel around `lam` at `dwave` offsets.
         """
-        k = self.func(lam, dwave)
+        if not isinstance(lam, np.ndarray):
+            lam = np.array([lam])
+
+        k = self.func(lam[:, np.newaxis], dwave)
 
         if normalize:
             k = self.normalize(k)

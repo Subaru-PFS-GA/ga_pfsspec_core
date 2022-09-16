@@ -42,7 +42,6 @@ class PcaPsf(Psf):
     def save_items(self):
         self.save_item('wave', self.wave)
         self.save_item('wave_edges', self.wave_edges)
-        self.save_item('dwave', self.dwave)
         self.save_item('mean', self.mean)
         self.save_item('eigs', self.eigs)
         self.save_item('eigv', self.eigv)
@@ -51,7 +50,6 @@ class PcaPsf(Psf):
     def load_items(self, s=None):
         self.wave = self.load_item('wave', np.ndarray, None)
         self.wave_edges = self.load_item('wave_edges', np.ndarray, None)
-        self.dwave = self.load_item('dwave', np.ndarray, None)
         self.mean = self.load_item('mean', np.ndarray, None)
         self.eigs = self.load_item('eigs', np.ndarray, None)
         self.eigv = self.load_item('eigv', np.ndarray, None)
@@ -73,7 +71,7 @@ class PcaPsf(Psf):
         
         M = np.mean(k, axis=0)
 
-        if truncate is not None and truncate < size // 2:
+        if truncate is not None and truncate < size // 5:
             svd = TruncatedSVD(n_components=truncate * 2)
             svd.fit(k - M)
             Vt = svd.components_
@@ -104,17 +102,21 @@ class PcaPsf(Psf):
         if size is not None:
             logging.warning('PCA PSF does not support overriding kernel size.')
 
-        shift = -(self.eigv.shape[-1] // 2)
-        idx = (np.arange(self.eigv.shape[-1]) + shift) + np.arange(-shift, wave.size + shift)[:, np.newaxis]
+        shift = self.eigv.shape[-1] // 2
+
+        # idx will hold negative values because the tabulated kernels are usually
+        # computed beyond the wave grid.
+        idx = (np.arange(self.eigv.shape[-1]) - shift) + np.arange(wave.size)[:, np.newaxis]
         
-        w = wave[-shift:+shift][s]
+        w = wave[s]
         pc = self.pc_ip(w).T
         k = self.mean + np.matmul(pc, self.eigv)
         
         if normalize:
             k /= np.sum(k, axis=-1, keepdims=True)
 
-        return w, k, idx[s], shift
+        # Return 0 for shift since we have the kernel for the entire wavelength range
+        return w, k, idx[s], 0
 
     def convolve(self, wave, values, errors=None, size=None, normalize=None):
         if size is not None:

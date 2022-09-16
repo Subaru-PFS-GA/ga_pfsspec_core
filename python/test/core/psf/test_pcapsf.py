@@ -23,7 +23,7 @@ class TestPcaPsf(TestBase):
         psf = PcaPsf.from_psf(g, wave, 11, s=np.s_[::10], normalize=True, truncate=4)
 
     def test_eval_kernel(self):
-        filename = os.path.join(self.PFSSPEC_DATA_PATH, 'subaru/pfs/psf/import/r/pca.h5')
+        filename = os.path.join(self.PFSSPEC_DATA_PATH, 'subaru/pfs/psf/import/r.2/pca.h5')
         psf = PcaPsf()
         psf.load(filename)
 

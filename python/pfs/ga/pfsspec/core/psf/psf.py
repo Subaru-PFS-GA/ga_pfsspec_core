@@ -66,6 +66,23 @@ class Psf(PfsObject):
     def normalize(self, k):
         return k / np.sum(k, axis=-1, keepdims=True)
 
+    def get_optimal_size(self, wave, tol=1e-5):
+        """
+        Given a tolerance and a wave grid, return the optimal kernel size.
+        """
+
+        # Evaluate the kernel at the most extreme values of wave and find
+        # where the kernel goes below `tol`. Assumes a kernel that decreases
+        # monotonically in both directions from the center.
+
+        k = self.eval_kernel_at(wave[0], wave - wave[0], normalize=True)
+        s1 = np.max(np.where(k > tol)[1]) * 2 + 1
+
+        k = self.eval_kernel_at(wave[-1], wave - wave[-1], normalize=True)
+        s2 = np.max(wave.size - np.where(k > tol)[1]) * 2 + 1
+
+        return max(s1, s2)
+
     def convolve(self, wave, values, errors=None, size=None, normalize=None):
         """
         Convolve the vectors of the `values` list with a kernel returned by `eval_kernel`.

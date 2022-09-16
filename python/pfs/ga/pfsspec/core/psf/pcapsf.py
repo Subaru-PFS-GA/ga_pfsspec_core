@@ -119,6 +119,9 @@ class PcaPsf(Psf):
         # Return 0 for shift since we have the kernel for the entire wavelength range
         return w, k, idx[s], 0
 
+    def get_optimal_size(self, wave, tol=1e-5):
+        raise NotImplementedError()
+
     def convolve(self, wave, values, errors=None, size=None, normalize=None):
         if size is not None:
             logging.warning('PCA PSF does not support overriding kernel size.')

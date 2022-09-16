@@ -11,8 +11,8 @@ class GaussPsf(Psf):
     is tabulated as a function of wavelength.
     """
 
-    def __init__(self, wave=None, wave_edges=None, sigma=None, orig=None):
-        super().__init__(orig=orig)
+    def __init__(self, wave=None, wave_edges=None, sigma=None, reuse_kernel=False, orig=None):
+        super().__init__(reuse_kernel=reuse_kernel, orig=orig)
 
         if isinstance(orig, GaussPsf):
             self.wave = wave or orig.wave

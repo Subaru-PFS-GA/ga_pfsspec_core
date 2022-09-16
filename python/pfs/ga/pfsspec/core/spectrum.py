@@ -10,11 +10,9 @@ import pysynphot.spectrum
 import pysynphot.reddening
 
 from pfs.ga.pfsspec.core.pfsobject import PfsObject
+from pfs.ga.pfsspec.core.psf import *
 from .physics import Physics
 from .constants import Constants
-# from pfs.ga.pfsspec.obsmod.psf import Psf
-# from pfs.ga.pfsspec.obsmod.pcapsf import PcaPsf
-# from pfs.ga.pfsspec.obsmod.gausspsf import GaussPsf
 
 class Spectrum(PfsObject):
     def __init__(self, orig=None):
@@ -136,6 +134,70 @@ class Spectrum(PfsObject):
 
         return row
 
+    def set_redshift(self, z):
+        """
+        Apply Doppler shift by chaning the wave grid only, but not the flux density.
+        """
+
+        if self.redshift is not None and self.redshift != 0.0:
+            raise ValueError("Initial redshift is not zero, not shifting to z.")
+
+        # Assume zero redshift at start
+        self.wave = (1 + z) * self.wave
+        if self.wave_edges is not None:
+            self.wave_edges = (1 + z) * self.wave_edges
+        self.redshift = z
+
+    def set_restframe(self):
+        """
+        Correct for Doppler shift by chaning the wave grid only, but not the flux density.
+        """
+
+        if self.redshift is None or np.isnan(self.redshift):
+            raise ValueError("Unknown redshift, cannot convert to rest-frame.")
+
+        self.wave = self.wave / (1 + self.redshift)
+        if self.wave_edges is not None:
+            self.wave_edges = self.wave_edges / (1 + self.redshift)
+        self.redshift = 0.0
+
+    def rebin(self, wave, wave_edges):
+        # TODO: how to rebin error and mask?
+        #       mask should be combined if flux comes from multiple bins
+        # TODO: does pysynphot support bin edges
+
+        def rebin_vector(wave, nwave, data):
+            if data is None:
+                return None
+            else:
+                filt = pysynphot.spectrum.ArraySpectralElement(wave, np.ones(len(wave)), waveunits='angstrom')
+                spec = pysynphot.spectrum.ArraySourceSpectrum(wave=wave, flux=data, keepneg=True)
+                obs = pysynphot.observation.Observation(spec, filt, binset=nwave, force='taper')
+                return obs.binflux
+
+        self.flux = rebin_vector(self.wave, wave, self.flux)
+        self.flux_sky = rebin_vector(self.wave, wave, self.flux_sky)
+
+        # For the error vector, use nearest-neighbor interpolations
+        # later we can figure out how to do this correctly and add correlated noise, etc.
+        if self.flux_err is not None:
+            ip = interp1d(self.wave, self.flux_err, kind='nearest')
+            self.flux_err = ip(wave)
+
+        if self.cont is not None:
+            self.cont = rebin_vector(self.wave, wave, self.cont)
+
+        # TODO: we only take the closest bin here which is incorrect
+        #       mask values should combined with bitwise or across bins
+        if self.mask is not None:
+            wl_idx = np.digitize(wave, self.wave)
+            self.mask = self.mask[wl_idx]
+        else:
+            self.mask = None
+
+        self.wave = wave
+        self.wave_edges = wave_edges
+       
     def zero_mask(self):
         self.flux[self.mask != 0] = 0
         if self.flux_err is not None:
@@ -210,11 +272,16 @@ class Spectrum(PfsObject):
             err = np.random.normal(1, noise, flux.shape)
             return flux * err
 
+    # TODO: move to stellar spectrum because SNR depends on application / type of spec
     def calculate_snr(self, weight=1.0):
         if self.flux_err is not None:
             # Make sure flux value is reasonable, otherwise exclude from averate SNR
             f = (self.flux_err <= 10 * self.flux) & (self.flux_err > 0)
+            
+            # Average SNR
             self.snr = np.mean(np.abs(self.flux[f] / self.flux_err[f])) / weight
+
+            # TODO: High percentile snr, basically measures the continuum
         else:
             self.snr = 0
         
@@ -253,6 +320,61 @@ class Spectrum(PfsObject):
     def synthmag(self, filter, norm=1.0):
         flux = norm * self.synthflux(filter)
         return -2.5 * np.log10(flux) + 8.90
+
+    def get_wlim_slice(self, wlim):
+        if wlim is not None:
+            return slice(*np.digitize(wlim, self.wave))
+        else:
+            return slice(None)
+
+    def convolve_gaussian(self,  dlambda=None, vdisp=None, wlim=None):
+        """
+        Convolve with (a potentially wavelength dependent) Gaussian kernel)
+        :param dlam: dispersion in units of Angstrom
+        :param wave: wavelength in Ansgstroms
+        :param wlim: limit convolution between wavelengths
+        :return:
+        """
+
+        if dlambda is not None:
+            psf = GaussPsf(np.array([self.wave[0], self.wave[-1]]), None, np.array([dlambda, dlambda]))
+        elif vdisp is not None:
+            psf = VelocityDispersion(vdisp)
+        else:
+            raise Exception('dlambda or vdisp must be specified')
+
+        idx = self.get_wlim_slice(wlim)
+        s = psf.get_optimal_size(self.wave[idx])
+        self.convolve_psf(psf, size=s, wlim=wlim)
+
+    def convolve_psf(self, psf, size=None, wlim=None):
+        def set_array(a, b):
+            r = a.copy()
+            r[idx][s] = b
+            return r
+
+        idx = self.get_wlim_slice(wlim)
+
+        flux = [self.flux[idx]]
+        if self.cont is not None:
+            flux.append(self.cont[idx])
+
+        error = []
+        if self.flux_err is not None:
+            error.append(self.flux_err[idx])
+
+        if isinstance(psf, Psf):
+            w, flux, error, shift = psf.convolve(self.wave[idx], flux, error, size=size, normalize=True)
+            s = np.s_[shift:self.wave[idx].shape[0] - shift]
+        else:
+            raise NotImplementedError()
+
+        self.flux = set_array(self.flux, flux.pop(0))
+        if self.cont is not None:
+            self.cont = set_array(self.cont, flux.pop(0))
+        
+        if self.flux_err is not None:
+            self.flux_err = set_array(self.flux_err, error.pop(0))
            
     # TODO: Move to spectrum tools
     @staticmethod

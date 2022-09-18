@@ -48,10 +48,10 @@ class TabulatedPsf(Psf):
             raise ValueError("Wave grid doesn't match tabulated grid.")
 
         if dwave is not None:
-            logging.warning('PCA PSF does not support overriding dwave.')
+            logging.warning('Tabulated PSF does not support overriding dwave.')
 
         if size is not None:
-            logging.warning('PCA PSF does not support overriding kernel size.')
+            logging.warning('Tabulated PSF does not support overriding kernel size.')
 
         shift = self.kernel.shape[-1] // 2
 

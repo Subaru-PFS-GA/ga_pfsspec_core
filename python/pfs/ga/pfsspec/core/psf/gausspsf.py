@@ -66,7 +66,7 @@ class GaussPsf(Psf):
         # Fit kernel at each wavelength
         sigma = np.zeros_like(w)
         for i in range(0, sigma.shape[0]):
-            p, _ = curve_fit(g, dwave, k[i, :], p0=p0)
+            p, _ = curve_fit(g, dw[i, :], k[i, :], p0=p0)
             sigma[i] = p[-1]
 
         psf = GaussPsf()

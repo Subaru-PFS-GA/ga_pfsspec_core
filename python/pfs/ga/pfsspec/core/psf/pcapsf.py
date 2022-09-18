@@ -108,6 +108,9 @@ class PcaPsf(Psf):
         base class and not used by the `convolve` implementation itself.
         """
 
+        if not np.array_equal(wave, self.wave):
+            raise ValueError("Wave grid doesn't match tabulated grid.")
+
         if dwave is not None:
             logging.warning('PCA PSF does not support overriding dwave.')
 
@@ -120,8 +123,8 @@ class PcaPsf(Psf):
         # computed beyond the wave grid.
         idx = (np.arange(self.eigv.shape[-1]) - shift) + np.arange(wave.size)[:, np.newaxis]
         
-        w = wave[s]
-        dw = None if dwave is None else dwave[s]
+        w = self.wave[s]
+        dw = None if self.dwave is None else self.dwave[s]
         pc = self.pc_ip(w).T
         k = self.mean + np.matmul(pc, self.eigv)
         

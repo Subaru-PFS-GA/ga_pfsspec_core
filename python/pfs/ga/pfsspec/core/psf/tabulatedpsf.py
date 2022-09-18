@@ -22,10 +22,12 @@ class TabulatedPsf(Psf):
         if not isinstance(orig, TabulatedPsf):
             self.wave = None            # wavelength grid
             self.wave_edges = None
+            self.dwave = None
             self.kernel = None
         else:
             self.wave = orig.wave
             self.wave_edges = orig.wave_edges
+            self.dwave = orig.dwave
             self.kernel = orig.kernel
 
     def save_items(self):
@@ -34,7 +36,7 @@ class TabulatedPsf(Psf):
     def load_items(self, s=None):
         raise NotImplementedError()
 
-    def eval_kernel_impl(self, wave, size=None, s=slice(None), normalize=True):
+    def eval_kernel_impl(self, wave, dwave=None, size=None, s=slice(None), normalize=True):
         """
         Return the tabulated kernel, regardless of the value of `wave` and `size`,
         these are for compatibility only.
@@ -45,8 +47,11 @@ class TabulatedPsf(Psf):
         if not np.array_equal(wave, self.wave):
             raise ValueError("Wave grid doesn't match tabulated grid.")
 
-        if size is not None and size != self.kernel.shape[-1]:
-            raise ValueError("Size doesn't match tabulated kernel size.")
+        if dwave is not None:
+            logging.warning('PCA PSF does not support overriding dwave.')
+
+        if size is not None:
+            logging.warning('PCA PSF does not support overriding kernel size.')
 
         shift = self.kernel.shape[-1] // 2
 
@@ -54,13 +59,15 @@ class TabulatedPsf(Psf):
         # computed beyond the wave grid.
         idx = (np.arange(self.kernel.shape[-1]) - shift) + np.arange(wave.size)[:, np.newaxis]
 
+        w = self.wave[s]
+        dw = None if self.dwave is None else self.dwave[s]
+        k = self.kernel[s]
+
         if normalize:
-            k = self.normalize(self.kernel)
-        else:
-            k = self.kernel
+            k = self.normalize(k)
 
         # Return 0 for shift since we have the kernel for the entire wavelength range
-        return self.wave[s], k[s], idx[s], 0
+        return w, dw, k, idx[s], 0
 
     def get_optimal_size(self, wave, tol=1e-5):
         raise NotImplementedError()

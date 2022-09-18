@@ -22,6 +22,7 @@ class PcaPsf(Psf):
         if not isinstance(orig, PcaPsf):
             self.wave = None            # wavelength grid
             self.wave_edges = None
+            self.dwave = None
             self.mean = None            # mean kernel
             self.eigs = None            # eigenvalues
             self.eigv = None            # eigenvectors
@@ -29,6 +30,7 @@ class PcaPsf(Psf):
         else:
             self.wave = orig.wave
             self.wave_edges = orig.wave_edges
+            self.dwave = orig.dwave
             self.mean = orig.mean
             self.eigs = orig.eigs
             self.eigv = orig.eigv
@@ -42,6 +44,7 @@ class PcaPsf(Psf):
     def save_items(self):
         self.save_item('wave', self.wave)
         self.save_item('wave_edges', self.wave_edges)
+        self.save_item('dwave', self.dwave)
         self.save_item('mean', self.mean)
         self.save_item('eigs', self.eigs)
         self.save_item('eigv', self.eigv)
@@ -50,6 +53,7 @@ class PcaPsf(Psf):
     def load_items(self, s=None):
         self.wave = self.load_item('wave', np.ndarray, None)
         self.wave_edges = self.load_item('wave_edges', np.ndarray, None)
+        self.dwave = self.load_item('dwave', np.ndarray, None)
         self.mean = self.load_item('mean', np.ndarray, None)
         self.eigs = self.load_item('eigs', np.ndarray, None)
         self.eigv = self.load_item('eigv', np.ndarray, None)
@@ -62,12 +66,15 @@ class PcaPsf(Psf):
         self.pc_ip = interp1d(self.wave, self.pc.T, bounds_error=False, fill_value=(self.pc[0], self.pc[-1]))
 
     @staticmethod
-    def from_psf(source_psf, wave, size, s=slice(None), normalize=True, truncate=None):
-        # Precomputes the kernel as a function of wavelength on the provided grid
+    def from_psf(source_psf, wave, dwave=None, size=None, s=slice(None), normalize=True, truncate=None):
+        """
+        Precomputes the kernel as a function of wavelength on the provided grid
+        using truncated PCA.
+        """
         
         tr = np.s_[:truncate] if truncate is not None else np.s_[:]
 
-        w, k, idx, shift = source_psf.eval_kernel(wave, size, s=s, normalize=normalize)
+        w, dw, k, idx, shift = source_psf.eval_kernel(wave, dwave=dwave, size=size, s=s, normalize=normalize)
         
         M = np.mean(k, axis=0)
         X = k - M
@@ -84,6 +91,7 @@ class PcaPsf(Psf):
 
         pca_psf = PcaPsf()
         pca_psf.wave = w
+        pca_psf.dwave = dw
         pca_psf.mean = M
         pca_psf.eigs = S[tr]
         pca_psf.eigv = Vt[tr]
@@ -93,12 +101,15 @@ class PcaPsf(Psf):
         
         return pca_psf
 
-    def eval_kernel_impl(self, wave, size=None, s=slice(None), normalize=True):
+    def eval_kernel_impl(self, wave, dwave=None, size=None, s=slice(None), normalize=True):
         """
         Return the matrix necessary to calculate the convolution with a varying kernel 
         using the direct matrix product method. This function is for compatibility with the
         base class and not used by the `convolve` implementation itself.
         """
+
+        if dwave is not None:
+            logging.warning('PCA PSF does not support overriding dwave.')
 
         if size is not None:
             logging.warning('PCA PSF does not support overriding kernel size.')
@@ -110,14 +121,15 @@ class PcaPsf(Psf):
         idx = (np.arange(self.eigv.shape[-1]) - shift) + np.arange(wave.size)[:, np.newaxis]
         
         w = wave[s]
+        dw = None if dwave is None else dwave[s]
         pc = self.pc_ip(w).T
         k = self.mean + np.matmul(pc, self.eigv)
         
         if normalize:
-            k /= np.sum(k, axis=-1, keepdims=True)
+            k = self.normalize(k)
 
         # Return 0 for shift since we have the kernel for the entire wavelength range
-        return w, k, idx[s], 0
+        return w, dw, k, idx[s], 0
 
     def get_optimal_size(self, wave, tol=1e-5):
         raise NotImplementedError()

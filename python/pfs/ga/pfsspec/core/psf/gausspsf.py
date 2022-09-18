@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from scipy.interpolate import interp1d
+from scipy.optimize import curve_fit
 
 from ..util.math import *
 from .psf import Psf
@@ -42,6 +43,39 @@ class GaussPsf(Psf):
     def init_ip(self):
         # Interpolate sigma
         self.sigma_ip = interp1d(self.wave, self.sigma, bounds_error=False, fill_value=(self.wave[0], self.wave[-1]))
+
+    @staticmethod
+    def from_psf(source_psf, wave, dwave=None, size=None, s=slice(None), normalize=True, free_mean=True):
+        """
+        Evaluates the kernel as a function of wavelength on the provided grid
+        and fits with a Gaussian function. While fitting, mean and amplitude can
+        be used as free parameters but are not used when evaluating the kernel
+        at arbitrary wavelengths.
+        """
+
+        w, dw, k, idx, shift = source_psf.eval_kernel(wave, dwave=dwave, size=size, s=s, normalize=normalize)
+
+        # Fitting formula
+        if not free_mean:
+            g = lambda x, sig: gauss(x, m=0.0, s=sig, A=1.0)
+            p0 = [1.5]          # default sigma
+        else:
+            g = lambda x, A, m, sig: gauss(x, m=m, s=sig, A=A)
+            p0 = [1, 0, 1.5]    # A, m, s
+
+        # Fit kernel at each wavelength
+        sigma = np.zeros_like(w)
+        for i in range(0, sigma.shape[0]):
+            p, _ = curve_fit(g, dwave, k[i, :], p0=p0)
+            sigma[i] = p[-1]
+
+        psf = GaussPsf()
+        psf.wave = w
+        psf.wave_edges = None
+        psf.sigma = sigma
+        psf.init_ip()
+
+        return psf
 
     def eval_kernel_at(self, lam, dwave, normalize=True):
         """

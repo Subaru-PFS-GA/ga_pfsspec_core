@@ -12,7 +12,7 @@ class TestLambdaPsf(TestBase):
         
         psf = LambdaPsf(lambda w, dw: gauss(dw, s=w / 1000.0))
         
-        w, k, idx, shift = psf.eval_kernel(wave, size=11)
+        w, dw, k, idx, shift = psf.eval_kernel(wave, size=11)
         self.assertEqual(k.shape, (5991, 11))
 
     def test_convolve(self):

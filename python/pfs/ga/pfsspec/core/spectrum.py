@@ -364,7 +364,7 @@ class Spectrum(PfsObject):
             error.append(self.flux_err[idx])
 
         if isinstance(psf, Psf):
-            w, flux, error, shift = psf.convolve(self.wave[idx], flux, error, size=size, normalize=True)
+            w, flux, error, shift = psf.convolve(self.wave[idx], values=flux, errors=error, size=size, normalize=True)
             s = np.s_[shift:self.wave[idx].shape[0] - shift]
         else:
             raise NotImplementedError()

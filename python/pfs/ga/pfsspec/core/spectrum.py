@@ -355,6 +355,8 @@ class Spectrum(PfsObject):
 
         idx = self.get_wlim_slice(wlim)
 
+        wave = self.wave[idx]
+
         flux = [self.flux[idx]]
         if self.cont is not None:
             flux.append(self.cont[idx])
@@ -364,8 +366,8 @@ class Spectrum(PfsObject):
             error.append(self.flux_err[idx])
 
         if isinstance(psf, Psf):
-            w, flux, error, shift = psf.convolve(self.wave[idx], values=flux, errors=error, size=size, normalize=True)
-            s = np.s_[shift:self.wave[idx].shape[0] - shift]
+            w, flux, error, shift = psf.convolve(wave, values=flux, errors=error, size=size, normalize=True)
+            s = np.s_[shift:wave.shape[0] - shift]
         else:
             raise NotImplementedError()
 

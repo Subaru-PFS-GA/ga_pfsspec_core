@@ -72,14 +72,15 @@ class TestGaussPsf(TestBase):
         sigma = np.linspace(3, 5, 6001)
 
         psf = GaussPsf(wave=wave, sigma=sigma)
+        size = psf.get_optimal_size(wave)
 
-        w, v, e, s = psf.convolve(wave, value1, error)
+        w, v, e, s = psf.convolve(wave, value1, error, size=size)
         self.assertIsInstance(v, np.ndarray)
 
-        w, v, e, s = psf.convolve(wave, [ value1 ], error)
+        w, v, e, s = psf.convolve(wave, [ value1 ], error, size=size)
         self.assertIsInstance(v, list)
 
-        w, v, e, s = psf.convolve(wave, [ value1, value2 ], error)
+        w, v, e, s = psf.convolve(wave, [ value1, value2 ], error, size=size)
         self.assertIsInstance(v, list)
         self.assertEqual(2, len(v))
 
@@ -101,3 +102,12 @@ class TestGaussPsf(TestBase):
 
         value1 = np.random.normal(size=w.shape)
         w, v, e, s = gauss_psf.convolve(w, value1)
+
+    def test_get_optimal_size(self):
+        fn = os.path.join(self.PFSSPEC_DATA_PATH, 'subaru/pfs/psf/import/mr.2/gauss.h5')
+        psf = GaussPsf()
+        psf.load(fn)
+
+        wave = np.linspace(3000.0032915987117, 14999.886673223433, 160944)
+
+        size = psf.get_optimal_size(wave)

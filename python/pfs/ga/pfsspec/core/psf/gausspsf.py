@@ -42,7 +42,7 @@ class GaussPsf(Psf):
 
     def init_ip(self):
         # Interpolate sigma
-        self.sigma_ip = interp1d(self.wave, self.sigma, bounds_error=False, fill_value=(self.wave[0], self.wave[-1]))
+        self.sigma_ip = interp1d(self.wave, self.sigma, bounds_error=False, fill_value=(self.sigma[0], self.sigma[-1]))
 
     @staticmethod
     def from_psf(source_psf, wave, dwave=None, size=None, s=slice(None), normalize=True, free_mean=True):

@@ -79,7 +79,11 @@ class PcaPsf(Psf):
         M = np.mean(k, axis=0)
         X = k - M
 
-        if truncate is not None and truncate > 100 and truncate < size // 4:
+        if X.shape[0] > 1000:
+            C = np.matmul(X.T, X)
+            U, S, Vt = np.linalg.svd(C)
+            S = np.sqrt(S)
+        elif truncate is not None and truncate > 100 and truncate < size // 4:
             svd = TruncatedSVD(n_components=truncate * 2)
             svd.fit(X)
             Vt = svd.components_
@@ -137,7 +141,7 @@ class PcaPsf(Psf):
     def get_optimal_size(self, wave, tol=1e-5):
         raise NotImplementedError()
 
-    def convolve(self, wave, values, errors=None, size=None, normalize=None):
+    def convolve(self, wave, values, errors=None, size=None, normalize=None, mode='valid'):
         if size is not None:
             logging.warning('PCA PSF does not support overriding kernel size.')
 
@@ -157,22 +161,29 @@ class PcaPsf(Psf):
         else:
             ee = errors
 
-        shift = -(self.eigv.shape[1] // 2)
-        w = wave[-shift:+shift]
+        if mode == 'valid':
+            shift = (self.eigv.shape[1] // 2)
+            w = wave[shift:-shift]
+        elif mode == 'same':
+            shift = 0
+            w = wave
+        else:
+            raise ValueError(f'Unsupported mode: {mode}')
+
         pc = self.pc_ip(w).T
 
         rv = []
         for v in vv:
-            m = np.convolve(v, self.mean, mode='valid')
+            m = np.convolve(v, self.mean, mode=mode)
             c = np.empty((m.shape[0], self.eigv.shape[0]))
             for i in range(self.eigv.shape[0]):
-                c[..., i] = np.convolve(v, self.eigv[i], mode='valid')
+                c[..., i] = np.convolve(v, self.eigv[i], mode=mode)
             rv.append(m + np.sum(pc * c, axis=-1))
 
         if ee is not None:
             re = []
             for e in ee:
-                m = np.convolve(e**2, self.mean**2, mode='valid')
+                m = np.convolve(e**2, self.mean**2, mode=mode)
                 c = np.empty((m.shape[0], self.eigv.shape[0]))
                 for i in range(self.eigv.shape[0]):
                     c[..., i] = np.convolve(e**2, self.eigv[i]**2, mode='valid')

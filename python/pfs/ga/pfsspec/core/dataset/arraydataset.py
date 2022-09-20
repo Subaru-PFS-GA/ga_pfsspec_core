@@ -1,5 +1,6 @@
 import numpy as np
 
+from ..util.copy import *
 from .dataset import Dataset
 
 class ArrayDataset(Dataset):
@@ -32,12 +33,12 @@ class ArrayDataset(Dataset):
             self.config = config if config is not None else orig.config
             self.preload_arrays = preload_arrays or orig.preload_arrays
 
-            self.params = orig.params.copy()
+            self.params = safe_deep_copy(orig.params)
             self.row_count = orig.row_count
             self.constants = orig.constants
-            self.values = orig.values
-            self.value_shapes = orig.value_shapes
-            self.value_dtypes = orig.value_dtypes
+            self.values = safe_deep_copy(orig.values)
+            self.value_shapes = safe_deep_copy(orig.value_shapes)
+            self.value_dtypes = safe_deep_copy(orig.value_dtypes)
 
             self.cache_chunk_id = orig.cache_chunk_id
             self.cache_chunk_size = orig.cache_chunk_size

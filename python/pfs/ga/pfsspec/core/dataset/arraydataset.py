@@ -118,13 +118,16 @@ class ArrayDataset(Dataset):
         if self.config is not None:
             self.config.init_values(self)
 
-    def allocate_values(self, row_count):
+    def allocate_values(self, row_count=None):
         """
         Allocates memory or disk space for value arrays by calling 
         `Dataset.allocate_value` for each value array defined in the DatasetConfig.
         """
 
-        self.row_count = row_count
+        if row_count is None:
+            row_count = self.row_count
+        else:
+            self.row_count = row_count
 
         if self.config is not None:
             self.config.allocate_values(self, row_count)

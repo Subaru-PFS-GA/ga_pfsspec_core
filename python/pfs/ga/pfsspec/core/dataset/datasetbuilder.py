@@ -91,6 +91,7 @@ class DatasetBuilder(PfsObject):
         self.init_random_state()
 
     def store_item(self, i, spec):
+        # TODO: make this a function callable from derived classes
         if self.chunk_size is None:
             chunk_size = None
             chunk_id = None
@@ -101,6 +102,8 @@ class DatasetBuilder(PfsObject):
             chunk_id, ii = self.dataset.get_chunk_id(i, self.chunk_size)
             s = np.s_[ii, :]
 
+        # TODO: much of it needs to be moved to SpectrumDatasetBuilder because it's
+        #       spectrum specific
         # TODO: when implementing continue, first item test should be different
         if i == 0 and self.dataset.constant_wave:
             self.dataset.set_wave(spec.wave)
@@ -114,7 +117,7 @@ class DatasetBuilder(PfsObject):
         if spec.mask is not None:
             self.dataset.set_mask(spec.mask, idx=s, chunk_size=chunk_size, chunk_id=chunk_id)
 
-        # TODO: chunking here
+        # TODO: chunking here?
         row = spec.get_params_as_datarow()
         self.dataset.append_params_row(row)
 

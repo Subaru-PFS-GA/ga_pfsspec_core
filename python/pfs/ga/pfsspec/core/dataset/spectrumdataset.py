@@ -34,8 +34,14 @@ class SpectrumDataset(ArrayDataset):
         self.init_value('error', dtype=np.float)
         self.init_value('mask', dtype=np.int)
 
-    def allocate_values(self, spectrum_count, wave_count):
+    def allocate_values(self, spectrum_count=None, wave_count=None):
         super(SpectrumDataset, self).allocate_values(row_count=spectrum_count)
+
+        if spectrum_count is None:
+            spectrum_count = self.row_count
+
+        if wave_count is None:
+            wave_count = self.wave.shape[-1]
 
         if not self.constant_wave:
             self.allocate_value('wave', shape=(wave_count,), dtype=np.float)

@@ -166,6 +166,19 @@ class ArrayGrid(Grid):
 
     def get_valid_value_count(self, name, s=None):
         return np.sum(self.get_value_index(name, s=s))
+
+    def is_on_grid(self, **kwargs):
+        """
+        Returns true if the parameters mark a valid grid position. It doesn't
+        take the grid mask into account but the grid point must be inside the
+        bounds of the grid.
+        """
+
+        for i, p, axis in self.enumerate_axes():
+            if p in kwargs and kwargs[p] not in axis.values:
+                return False
+
+        return True
            
     def get_index(self, **kwargs):
         """Returns the indexes along all axes corresponding to the values specified.

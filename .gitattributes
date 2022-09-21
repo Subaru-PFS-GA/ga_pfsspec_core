@@ -1,1 +1,2 @@
+bin/* text=auto eof=lf
 nb/**/*.ipynb filter=ipynb_stripout

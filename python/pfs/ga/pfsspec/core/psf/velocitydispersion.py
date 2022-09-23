@@ -12,7 +12,7 @@ class VelocityDispersion(LambdaPsf):
         else:
             self.vdisp = vdisp or orig.vdisp
         
-        self.z = Physics.vdisp_to_z(vdisp)
+        self.z = Physics.vel_to_z(vdisp)
 
         def kernel(w, dw):
             s = self.z * w

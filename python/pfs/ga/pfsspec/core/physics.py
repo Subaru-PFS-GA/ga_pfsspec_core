@@ -86,5 +86,5 @@ class Physics():
         return radius           # radius in cm
 
     @staticmethod
-    def vdisp_to_z(vdisp):
-        return vdisp * 1e3 / Physics.c
+    def vel_to_z(vel):
+        return vel * 1e3 / Physics.c

@@ -199,10 +199,10 @@ class Pipeline(PfsObject):
     #             else:
     #                 return [dlambda, dlambda], None
     #         elif vdisp is not None:
-    #             z = Physics.vdisp_to_z(vdisp)
+    #             z = Physics.vel_to_z(vdisp)
     #             return None, z
     #         else:
-    #             z = Physics.vdisp_to_z(Constants.DEFAULT_FILTER_VDISP)
+    #             z = Physics.vel_to_z(Constants.DEFAULT_FILTER_VDISP)
     #             return None, z
 
     #     # Start and end of convolution

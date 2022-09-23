@@ -219,7 +219,8 @@ class ArrayGrid(Grid):
         return idx
 
     def get_nearby_indexes(self, **kwargs):
-        """Returns the indices bracketing the values specified. Used for linear interpolation.
+        """
+        Returns the indices bracketing the values specified. Used for linear interpolation.
 
         Returns:
             [type]: [description]
@@ -242,6 +243,28 @@ class ArrayGrid(Grid):
                 return None
 
         return tuple(idx1), tuple(idx2)
+
+    def get_shell_indexes(self, size, idx=None, exclude_center=True, **kwargs):
+        """
+        Returns the indices surrounding a gridpoint.
+        """
+
+        if idx is None:
+            idx = self.get_nearest_index(**kwargs)
+
+        shifts = np.arange(-size, size + 1)
+        ii = np.array(tuple(itertools.product(*([shifts] * len(idx)))))
+        ii = np.array(idx) + ii
+
+        if exclude_center:
+            ii = np.delete(ii, (ii.shape[0] // 2), axis=0)
+
+        # Exclude values that are outside the grid
+        for i, k, ax in self.enumerate_axes():
+            mask = (0 <= ii[:, i]) & (ii[:, i] < ax.values.size)
+            ii = ii[mask]
+
+        return ii
 
     def has_value_index(self, name):
         if self.preload_arrays:

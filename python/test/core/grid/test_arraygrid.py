@@ -3,7 +3,7 @@ import numpy as np
 from numpy.testing import assert_array_equal
 import h5py
 
-from test.core import TestBase
+from test.pfs.ga.pfsspec.core import TestBase
 from pfs.ga.pfsspec.core.grid import ArrayGrid
 from pfs.ga.pfsspec.core.grid import GridAxis
 
@@ -153,6 +153,19 @@ class TestArrayGrid(TestBase):
 
         idx = grid.get_nearby_indexes(a=5.6, b=14)
         self.assertEqual(None, idx)
+
+    def test_get_shell_indexes(self):
+        grid = self.create_new_grid()
+        self.init_jagged_grid(grid)
+
+        idx = grid.get_shell_indexes(1, a=3.7, b=24)
+        self.assertEqual((8, 2), idx.shape)
+
+        idx = grid.get_shell_indexes(2, a=3.7, b=24)
+        self.assertEqual((11, 2), idx.shape)
+
+        idx = grid.get_shell_indexes(2, exclude_center=False, a=3.7, b=24)
+        self.assertEqual((12, 2), idx.shape)
 
     def test_has_value_at(self):
         grid = self.create_new_grid()

@@ -25,7 +25,7 @@ class Spectrum(PfsObject):
             self.redshift = 0.0
             self.redshift_err = 0.0
 
-            # TODO: these should go elsewhere
+            # TODO: these should go elsewhere, they apply to observed spectra only
             self.exp_count = None
             self.exp_time = None
             self.seeing = None
@@ -273,18 +273,8 @@ class Spectrum(PfsObject):
             err = np.random.normal(1, noise, flux.shape)
             return flux * err
 
-    # TODO: move to stellar spectrum because SNR depends on application / type of spec
-    def calculate_snr(self, weight=1.0):
-        if self.flux_err is not None:
-            # Make sure flux value is reasonable, otherwise exclude from averate SNR
-            f = (self.flux_err <= 10 * self.flux) & (self.flux_err > 0)
-            
-            # Average SNR
-            self.snr = np.mean(np.abs(self.flux[f] / self.flux_err[f])) / weight
-
-            # TODO: High percentile snr, basically measures the continuum
-        else:
-            self.snr = 0
+    def calculate_snr(self, snr):
+        self.snr = snr.get_snr(self.flux, self.flux_err)
         
     def redden(self, extval=None):
         extval = extval or self.extinction

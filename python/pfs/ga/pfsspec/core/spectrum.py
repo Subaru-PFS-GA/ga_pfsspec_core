@@ -9,6 +9,7 @@ import pysynphot.binning
 import pysynphot.spectrum
 import pysynphot.reddening
 
+from pfs.ga.pfsspec.core.util.copy import *
 from pfs.ga.pfsspec.core.pfsobject import PfsObject
 from pfs.ga.pfsspec.core.psf import *
 from .physics import Physics
@@ -72,13 +73,13 @@ class Spectrum(PfsObject):
             self.mag = orig.mag
             ###
             
-            self.wave = np.copy(orig.wave)
-            self.wave_edges = np.copy(orig.wave_edges)
-            self.flux = np.copy(orig.flux)
-            self.flux_err = np.copy(orig.flux_err)
-            self.flux_sky = np.copy(orig.flux_sky)
-            self.mask = np.copy(orig.mask)
-            self.cont = np.copy(orig.cont)
+            self.wave = safe_deep_copy(orig.wave)
+            self.wave_edges = safe_deep_copy(orig.wave_edges)
+            self.flux = safe_deep_copy(orig.flux)
+            self.flux_err = safe_deep_copy(orig.flux_err)
+            self.flux_sky = safe_deep_copy(orig.flux_sky)
+            self.mask = safe_deep_copy(orig.mask)
+            self.cont = safe_deep_copy(orig.cont)
             self.cont_fit = orig.cont_fit
             self.random_seed = orig.random_seed
 

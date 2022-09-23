@@ -56,6 +56,9 @@ class PfsObject():
             self.fileformat = None
             self.filedata = None
 
+    def copy(self):
+        return type(self)(orig=self)
+
     def get_arg(self, name, old_value, args=None):
         """
         Reads a command-line argument if specified, otherwise uses a default value.

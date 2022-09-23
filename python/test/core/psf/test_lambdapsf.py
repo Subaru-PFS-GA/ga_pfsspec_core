@@ -1,7 +1,7 @@
 import os
 import numpy as np
 
-from test.core import TestBase
+from test.pfs.ga.pfsspec.core import TestBase
 from pfs.ga.pfsspec.core.util.math import *
 from pfs.ga.pfsspec.core.psf import LambdaPsf
 

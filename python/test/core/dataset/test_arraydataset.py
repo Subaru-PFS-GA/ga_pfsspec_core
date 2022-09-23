@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from pfs.ga.pfsspec.core.dataset.spectrumdataset import SpectrumDataset
 
-from test.core import TestBase
+from test.pfs.ga.pfsspec.core import TestBase
 from pfs.ga.pfsspec.core import PfsObject
 from pfs.ga.pfsspec.core import Spectrum
 from pfs.ga.pfsspec.core.dataset import ArrayDataset

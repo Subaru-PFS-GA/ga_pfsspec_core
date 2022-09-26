@@ -2,7 +2,7 @@ import os
 import numpy as np
 
 from test.pfs.ga.pfsspec.core import TestBase
-from pfs.ga.pfsspec.core.psf import GaussPsf, PcaPsf
+from pfs.ga.pfsspec.core.obsmod.psf import GaussPsf, PcaPsf
 
 class TestPcaPsf(TestBase):
     def test_save(self):
@@ -58,17 +58,17 @@ class TestPcaPsf(TestBase):
         # Specify size
 
         psf = PcaPsf.from_psf(g, wave, size=11, normalize=True, truncate=4)
-        w, dw, k, idx, shift = psf.eval_kernel(wave, normalize=True)
+        w, dw, k, idx, shift = psf.eval_kernel(psf.wave, normalize=True)
 
         psf = PcaPsf.from_psf(g, wave, size=11, s=np.s_[:10], normalize=True, truncate=4)
-        w, dw, k, idx, shift = psf.eval_kernel(wave, normalize=True)
+        w, dw, k, idx, shift = psf.eval_kernel(psf.wave, normalize=True)
 
         # Specify dwave
         psf = PcaPsf.from_psf(g, wave, dwave=dwave, normalize=True, truncate=4)
         w, dw, k, idx, shift = psf.eval_kernel(wave, normalize=True)
 
         psf = PcaPsf.from_psf(g, wave, dwave=dwave, s=np.s_[:10], normalize=True, truncate=4)
-        w, dw, k, idx, shift = psf.eval_kernel(wave, normalize=True)
+        w, dw, k, idx, shift = psf.eval_kernel(psf.wave, normalize=True)
 
     def test_convolve(self):
         wave = np.linspace(3000, 9000, 6001)

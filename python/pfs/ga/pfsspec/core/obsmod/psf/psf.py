@@ -1,7 +1,7 @@
 from collections import Iterable
 import numpy as np
 
-from ..pfsobject import PfsObject
+from ...pfsobject import PfsObject
 
 class Psf(PfsObject):
     """

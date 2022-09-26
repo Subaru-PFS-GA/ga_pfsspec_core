@@ -3,7 +3,7 @@ import numpy as np
 
 from test.pfs.ga.pfsspec.core import TestBase
 from pfs.ga.pfsspec.core.util.math import *
-from pfs.ga.pfsspec.core.psf import LambdaPsf
+from pfs.ga.pfsspec.core.obsmod.psf import LambdaPsf
 
 class TestLambdaPsf(TestBase):
         

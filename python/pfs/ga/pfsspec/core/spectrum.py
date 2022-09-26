@@ -11,7 +11,7 @@ import pysynphot.reddening
 
 from pfs.ga.pfsspec.core.util.copy import *
 from pfs.ga.pfsspec.core.pfsobject import PfsObject
-from pfs.ga.pfsspec.core.psf import *
+from pfs.ga.pfsspec.core.obsmod.psf import *
 from .physics import Physics
 from .constants import Constants
 
@@ -255,23 +255,6 @@ class Spectrum(PfsObject):
 
     def normalize_by_continuum(self):
         self.multiply(1.0 / self.cont)
-
-    # TODO: Move to spectrum tools
-    @staticmethod
-    def generate_noise(flux, noise, error=None, random_seed=None):
-        # Noise have to be reproducible when multiple datasets with different
-        # post-processing are generated for autoencoders
-        if random_seed is not None:
-            np.random.seed(random_seed)
-
-        if error is not None:
-            # If error vector is present, use as sigma for additive noise
-            err = noise * np.random.normal(size=flux.shape) * error
-            return flux + err
-        else:
-            # Simple multiplicative noise, one random number per bin
-            err = np.random.normal(1, noise, flux.shape)
-            return flux * err
 
     def calculate_snr(self, snr):
         self.snr = snr.get_snr(self.flux, self.flux_err)

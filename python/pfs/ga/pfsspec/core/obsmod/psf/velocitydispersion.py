@@ -1,7 +1,7 @@
 import numpy as np
 
-from ..physics import Physics
-from ..util.math import gauss
+from ...physics import Physics
+from ...util.math import gauss
 from .lambdapsf import LambdaPsf
 
 class VelocityDispersion(LambdaPsf):

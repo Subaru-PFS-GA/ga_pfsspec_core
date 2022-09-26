@@ -3,7 +3,7 @@ import pandas as pd
 from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit
 
-from ..util.math import *
+from ...util.math import *
 from .psf import Psf
 
 class GaussPsf(Psf):

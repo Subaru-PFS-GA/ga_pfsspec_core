@@ -41,9 +41,10 @@ class Spectrum(PfsObject):
 
             self.wave = None
             self.wave_edges = None
-            self.flux = None
-            self.flux_err = None
-            self.flux_sky = None
+            self.flux = None                    # Flux (+noise when frozen)
+            self.flux_model = None              # Flux (model, when noise is frozen)
+            self.flux_err = None                # Flux error (sigma, not squared)
+            self.flux_sky = None                # Background flux (sky + moon, no detector)
             self.mask = None
             self.cont = None
             self.cont_fit = None
@@ -76,6 +77,7 @@ class Spectrum(PfsObject):
             self.wave = safe_deep_copy(orig.wave)
             self.wave_edges = safe_deep_copy(orig.wave_edges)
             self.flux = safe_deep_copy(orig.flux)
+            self.flux_model = safe_deep_copy(orig.flux_model)
             self.flux_err = safe_deep_copy(orig.flux_err)
             self.flux_sky = safe_deep_copy(orig.flux_sky)
             self.mask = safe_deep_copy(orig.mask)
@@ -255,6 +257,23 @@ class Spectrum(PfsObject):
 
     def normalize_by_continuum(self):
         self.multiply(1.0 / self.cont)
+
+    def get_noise(self, noise_model, noise_level=None):
+        """
+        Generate the noise based on a noise model and save the variance (sigma)
+        """
+        return noise_model.get_noise(self.wave, self.flux, self.flux_err, mag=self.mag, noise_level=noise_level, random_seed=self.random_seed)
+
+    def add_noise(self, noise_model, noise_level=None, random_seed=None):
+        """
+        Generate the noise based on a noise model and add to the flux.
+        """
+
+        # Save the noiseless flux
+        if self.flux_model is None:
+            self.flux_model = self.flux
+
+        self.flux = noise_model.add_noise(self.wave, self.flux_model, self.flux_err, mag=self.mag, noise_level=noise_level, random_seed=random_seed)
 
     def calculate_snr(self, snr):
         self.snr = snr.get_snr(self.flux, self.flux_err)

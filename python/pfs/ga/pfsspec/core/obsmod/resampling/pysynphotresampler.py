@@ -21,9 +21,11 @@ class PysynphotResampler(Resampler):
         self.filt = pysynphot.spectrum.ArraySpectralElement(wave, np.ones(len(wave)), waveunits='angstrom')
 
     def reset(self):
+        super().reset()
+
         self.filt = None
 
-    def resample_value(self, wave, wave_edges, value):
+    def resample_value(self, wave, wave_edges, value, error=None):
         # NOTE: SLOW!
 
         if value is None:
@@ -31,7 +33,7 @@ class PysynphotResampler(Resampler):
         else:
             # TODO: can we use wave_edges here?
             spec = pysynphot.spectrum.ArraySourceSpectrum(wave=wave, flux=value, keepneg=True)
-            obs = pysynphot.observation.Observation(spec, self.filt, binset=self.wave, force='taper')
+            obs = pysynphot.observation.Observation(spec, self.filt, binset=self.target_wave, force='taper')
             ip_value = obs.binflux
 
         # TODO: try to figure out how to handle error from pysynphot

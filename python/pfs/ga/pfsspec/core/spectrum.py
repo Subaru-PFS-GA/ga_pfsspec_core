@@ -165,13 +165,13 @@ class Spectrum(PfsObject):
             self.wave_edges = self.wave_edges / (1 + self.redshift)
         self.redshift = 0.0
 
-    def apply_resampler(self, resampler, wave, wave_edges):
-        resampler.init(wave, wave_edges)
+    def apply_resampler(self, resampler, target_wave, target_wave_edges):
+        resampler.init(target_wave, target_wave_edges)
         self.apply_resampler_impl(resampler)
         resampler.reset()
-
-        self.wave = wave
-        self.wave_edges = wave_edges
+        
+        self.wave = target_wave
+        self.wave_edges = target_wave_edges
     
     def apply_resampler_impl(self, resampler):
 

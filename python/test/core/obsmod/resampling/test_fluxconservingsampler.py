@@ -1,9 +1,23 @@
 import numpy as np
 
 from test.pfs.ga.pfsspec.core import TestBase
+from pfs.ga.pfsspec.core import Spectrum
 from pfs.ga.pfsspec.core.obsmod.resampling import FluxConservingResampler
 
 class TestFluxConservingResampler(TestBase):
+
+    def test_resample(self):
+        spec = Spectrum()
+        spec.wave_edges = np.linspace(3000, 9000, 6001)
+        spec.wave = 0.5 * (spec.wave_edges[1:] + spec.wave_edges[:-1])
+        spec.flux = np.random.uniform(0, 1, size=spec.wave.shape)
+        spec.flux_err = np.linspace(3, 5, spec.wave.shape[0])
+        
+        nwave_edges = spec.wave_edges[::5]
+        nwave = 0.5 * (nwave_edges[1:] + nwave_edges[:-1])
+
+        res = FluxConservingResampler()
+        spec.apply_resampler(res, nwave, nwave_edges)
 
     def test_resample_value(self):
         wave_edges = np.linspace(3000, 9000, 6001)

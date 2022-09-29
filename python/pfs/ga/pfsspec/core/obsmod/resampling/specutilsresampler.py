@@ -14,7 +14,7 @@ class SpecutilsResampler(Resampler):
         else:
             self.resampler = orig.resampler
 
-    def resample_value(self, wave, wave_edges, value):
+    def resample_value(self, wave, wave_edges, value, error=None):
         # NOTE: SLOW!
 
         # TODO: specutils version on the dev system is outdated,
@@ -25,7 +25,7 @@ class SpecutilsResampler(Resampler):
         else:
             # TODO: can we use wave_edges here?
             spec = Spectrum1D(spectral_axis=wave * u.AA, flux=value * u.Unit('erg cm-2 s-1 AA-1'))
-            nspec = self.resampler(spec, self.wave * u.AA)
+            nspec = self.resampler(spec, self.target_wave * u.AA)
             ip_value = nspec.flux.value
 
         ip_error = None

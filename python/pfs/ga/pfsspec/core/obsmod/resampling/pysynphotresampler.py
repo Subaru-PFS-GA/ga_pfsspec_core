@@ -27,11 +27,14 @@ class PysynphotResampler(Resampler):
         # NOTE: SLOW!
 
         if value is None:
-            return None
+            ip_value = None
         else:
             # TODO: can we use wave_edges here?
             spec = pysynphot.spectrum.ArraySourceSpectrum(wave=wave, flux=value, keepneg=True)
             obs = pysynphot.observation.Observation(spec, self.filt, binset=self.wave, force='taper')
-            return obs.binflux
+            ip_value = obs.binflux
 
-        
+        # TODO: try to figure out how to handle error from pysynphot
+        ip_error = None
+
+        return ip_value, ip_error

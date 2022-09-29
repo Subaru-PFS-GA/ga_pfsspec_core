@@ -13,6 +13,7 @@ from .pfsobject import PfsObject
 from .filter import Filter
 from .spectrum import Spectrum
 from .obsmod.psf.psf import Psf
+from .obsmod.resampling import FluxConservingResampler
 
 class Pipeline(PfsObject):
     """
@@ -32,11 +33,14 @@ class Pipeline(PfsObject):
             self.conv = None                # Convolution method
             self.conv_sigma = None          # Gaussian convolution sigma in wavelength units
             self.conv_resolution = None     # Convolution to a given resolution
+            
             self.wave = None                # When set, resample to this grid
             self.wave_edges = None
             self.wave_lin = False
             self.wave_log = False
             self.wave_bins = None
+            self.wave_resampler = FluxConservingResampler()
+
             self.norm = None                # Post process normalization method
             self.norm_wave = None           # Post process normalization wavelength range
         else:
@@ -45,11 +49,14 @@ class Pipeline(PfsObject):
             self.conv = orig.conv
             self.conv_sigma = orig.conv_sigma
             self.conv_resolution = orig.conv_resolution
+
             self.wave = orig.wave
             self.wave_edges = orig.wave_edges
             self.wave_lin = orig.wave_lin
             self.wave_log = orig.wave_log
             self.wave_bins = orig.wave_bins
+            self.wave_resampler = orig.resampler
+            
             self.norm = orig.norm
             self.norm_wave = orig.norm_wave
 
@@ -165,7 +172,7 @@ class Pipeline(PfsObject):
     def run_step_resample(self, spec, **kwargs):
         if self.wave is not None:
             wave, wave_edges = self.get_wave()
-            spec.apply_resampler(self.resampler, wave, wave_edges)
+            spec.apply_resampler(self.wave_resampler, wave, wave_edges)
 
     #region Convolution
 

@@ -15,13 +15,13 @@ class Resampler():
 
     def init(self, wave, wave_edges=None):
         self.wave = wave
-        self.wave_edges = wave_edges if wave_edges is not None else self.find_edges(wave)
+        self.wave_edges = wave_edges if wave_edges is not None else self.find_wave_edges(wave)
 
     def reset(self):
         self.wave = None
         self.wave_edges = None
 
-    def find_edges(self, wave):
+    def find_wave_edges(self, wave):
         # TODO: Do not automatically assume linear binning
         dw = wave[1:] - wave[:-1]
         wave_edges = np.empty((wave.shape[0] + 1,), dtype=wave.dtype)
@@ -34,21 +34,9 @@ class Resampler():
         # TODO: Do not automatically assume linear binning
         return 0.5 * (wave_edges[1:] + wave_edges[:-1])
 
-    def resample_value(self, wave, wave_edges, value):
+    def resample_value(self, wave, wave_edges, value, error=None):
         raise NotImplementedError()
-
-    def resample_error(self, wave, wave_edges, value, error):
-        # For the error vector, use nearest-neighbor interpolations
-        # later we can figure out how to do this correctly and add correlated noise, etc.
-
-        # TODO: do this with correct propagation of error
-
-        if error is None:
-            return None
-        else:
-            ip = interp1d(wave, error, kind='nearest', assume_sorted=True)
-            return ip(self.wave)
-
+   
     def resample_mask(self, wave, wave_edges, mask):
         # TODO: we only take the closest bin here which is incorrect
         #       mask values should be combined using bitwise or across bins

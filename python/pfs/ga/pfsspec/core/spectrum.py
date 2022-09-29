@@ -175,12 +175,10 @@ class Spectrum(PfsObject):
     
     def apply_resampler_impl(self, resampler):
 
-        self.flux = resampler.resample_value(self.wave, self.wave_edges, self.flux)
-        self.flux_sky = resampler.resample_value(self.wave, self.wave_edges, self.flux_sky)
-        self.cont = resampler.resample_value(self.wave, self.wave_edges, self.cont)
-        self.cont_fit = resampler.resample_value(self.wave, self.wave_edges, self.cont_fit)
-
-        self.flux_err = resampler.resample_error(self.wave, self.wave_edges, self.flux, self.flux_err)
+        self.flux, self.flux_err = resampler.resample_value(self.wave, self.wave_edges, self.flux, self.flux_err)
+        self.flux_sky, _ = resampler.resample_value(self.wave, self.wave_edges, self.flux_sky)
+        self.cont, _ = resampler.resample_value(self.wave, self.wave_edges, self.cont)
+        self.cont_fit, _ = resampler.resample_value(self.wave, self.wave_edges, self.cont_fit)
         
         self.mask = resampler.resample_mask(self.wave, self.wave_edges, self.mask)
        

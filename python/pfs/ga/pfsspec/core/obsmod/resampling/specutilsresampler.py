@@ -17,10 +17,17 @@ class SpecutilsResampler(Resampler):
     def resample_value(self, wave, wave_edges, value):
         # NOTE: SLOW!
 
+        # TODO: specutils version on the dev system is outdated,
+        #       install at least 1.7 and try to get it calculate the error
+
         if value is None:
-            return None
+            ip_value = None
         else:
             # TODO: can we use wave_edges here?
             spec = Spectrum1D(spectral_axis=wave * u.AA, flux=value * u.Unit('erg cm-2 s-1 AA-1'))
             nspec = self.resampler(spec, self.wave * u.AA)
-            return nspec.flux.value
+            ip_value = nspec.flux.value
+
+        ip_error = None
+
+        return ip_value, ip_error

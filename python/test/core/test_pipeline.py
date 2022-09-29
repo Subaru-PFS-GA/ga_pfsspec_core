@@ -125,7 +125,7 @@ class TestPipeline(TestBase):
 
     def test_run_step_resample(self):
         p = Pipeline()
-        p.resampler = Interp1dResampler()
+        p.wave_resampler = Interp1dResampler()
         w = np.linspace(3500, 7500, 1001)
         p.wave_edges = np.stack([w[:-1], w[1:]])
         p.wave = 0.5 * (p.wave_edges[1:] + p.wave_edges[:-1])

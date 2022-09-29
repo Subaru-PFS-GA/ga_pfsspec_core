@@ -17,10 +17,11 @@ class TestSpecutilsResampler(TestBase):
 
         res = SpecutilsResampler()
         res.init(nwave, nwave_edges)
-        nvalue = res.resample_value(wave, wave_edges, value)
+        nvalue, nsigma = res.resample_value(wave, wave_edges, value)
         res.reset()
 
         self.assertEqual(nvalue.shape, nwave.shape)
+        self.assertIsNone(nsigma)
         
     def test_resample_error(self):
         pass

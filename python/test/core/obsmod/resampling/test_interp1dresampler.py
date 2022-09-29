@@ -17,10 +17,11 @@ class TestInterp1dResampler(TestBase):
 
         res = Interp1dResampler()
         res.init(nwave, nwave_edges)
-        nvalue = res.resample_value(wave, wave_edges, value)
+        nvalue, nsigma = res.resample_value(wave, wave_edges, value, sigma)
         res.reset()
 
         self.assertEqual(nvalue.shape, nwave.shape)
+        self.assertEqual(nsigma.shape, nwave.shape)
         
     def test_resample_error(self):
         pass

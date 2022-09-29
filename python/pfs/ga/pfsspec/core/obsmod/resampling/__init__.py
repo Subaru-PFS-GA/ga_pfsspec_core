@@ -1,4 +1,4 @@
-from .fluxconservingsampler import FluxConservingResampler
+from .fluxconservingresampler import FluxConservingResampler
 from .interp1dresampler import Interp1dResampler
 from .pysynphotresampler import PysynphotResampler
 from .specutilsresampler import SpecutilsResampler

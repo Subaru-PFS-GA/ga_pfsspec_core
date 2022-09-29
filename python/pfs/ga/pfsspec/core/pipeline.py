@@ -150,27 +150,22 @@ class Pipeline(PfsObject):
         self.run_step_restframe(spec, **kwargs)
         self.run_step_redshift(spec, **kwargs)
         self.run_step_convolution(spec, **kwargs)
-        self.run_step_rebin(spec, **kwargs)
+        self.run_step_resample(spec, **kwargs)
         self.run_step_normalize(spec, **kwargs)
 
     def run_step_restframe(self, spec: Spectrum, **kwargs):
         # If the spectrum is already redshifted, convert it to restframe
-        z = spec.redshift
-        if z is not None and not np.isnan(z):
-            spec.set_restframe()
+        spec.set_restframe()
 
     def run_step_redshift(self, spec: Spectrum, **kwargs):
         z = self.get_arg('redshift', self.redshift, kwargs)
         if z is not None and not np.isnan(z) and z != 0.0:
             spec.set_redshift(z)
 
-    def run_step_rebin(self, spec, **kwargs):
+    def run_step_resample(self, spec, **kwargs):
         if self.wave is not None:
             wave, wave_edges = self.get_wave()
-            self.rebin(spec, wave, wave_edges)
-
-    def rebin(self, spec, wave, wave_edges):
-        spec.rebin(wave, wave_edges)
+            spec.apply_resampler(self.resampler, wave, wave_edges)
 
     #region Convolution
 

@@ -16,6 +16,9 @@ class PcaPsf(Psf):
     wavelength grid and fixed kernel wavelength steps.
     """
 
+    __SUPPRESS_WARNING_DWAVE = False
+    __SUPPRESS_WARNING_NORM = False
+
     def __init__(self, orig=None):
         super().__init__(orig=orig)
 
@@ -116,10 +119,10 @@ class PcaPsf(Psf):
             raise ValueError("Wave grid doesn't match tabulated grid.")
 
         if dwave is not None:
-            logging.warning('PCA PSF does not support overriding dwave.')
+            self.warn('DWAVE')
 
-        if size is not None:
-            logging.warning('PCA PSF does not support overriding kernel size.')
+        if normalize is not None:
+            self.warn('NORM')
 
         shift = self.eigv.shape[-1] // 2
 
@@ -143,10 +146,10 @@ class PcaPsf(Psf):
 
     def convolve(self, wave, values, errors=None, size=None, normalize=None, mode='valid'):
         if size is not None:
-            logging.warning('PCA PSF does not support overriding kernel size.')
+            self.warn('SIZE')
 
         if normalize is not None:
-            logging.warning('PCA PSF does not support renormalizing the precomputed kernel.')
+            self.warn('NORM')
 
         # Convolve value vector with each eigenfunction, than take linear combination with
         # the wave-dependent principal components
@@ -198,3 +201,14 @@ class PcaPsf(Psf):
             re = re[0]
 
         return w, rv, re, shift
+
+    def warn(self, id):
+        if id == 'DWAVE' and not PcaPsf.__SUPPRESS_WARNING_DWAVE:
+            logging.warning('PCA PSF does not support overriding dwave.')
+            PcaPsf.__SUPPRESS_WARNING_DWAVE = True
+        elif id == 'NORM' and not PcaPsf.__SUPPRESS_WARNING_NORM:
+            logging.warning('PCA PSF does not support renormalizing the precomputed kernel.')
+            PcaPsf.__SUPPRESS_WARNING_NORM = True
+        elif id == 'SIZE' and not PcaPsf.__SUPPRESS_WARNING_SIZE:
+            logging.warning('PCA PSF does not support overriding kernel size.')
+            PcaPsf.__SUPPRESS_WARNING_SIZE = True

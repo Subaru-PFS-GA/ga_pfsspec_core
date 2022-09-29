@@ -3,6 +3,7 @@ import numpy as np
 from test.pfs.ga.pfsspec.core import TestBase
 from pfs.ga.pfsspec.core import Spectrum
 from pfs.ga.pfsspec.core import Pipeline
+from pfs.ga.pfsspec.core.obsmod.resampling import Interp1dResampler
 
 class TestPipeline(TestBase):
 
@@ -122,10 +123,11 @@ class TestPipeline(TestBase):
         except ValueError:
             pass
 
-    def test_run_step_rebin(self):
+    def test_run_step_resample(self):
         p = Pipeline()
+        p.resampler = Interp1dResampler()
         w = np.linspace(3500, 7500, 1001)
         p.wave_edges = np.stack([w[:-1], w[1:]])
         p.wave = 0.5 * (p.wave_edges[1:] + p.wave_edges[:-1])
         s = self.get_spectrum()
-        p.run_step_rebin(s)
+        p.run_step_resample(s)

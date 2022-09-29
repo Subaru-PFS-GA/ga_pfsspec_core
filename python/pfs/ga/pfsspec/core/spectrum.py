@@ -1,7 +1,6 @@
 import logging
 import numpy as np
 import numbers
-from scipy.interpolate import interp1d
 import collections
 import matplotlib.pyplot as plt
 import pysynphot
@@ -45,6 +44,7 @@ class Spectrum(PfsObject):
             self.flux_model = None              # Flux (model, when noise is frozen)
             self.flux_err = None                # Flux error (sigma, not squared)
             self.flux_sky = None                # Background flux (sky + moon, no detector)
+            self.flux_calibration = None
             self.mask = None
             self.cont = None
             self.cont_fit = None
@@ -80,6 +80,7 @@ class Spectrum(PfsObject):
             self.flux_model = safe_deep_copy(orig.flux_model)
             self.flux_err = safe_deep_copy(orig.flux_err)
             self.flux_sky = safe_deep_copy(orig.flux_sky)
+            self.flux_calibration = safe_deep_copy(orig.flux_calibration)
             self.mask = safe_deep_copy(orig.mask)
             self.cont = safe_deep_copy(orig.cont)
             self.cont_fit = orig.cont_fit
@@ -164,42 +165,24 @@ class Spectrum(PfsObject):
             self.wave_edges = self.wave_edges / (1 + self.redshift)
         self.redshift = 0.0
 
-    def rebin(self, wave, wave_edges):
-        # TODO: how to rebin error and mask?
-        #       mask should be combined if flux comes from multiple bins
-        # TODO: does pysynphot support bin edges
-
-        def rebin_vector(wave, nwave, data):
-            if data is None:
-                return None
-            else:
-                filt = pysynphot.spectrum.ArraySpectralElement(wave, np.ones(len(wave)), waveunits='angstrom')
-                spec = pysynphot.spectrum.ArraySourceSpectrum(wave=wave, flux=data, keepneg=True)
-                obs = pysynphot.observation.Observation(spec, filt, binset=nwave, force='taper')
-                return obs.binflux
-
-        self.flux = rebin_vector(self.wave, wave, self.flux)
-        self.flux_sky = rebin_vector(self.wave, wave, self.flux_sky)
-
-        # For the error vector, use nearest-neighbor interpolations
-        # later we can figure out how to do this correctly and add correlated noise, etc.
-        if self.flux_err is not None:
-            ip = interp1d(self.wave, self.flux_err, kind='nearest')
-            self.flux_err = ip(wave)
-
-        if self.cont is not None:
-            self.cont = rebin_vector(self.wave, wave, self.cont)
-
-        # TODO: we only take the closest bin here which is incorrect
-        #       mask values should combined with bitwise or across bins
-        if self.mask is not None:
-            wl_idx = np.digitize(wave, self.wave)
-            self.mask = self.mask[wl_idx]
-        else:
-            self.mask = None
+    def apply_resampler(self, resampler, wave, wave_edges):
+        resampler.init(wave, wave_edges)
+        self.apply_resampler_impl(resampler)
+        resampler.reset()
 
         self.wave = wave
         self.wave_edges = wave_edges
+    
+    def apply_resampler_impl(self, resampler):
+
+        self.flux = resampler.resample_value(self.wave, self.wave_edges, self.flux)
+        self.flux_sky = resampler.resample_value(self.wave, self.wave_edges, self.flux_sky)
+        self.cont = resampler.resample_value(self.wave, self.wave_edges, self.cont)
+        self.cont_fit = resampler.resample_value(self.wave, self.wave_edges, self.cont_fit)
+
+        self.flux_err = resampler.resample_error(self.wave, self.wave_edges, self.flux, self.flux_err)
+        
+        self.mask = resampler.resample_mask(self.wave, self.wave_edges, self.mask)
        
     def zero_mask(self):
         self.flux[self.mask != 0] = 0
@@ -258,22 +241,12 @@ class Spectrum(PfsObject):
     def normalize_by_continuum(self):
         self.multiply(1.0 / self.cont)
 
-    def get_noise(self, noise_model, noise_level=None):
-        """
-        Generate the noise based on a noise model and save the variance (sigma)
-        """
-        return noise_model.get_noise(self.wave, self.flux, self.flux_err, mag=self.mag, noise_level=noise_level, random_seed=self.random_seed)
-
-    def add_noise(self, noise_model, noise_level=None, random_seed=None):
+    def apply_noise(self, noise_model, noise_level=None, random_seed=None):
         """
         Generate the noise based on a noise model and add to the flux.
         """
 
-        # Save the noiseless flux
-        if self.flux_model is None:
-            self.flux_model = self.flux
-
-        self.flux = noise_model.add_noise(self.wave, self.flux_model, self.flux_err, mag=self.mag, noise_level=noise_level, random_seed=random_seed)
+        self.flux = noise_model.apply_noise(self.wave, self.flux, self.flux_err, mag=self.mag, noise_level=noise_level, random_seed=random_seed)
 
     def calculate_snr(self, snr):
         self.snr = snr.get_snr(self.flux, self.flux_err)
@@ -442,55 +415,8 @@ class Spectrum(PfsObject):
 
         return p, c
 
-    # TODO: Move to obsmod mixin
-    @staticmethod
-    def generate_calib_bias(wave, bandwidth=200, amplitude=0.05):
-        """
-        Simulate claibration error but multiplying with a slowly changing function
-
-        :param bandwidth:
-        :param amplitude:
-        """
-
-        def white_noise(N):
-            s = 2 * np.exp(1j * np.random.rand(N // 2 + 1) * 2 * np.pi)
-            noise = np.fft.irfft(s)
-            return noise[:N]
-
-        def wiener(N):
-            step = white_noise(N + 1)
-            walk = np.cumsum(step)[:N]
-            return walk
-
-        def damped_walk(N, alpha=1, D=1):
-            step = white_noise(N)
-            walk = np.zeros(N)
-            for i in range(1, N):
-                walk[i] = walk[i - 1] - alpha * walk[i - 1] + D * step[i]
-            return walk
-
-        def gauss(x, mu, sigma):
-            return 1 / (sigma * np.sqrt(2 * np.pi)) * np.exp(- (x - mu) ** 2 / (2 * sigma ** 2))
-
-        def lowpass_filter(x, y, sigma):
-            mid = np.mean(x)
-            idx = np.digitize([mid - 3 * sigma, mid + 3 * sigma], wave)
-            k = gauss(x[idx[0]:idx[1]], mid, sigma)
-            k /= np.sum(k)
-            return np.convolve(y, k, mode='same')
-
-        bias = wiener(wave.shape[0])
-        bias = lowpass_filter(wave, bias, 200)
-        min = np.min(bias)
-        max = np.max(bias)
-        bias = 1.0 - amplitude * (bias - min) / (max - min)
-
-        return bias
-
-    # TODO: Move to obsmod mixin
-    def add_calib_bias(self, bandwidth=200, amplitude=0.05):
-        bias = Spectrum.generate_calib_bias(self.wave, bandwidth=bandwidth, amplitude=amplitude)
-        self.multiply(bias)
+    def apply_calibration(self, calibration):
+        calibration.apply_calibration(self)
 
     def load(self, filename):
         raise NotImplementedError()

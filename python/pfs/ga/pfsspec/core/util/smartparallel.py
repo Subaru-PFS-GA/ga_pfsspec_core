@@ -157,7 +157,7 @@ class SmartParallel():
         pass
 
     @staticmethod
-    def pool_worker(initializer, worker, queue_in, queue_out):
+    def pool_worker(initializer, worker, queue_in, queue_out, *args, **kwargs):
         if initializer is not None:
             initializer()
         while True:
@@ -166,12 +166,12 @@ class SmartParallel():
                 return
             else:
                 try:
-                    o = worker(i)
+                    o = worker(i, *args, **kwargs)
                     queue_out.put(o)
                 except Exception as e:
                     queue_out.put(e)
 
-    def map(self, worker, items):
+    def map(self, worker, items, *args, **kwargs):
         if self.parallel:
             self.queue_in = self.manager.Queue()
             self.queue_out = self.manager.Queue(1024)
@@ -182,13 +182,14 @@ class SmartParallel():
             for i in range(self.cpus):
                 self.queue_in.put(StopIteration())
 
-            self.pool_results = [self.pool.apply_async(SmartParallel.pool_worker, args=(self.initializer, worker, self.queue_in, self.queue_out)) for i in range(self.cpus)]
+            args = (self.initializer, worker, self.queue_in, self.queue_out) + args
+            self.pool_results = [self.pool.apply_async(SmartParallel.pool_worker, args=args, kwds=kwargs) for i in range(self.cpus)]
 
             m = IterableQueue(self.queue_out, len(items))
         else:
             if self.initializer is not None:
                 self.initializer()
-            m = map(worker, items)
+            m = map(lambda i: worker(i, *args, **kwargs), items)
 
         if self.verbose:
             m = tqdm(m, total=len(items))

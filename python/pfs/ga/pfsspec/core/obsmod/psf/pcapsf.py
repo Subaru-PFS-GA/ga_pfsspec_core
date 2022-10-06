@@ -18,6 +18,7 @@ class PcaPsf(Psf):
 
     __SUPPRESS_WARNING_DWAVE = False
     __SUPPRESS_WARNING_NORM = False
+    __SUPPRESS_WARNING_SIZE = False
 
     def __init__(self, orig=None):
         super().__init__(orig=orig)

@@ -35,7 +35,7 @@ class Resampler():
         # TODO: Do not automatically assume linear binning
         return 0.5 * (wave_edges[1:] + wave_edges[:-1])
 
-    def resample_value(self, wave, wave_edges, value, error=None):
+    def resample_value(self, wave, wave_edges, value, error=None, target_wave=None, target_wave_edges=None):
         raise NotImplementedError()
    
     def resample_mask(self, wave, wave_edges, mask):

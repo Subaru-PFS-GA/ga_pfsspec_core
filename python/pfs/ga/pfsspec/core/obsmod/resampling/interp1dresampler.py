@@ -11,12 +11,14 @@ class Interp1dResampler(Resampler):
         else:
             self.kind = orig.kind
 
-    def resample_value(self, wave, wave_edges, value, error=None):
+    def resample_value(self, wave, wave_edges, value, error=None, target_wave=None, target_wave_edges=None):
+        target_wave = target_wave if target_wave is not None else self.target_wave
+
         if value is None:
             ip_value = None
         else:
             ip = interp1d(wave, value, kind=self.kind, bounds_error=True, assume_sorted=True)
-            ip_value = ip(self.target_wave)
+            ip_value = ip(target_wave)
 
         if error is None:
             ip_error = None
@@ -26,6 +28,6 @@ class Interp1dResampler(Resampler):
 
             # TODO: do this with correct propagation of error
             ip = interp1d(wave, error, kind='nearest', assume_sorted=True)
-            ip_error = ip(self.target_wave)
+            ip_error = ip(target_wave)
 
         return ip_value, ip_error

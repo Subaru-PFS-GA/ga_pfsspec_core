@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 import numpy as np
 
 from .snr import Snr
@@ -16,12 +17,22 @@ class QuantileSnr(Snr):
         else:
             self.q = q if q is not None else orig.q
 
-    def get_snr(self, value, sigma=None):
-        if sigma is None:
+    def get_snr(self, values, sigmas=None):
+
+        if isinstance(values, np.ndarray):
+            values = [ values ]
+
+        if isinstance(sigmas, np.ndarray):
+            sigmas = [ sigmas ]
+
+        if sigmas is None:
             return np.nan
         else:
-            mask = (sigma > 0)
-            snr = np.quantile(value[mask] / sigma[mask], self.q) * np.sqrt(self.binning)
+            v = np.concatenate(values)
+            s = np.concatenate(sigmas)
+
+            mask = (s > 0.0)
+            snr = np.quantile(v[mask] / s[mask], self.q) * np.sqrt(self.binning)
             return snr
 
     

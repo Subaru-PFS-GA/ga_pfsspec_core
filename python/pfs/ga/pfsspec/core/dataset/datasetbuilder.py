@@ -22,8 +22,7 @@ class DatasetBuilder(PfsObject):
             self.resume = orig.resume
             self.chunk_size = orig.chunk_size
             self.top = orig.top
-            self.match_params = orig.match_params
-            self.pipeline = orig.pipeline
+            
             self.dataset = orig.dataset
         else:
             self.random_seed = random_seed
@@ -33,8 +32,6 @@ class DatasetBuilder(PfsObject):
             self.resume = False
             self.chunk_size = None
             self.top = None
-            self.match_params = None
-            self.pipeline = None
             self.dataset = None
 
     def get_arg(self, name, old_value, args=None):
@@ -84,7 +81,7 @@ class DatasetBuilder(PfsObject):
                 self.random_state = np.random.RandomState(self.random_seed + os.getpid() + 1)
             else:
                 self.random_state = np.random.RandomState(None)
-            self.pipeline.random_state = self.random_state
+            
             self.logger.debug("Initialized random state on pid {}, rnd={}".format(os.getpid(), self.random_state.rand()))
 
     def process_item(self, i):

@@ -436,6 +436,10 @@ class Pipeline(PfsObject):
 
     def run_step_convolution(self, spec, **kwargs):
         if self.conv == Constants.CONVOLUTION_RESOLUTION:
+
+            # TODO: modify this to allow pre and post instrument convolution
+            raise NotImplementedError()
+
             # Degrade resolution with Gaussian kernel
 
             if spec.resolution is None or self.conv_resolution is None:

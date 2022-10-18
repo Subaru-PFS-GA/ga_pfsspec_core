@@ -104,7 +104,6 @@ class DatasetBuilder(PfsObject):
         # TODO: when implementing continue, first item test should be different
         if i == 0 and self.dataset.constant_wave:
             self.dataset.set_wave(spec.wave)
-            # self.pipeline.get_wave()
         elif not self.dataset.constant_wave:
             self.dataset.set_wave(spec.wave, idx=s, chunk_size=chunk_size, chunk_id=chunk_id)
 

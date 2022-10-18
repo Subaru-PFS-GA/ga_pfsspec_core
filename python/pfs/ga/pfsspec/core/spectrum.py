@@ -16,7 +16,7 @@ from .constants import Constants
 
 class Spectrum(PfsObject):
     def __init__(self, orig=None):
-        super(Spectrum, self).__init__(orig=orig)
+        super().__init__(orig=orig)
         
         if not isinstance(orig, Spectrum):
             self.index = None
@@ -172,6 +172,32 @@ class Spectrum(PfsObject):
         
         self.wave = target_wave
         self.wave_edges = target_wave_edges
+
+    def trim_wave(self, wlim):
+        """
+        Trim wavelength to be between limits
+        """
+
+        def trim_vector(data, mask):
+            if data is None:
+                return None
+            else:
+                return data[mask]
+
+        if self.wave_edges is not None:
+            mask = (wlim[0] <= self.wave_edges) & (self.wave_edges <= wlim[1])
+        else:
+            mask = (wlim[0] <= self.wave) & (self.wave <= wlim[1])
+
+            self.wave = trim_vector(self.wave, mask)
+            self.flux = trim_vector(self.flux, mask)
+            self.flux_model = trim_vector(self.flux_model, mask)
+            self.flux_err = trim_vector(self.flux_err, mask)
+            self.flux_sky = trim_vector(self.flux_sky, mask)
+            self.flux_calibration = trim_vector(self.flux_calibration, mask)
+            self.mask = trim_vector(self.mask, mask)
+            self.cont = trim_vector(self.cont, mask)
+            self.cont_fit = trim_vector(self.cont_fit, mask)
     
     def apply_resampler_impl(self, resampler):
 

@@ -3,6 +3,7 @@ import pandas as pd
 from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit
 
+from ...util.copy import safe_deep_copy
 from ...util.math import *
 from .psf import Psf
 
@@ -16,9 +17,9 @@ class GaussPsf(Psf):
         super().__init__(reuse_kernel=reuse_kernel, orig=orig)
 
         if isinstance(orig, GaussPsf):
-            self.wave = wave or orig.wave
-            self.wave_edges = wave_edges or orig.wave_edges
-            self.sigma = sigma or orig.sigma
+            self.wave = wave or safe_deep_copy(orig.wave)
+            self.wave_edges = wave_edges or safe_deep_copy(orig.wave_edges)
+            self.sigma = sigma or safe_deep_copy(orig.sigma)
         else:
             self.wave = wave            # Wavelength grid on which sigma is defined
             self.wave_edges = wave_edges

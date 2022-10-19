@@ -23,8 +23,8 @@ class Psf(PfsObject):
         else:
             self.reuse_kernel = reuse_kernel if reuse_kernel is not None else orig.reuse_kernel
 
-            self.cached_wave = orig.chached_wave
-            self.cached_dwave = orig.chached_dwave
+            self.cached_wave = orig.cached_wave
+            self.cached_dwave = orig.cached_dwave
             self.cached_kernel = orig.cached_kernel
             self.cached_idx = orig.cached_idx
             self.cached_shift = orig.cached_shift

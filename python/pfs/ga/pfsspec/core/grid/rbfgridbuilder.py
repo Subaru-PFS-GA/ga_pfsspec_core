@@ -7,6 +7,7 @@ from tqdm import tqdm
 
 from ..util.array import *
 from ..util.interp import Rbf
+from .grid import Grid
 from .gridbuilder import GridBuilder
 from .arraygrid import ArrayGrid
 
@@ -105,7 +106,7 @@ class RbfGridBuilder(GridBuilder):
         all_points = ArrayGrid.get_meshgrid_points(axes, padding=False, squeeze=True, interpolation=self.interpolation, indexing='ij')
         
         # Generate the grid from the axis points and apply the mask.
-        all_points = [ all_points[p].flatten() for i, p, ax in enumerate_axes(axes, squeeze=True) ]
+        all_points = [ all_points[p].flatten() for i, p, ax in Grid.enumerate_axes_impl(axes, squeeze=True) ]
         points = [ p[m] for p in all_points]
 
         # points: list of arrays of shape of (unmasked_count,), for each non-contracted axis

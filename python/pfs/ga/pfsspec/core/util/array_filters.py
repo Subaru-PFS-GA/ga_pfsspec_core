@@ -3,7 +3,7 @@ from scipy.interpolate import interp1d, interpn
 from scipy import ndimage
 from scipy.interpolate import LinearNDInterpolator, RegularGridInterpolator, CubicSpline
 
-from pfs.ga.pfsspec.core.grid import ArrayGrid
+from pfs.ga.pfsspec.core.grid import Grid, ArrayGrid
 from .array import *
 
 def fill_holes_interpnd(axes, value, mask, interpolation='ijk'):
@@ -12,7 +12,7 @@ def fill_holes_interpnd(axes, value, mask, interpolation='ijk'):
     orig_xi = ArrayGrid.get_axis_points(axes, padding=False, interpolation=interpolation)
 
     oijk = []
-    for i, p, ax in enumerate_axes(axes):
+    for i, p, ax in Grid.enumerate_axes_impl(axes):
         if orig_xi[i].shape[0] > 1:
             oijk.append(orig_xi[i])
 
@@ -85,7 +85,7 @@ def pad_array(orig_axes, orig_value, mask=None, size=1, interpolation='ijk'):
     pijk = []
     padding = []
     padded_shape = []
-    for i, p, ax in enumerate_axes(orig_axes):
+    for i, p, ax in Grid.enumerate_axes_impl(orig_axes):
         if orig_xi[i].shape[0] > 1:
             oijk.append(orig_xi[i])
             pijk.append(padded_xi[i])

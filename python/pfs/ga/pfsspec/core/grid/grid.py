@@ -65,24 +65,41 @@ class Grid(PfsObject):
             self.axes[k] = type(axes[k])(k, orig=axes[k])
             self.axes[k].build_index()
 
-    def enumerate_axes(self, s=None, squeeze=False):
-        # Return axes that are optionally limited by slices
+    @staticmethod
+    def enumerate_axes_impl(axes, s=None, squeeze=False):
+        """
+        Enumerate axes in the order of `GridAxis.order`. If squeeze is set to
+        True, axes with a value vector of length <= 1 are ignored. Optionally
+        slice the value vectors if `s` is specified.
+        """
+        order = { k: axes[k].order for k in axes.keys() }
+        keys = sorted(axes.keys(), key=lambda k: order[k])
+        i = 0
+        for k in keys:
+            axis = axes[k]
 
-        j = 0
-        for i, k, axis in enumerate_axes(self.axes):
-            if s is None:
+            if s is None or s[i] is None:
+                sliced = False
                 v = axis.values
             else:
+                sliced = True
                 v = axis.values[s[i]]
-
-            if not isinstance(v, np.ndarray):
-                v = np.array([v])
-
+                
+                # In case the slice resulted in a scalar
+                if not isinstance(v, np.ndarray):
+                    v = np.array([v])
+            
             if not squeeze or v.shape[0] > 1:
-                axis = GridAxis(k, v, order=j)
-                axis.build_index()
-                yield j, k, axis
-                j += 1
+                if sliced:
+                    axis = GridAxis(k, values=v, order=i, orig=axis)
+                    axis.build_index()
+
+                yield i, k, axis
+                i += 1
+
+    def enumerate_axes(self, s=None, squeeze=False):
+        for i, k, ax in  self.enumerate_axes_impl(self.axes, s=s, squeeze=squeeze):
+            yield i, k, ax
         
     def save_params(self):
         self.save_item('/'.join((self.PREFIX_GRID, 'type')), type(self).__name__)
@@ -128,19 +145,13 @@ class Grid(PfsObject):
 
     def add_args(self, parser):
         for k in self.axes:
-            parser.add_argument('--' + k, type=float, nargs='*', default=None, help='Limit on ' + k)
+            self.axes[k].add_args(parser)
 
     def init_from_args(self, args):
         # Override physical parameters grid ranges, if specified
         # TODO: extend this to sample physically meaningful models only
         for k in self.axes:
-            if k in args and args[k] is not None:
-                if len(args[k]) >= 2:
-                    self.axes[k].min = args[k][0]
-                    self.axes[k].max = args[k][1]
-                else:
-                    self.axes[k].min = args[k][0]
-                    self.axes[k].max = args[k][0]
+            self.axes[k].init_from_args(args)
 
     def save_axes(self):
         # Make sure to write out correct value range when grid is sliced.

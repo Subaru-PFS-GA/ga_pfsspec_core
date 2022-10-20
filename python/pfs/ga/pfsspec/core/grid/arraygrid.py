@@ -595,7 +595,7 @@ class ArrayGrid(Grid):
         # The result can be used to call np.meshgrid.
 
         xxi = []
-        for i, p, ax in enumerate_axes(axes):
+        for i, p, ax in Grid.enumerate_axes_impl(axes):
             xi = None
             if interpolation == 'ijk':
                 if ax.values.shape[0] == 1:

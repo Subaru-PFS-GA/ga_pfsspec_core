@@ -62,9 +62,11 @@ class DatasetBuilder(PfsObject):
     def create_dataset(self, preload_arrays=False):
         return Dataset(preload_arrays=preload_arrays)
 
+    # TODO: spectrum specific, move to subclass
     def get_spectrum_count(self):
         raise NotImplementedError()
 
+    # TODO: spectrum specific, move to subclass
     def get_wave_count(self):
         raise NotImplementedError()
 

@@ -1,4 +1,5 @@
 from .grid import Grid
+from .gridsampler import GridSampler
 from .gridenumerator import GridEnumerator
 from .gridaxis import GridAxis
 from .gridconfig import GridConfig

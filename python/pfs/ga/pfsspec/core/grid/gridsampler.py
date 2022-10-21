@@ -14,7 +14,7 @@ class GridSampler():
     def __init__(self, orig=None, random_state=None):
 
         if not isinstance(orig, GridSampler):
-            self.random_state = random_state if random_state is not None else np.random
+            self.random_state = random_state
 
             self.grid = None                    # Stellar spectrum grid
             self.grid_index = None              # Valid models within grid
@@ -51,6 +51,9 @@ class GridSampler():
         if self.auxiliary_axes is not None:
             for i, k, ax in Grid.enumerate_axes_impl(self.auxiliary_axes, s=s, squeeze=squeeze):
                 yield i, k, ax
+
+    def init_random_state(self, random_state):
+        self.random_state = random_state
 
     def add_args(self, parser):
         parser.add_argument('--sample-mode', type=str, choices=['grid', 'random'], default='grid', help='Sampling mode\n')
@@ -104,9 +107,14 @@ class GridSampler():
         def draw_random_param(axis):
             dist = get_random_dist(axis.dist, self.random_state)
             if dist is not None:
-                # Rescale values between the limits
-                r = dist() if axis.dist_args is None else dist(*axis.dist_args)
-                return axis.min + r * (axis.max - axis.min)
+                # Rescale values between the limits and clip to min and max with
+                # rejection sampling
+                while True:
+                    r = dist() if axis.dist_args is None else dist(*axis.dist_args)
+                    r = axis.min + r * (axis.max - axis.min)
+                    if (axis.min <= r) and (r <= axis.max):
+                        break
+                return r
 
         # Draw from grid parameters
         params = {}

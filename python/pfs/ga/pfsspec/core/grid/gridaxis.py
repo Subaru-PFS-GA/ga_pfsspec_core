@@ -48,6 +48,7 @@ class GridAxis():
             elif mode == 'aux':
                 # TODO: add log sampling?
                 self.values = np.linspace(*values)
+                self.build_index()
             else:
                 raise NotImplementedError()
 

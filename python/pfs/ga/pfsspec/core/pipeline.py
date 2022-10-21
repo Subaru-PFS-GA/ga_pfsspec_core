@@ -93,6 +93,16 @@ class Pipeline(PfsObject):
         
         self.norm = self.get_arg('norm', self.norm, args)
         self.norm_wave = self.get_arg('norm_wave', self.norm_wave, args)
+
+    def init_random_state(self, random_state):
+        self.random_state = random_state
+
+    def init_sampler_axes(self, sampler):
+        """
+        Initialize additional axes (parameters) that will be sampled.
+        """
+
+        sampler.init_auxiliary_axis('z', values=np.array([0]))
       
     def is_constant_wave(self):
         # Returns true when the wavelength grid is the same for all processed spectra
@@ -165,7 +175,12 @@ class Pipeline(PfsObject):
         spec.set_restframe()
 
     def run_step_redshift(self, spec: Spectrum, **kwargs):
-        z = self.get_arg('redshift', self.redshift, kwargs)
+        if self.is_arg('rv', kwargs):
+            rv = self.get_arg('rv', None, kwargs)
+            z = Physics.vel_to_z(rv)
+        elif self.is_arg('z', kwargs):
+            z = self.get_arg('z', None, kwargs)
+
         if z is not None and not np.isnan(z) and z != 0.0:
             spec.set_redshift(z)
 

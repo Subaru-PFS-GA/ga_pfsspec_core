@@ -28,7 +28,7 @@ class Spectrum(PfsObject):
             self.exp_count = None
             self.exp_time = None
             self.seeing = None
-            self.extinction = None
+            self.ext = None
             self.target_zenith_angle = None
             self.target_field_angle = None
             self.moon_zenith_angle = None
@@ -64,7 +64,7 @@ class Spectrum(PfsObject):
             self.exp_count = orig.exp_count
             self.exp_time = orig.exp_time
             self.seeing = orig.seeing
-            self.extinction = orig.extinction
+            self.ext = orig.ext
             self.target_zenith_angle = orig.target_zenith_angle
             self.target_field_angle = orig.target_field_angle
             self.moon_zenith_angle = orig.moon_zenith_angle
@@ -97,7 +97,8 @@ class Spectrum(PfsObject):
                 'redshift_err',
                 'exp_count',
                 'exp_time',
-                'extinction',
+                'seeing',
+                'ext',
                 'target_zenith_angle',
                 'target_field_angle',
                 'moon_zenith_angle',
@@ -150,6 +151,7 @@ class Spectrum(PfsObject):
         self.wave = (1 + z) * self.wave
         if self.wave_edges is not None:
             self.wave_edges = (1 + z) * self.wave_edges
+        
         self.redshift = z
 
     def set_restframe(self):
@@ -276,8 +278,8 @@ class Spectrum(PfsObject):
         self.snr = snr.get_snr(self.flux, self.flux_err)
         
     def redden(self, extval=None):
-        extval = extval or self.extinction
-        self.extinction = extval
+        extval = extval or self.ext
+        self.ext = extval
         
         spec = pysynphot.spectrum.ArraySourceSpectrum(wave=self.wave, flux=self.flux, keepneg=True)
         # Cardelli, Clayton, & Mathis (1989, ApJ, 345, 245) R_V = 3.10.
@@ -285,7 +287,7 @@ class Spectrum(PfsObject):
         self.flux = obs.flux
 
     def deredden(self, extval=None):
-        extval = extval or self.extinction
+        extval = extval or self.ext
         self.redden(-extval)
 
     def synthflux(self, filter):

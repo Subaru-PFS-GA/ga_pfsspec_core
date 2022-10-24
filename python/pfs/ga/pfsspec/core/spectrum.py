@@ -267,12 +267,12 @@ class Spectrum(PfsObject):
     def normalize_by_continuum(self):
         self.multiply(1.0 / self.cont)
 
-    def apply_noise(self, noise_model, noise_level=None, random_seed=None):
+    def apply_noise(self, noise_model, noise_level=None, random_state=None):
         """
         Generate the noise based on a noise model and add to the flux.
         """
 
-        self.flux = noise_model.apply_noise(self.wave, self.flux, self.flux_err, mag=self.mag, noise_level=noise_level, random_seed=random_seed)
+        self.flux = noise_model.apply_noise(self.wave, self.flux, self.flux_err, mag=self.mag, noise_level=noise_level, random_state=random_state)
 
     def calculate_snr(self, snr):
         self.snr = snr.get_snr(self.flux, self.flux_err)

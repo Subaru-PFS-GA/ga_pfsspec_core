@@ -157,9 +157,9 @@ class SmartParallel():
         pass
 
     @staticmethod
-    def pool_worker(initializer, worker, queue_in, queue_out, *args, obj=None, **kwargs):
+    def pool_worker(worker_id, initializer, worker, queue_in, queue_out, *args, obj=None, **kwargs):
         if initializer is not None:
-            initializer()
+            initializer(worker_id)
         while True:
             i = queue_in.get()
             if isinstance(i, StopIteration):
@@ -187,12 +187,15 @@ class SmartParallel():
 
             args = (self.initializer, worker, self.queue_in, self.queue_out) + args
             kwargs = {**kwargs, 'obj': obj}
-            self.pool_results = [self.pool.apply_async(SmartParallel.pool_worker, args=args, kwds=kwargs) for i in range(self.cpus)]
+            self.pool_results = []
+            for i in range(self.cpus):
+                ar = self.pool.apply_async(SmartParallel.pool_worker, args=(i,) + args, kwds=kwargs)
+                self.pool_results.append(ar)
 
             m = IterableQueue(self.queue_out, len(items))
         else:
             if self.initializer is not None:
-                self.initializer()
+                self.initializer(0)
             if obj is not None:
                 m = map(lambda i: worker(obj, i, *args, **kwargs), items)
             else:

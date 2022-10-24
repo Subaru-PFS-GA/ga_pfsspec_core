@@ -70,7 +70,7 @@ class DatasetBuilder(PfsObject):
     def get_wave_count(self):
         raise NotImplementedError()
 
-    def init_process(self):
+    def init_process(self, worker_id):
         # NOTE: cannot initialize class-specific data here because the initializer function is executed inside
         #       the worker process before the class data is copied over (although not sure why, since the
         #       process is supposed to be forked rather than a new one started...)

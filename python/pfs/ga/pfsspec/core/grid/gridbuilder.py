@@ -89,7 +89,7 @@ class GridBuilder(PfsObject):
             input_count = min(self.top, input_count)
         return input_count
 
-    def init_process(self):
+    def init_process(self, worker_id):
         pass
 
     def run(self):

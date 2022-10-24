@@ -2,67 +2,41 @@ import numpy as np
 from scipy.interpolate import interp1d
 
 from ..util.args import *
-from ..util.dist import RANDOM_DISTS
+from ..sampling.parameter import Parameter
 
-class GridAxis():
+class GridAxis(Parameter):
     def __init__(self, name, values=None, order=None, orig=None):
+        super().__init__(name, orig=orig)
 
         if not isinstance(orig, GridAxis):
-            self.name = name
             self.values = values
             self.order = order
             self.index = None
-            self.min = None
-            self.max = None
-            self.dist = None
-            self.dist_args = None
             self.ip_to_index = None
             self.ip_to_value = None
         else:
-            self.name = name or orig.name
             self.values = values if values is not None else orig.values
             self.order = order if order is not None else orig.order
             self.index = orig.index
-            self.min = orig.min
-            self.max = orig.max
-            self.dist = orig.dist
-            self.dist_args = orig.dist_args
             self.ip_to_index = orig.ip_to_index
             self.ip_to_value = orig.ip_to_value
 
-    def add_args(self, parser):
-        parser.add_argument(f'--{self.name}', type=float, nargs='*', default=None, help=f'Limit on {self.name}.\n')
-        parser.add_argument(f'--{self.name}-dist', type=str, nargs='*', help=f'Distribution type and params for {self.name}.\n')
+    def init_from_args(self, args):
+        super().init_from_args(args)
+        self.build_index()
 
-    def init_from_args(self, args, mode='minmax'):
-        if is_arg(self.name, args):
-            values = args[self.name]
+        # TODO: if this is an auxiliary axis in a grid sampler
+        #       we need to generate a value grid
+        # if is_arg(self.name, args):
+        #     values = args[self.name]
+        #     if len(values) <= 2:
+        #         self.values = np.array(values)
+        #     elif len(values) > 2:
+        #         self.values = np.linspace(*values)
 
-            if mode == 'minmax':
-                if len(values) >= 2:
-                    self.min = values[0]
-                    self.max = values[1]
-                else:
-                    self.min = values[0]
-                    self.max = values[0]
-            elif mode == 'aux':
-                # TODO: add log sampling?
-                self.values = np.linspace(*values)
-                self.build_index()
-            else:
-                raise NotImplementedError()
-
-        if is_arg(f'{self.name}_dist', args):
-            dist = get_arg(f'{self.name}_dist', self.dist, args)
-            if not isinstance(self.dist, list):
-                self.dist = dist
-            else:
-                self.dist = dist[0]
-                if len(dist) > 1:
-                    self.dist_args = [ float(v) for v in dist[1:] ]
-                else:
-                    self.dist_args = None
-              
+        
+        
+        
     def build_index(self):
         # NOTE: assume one dimension here
         self.index = {v: i[0] for i, v in np.ndenumerate(self.values)}

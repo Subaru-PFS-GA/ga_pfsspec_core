@@ -7,6 +7,7 @@ import pysynphot.binning
 import pysynphot.spectrum
 import pysynphot.reddening
 
+from .sampling import Parameter
 from .physics import Physics
 from .constants import Constants
 from .pfsobject import PfsObject
@@ -77,7 +78,7 @@ class Pipeline(PfsObject):
 
     def init_from_args(self, args):
         self.restframe = self.get_arg('restframe', self.restframe, args)
-        if self.is_arg('redshift'):
+        if self.is_arg('z'):
             raise NotImplementedError()
 
         self.conv = self.get_arg('conv', self.conv, args)
@@ -97,12 +98,12 @@ class Pipeline(PfsObject):
     def init_random_state(self, random_state):
         self.random_state = random_state
 
-    def init_sampler_axes(self, sampler):
+    def init_sampler_parameters(self, sampler):
         """
         Initialize additional axes (parameters) that will be sampled.
         """
 
-        sampler.init_auxiliary_axis('z', values=np.array([0]))
+        sampler.add_parameter(Parameter('z', min=0, max=0, dist='const'))
       
     def is_constant_wave(self):
         # Returns true when the wavelength grid is the same for all processed spectra
@@ -180,6 +181,8 @@ class Pipeline(PfsObject):
             z = Physics.vel_to_z(rv)
         elif self.is_arg('z', kwargs):
             z = self.get_arg('z', None, kwargs)
+        else:
+            z = None
 
         if z is not None and not np.isnan(z) and z != 0.0:
             spec.set_redshift(z)

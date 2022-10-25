@@ -74,3 +74,6 @@ class ParameterSampler():
             params[k] = self.draw_random_param(par)
 
         return params
+
+    def sample_params(self, i):
+        return self.draw_random_params(), None

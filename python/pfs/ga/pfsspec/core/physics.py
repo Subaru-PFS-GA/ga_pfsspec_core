@@ -88,3 +88,7 @@ class Physics():
     @staticmethod
     def vel_to_z(vel):
         return vel * 1e3 / Physics.c
+
+    @staticmethod
+    def z_to_vel(vel):
+        return Physics.c * vel * 1e-3       # km/s

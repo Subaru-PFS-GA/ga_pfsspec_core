@@ -13,7 +13,7 @@ from .constants import Constants
 from .pfsobject import PfsObject
 from .filter import Filter
 from .spectrum import Spectrum
-from .obsmod.psf.psf import Psf
+from .obsmod.psf import GaussPsf, PcaPsf
 from .obsmod.resampling import FluxConservingResampler
 
 class Pipeline(PfsObject):
@@ -34,6 +34,9 @@ class Pipeline(PfsObject):
             self.conv = None                # Convolution method
             self.conv_sigma = None          # Gaussian convolution sigma in wavelength units
             self.conv_resolution = None     # Convolution to a given resolution
+            self.conv_gauss = None
+
+            self.psf = None                 # PSF to be used for convolution
             
             self.wave = None                # When set, resample to this grid
             self.wave_edges = None
@@ -47,9 +50,11 @@ class Pipeline(PfsObject):
         else:
             self.random_state = orig.random_state
 
-            self.conv = orig.conv
             self.conv_sigma = orig.conv_sigma
             self.conv_resolution = orig.conv_resolution
+            self.conv_gauss = orig.conv_gauss
+
+            self.psf = orig.psf
 
             self.wave = orig.wave
             self.wave_edges = orig.wave_edges
@@ -64,9 +69,9 @@ class Pipeline(PfsObject):
     def add_args(self, parser):
         parser.add_argument('--restframe', action='store_true', help='Convert to rest-frame.\n')
         parser.add_argument('--redshift', type=float, nargs='?', help='Shift to given redshift.\n')
-        parser.add_argument('--conv', type=str, choices=[Constants.CONVOLUTION_RESOLUTION, Constants.CONVOLUTION_GAUSS], help='Convolution method.\n')
         parser.add_argument('--conv-sigma', type=float, help='Gaussian convolution sigma in AA.\n')
         parser.add_argument('--conv-resolution', type=float, help='Gaussian convolution to resolution.\n')
+        parser.add_argument('--conv-gauss', type=str, help='Convolve using a Gauss PSF file.\n')
 
         parser.add_argument('--wave', type=float, nargs=2, default=None, help='Wavelength range.\n')
         parser.add_argument('--wave-bins', type=int, help='Number of wavelength bins.\n')
@@ -80,10 +85,10 @@ class Pipeline(PfsObject):
         self.restframe = self.get_arg('restframe', self.restframe, args)
         if self.is_arg('z'):
             raise NotImplementedError()
-
-        self.conv = self.get_arg('conv', self.conv, args)
+            
         self.conv_sigma = self.get_arg('conv_sigma', self.conv_sigma, args)
         self.conv_resolution = self.get_arg('conv_resolution', self.conv_resolution, args)
+        self.conv_gauss = self.get_arg('conv_gauss', self.conv_gauss, args)
 
         # If only wave limits are specified, the input grid will be truncated
         # If the number of bins are specified as well, resampling will be done
@@ -194,296 +199,34 @@ class Pipeline(PfsObject):
 
     #region Convolution
 
-    # @staticmethod
-    # def convolve_vector(wave, data, kernel_func, dlambda=None, vdisp=None, wlim=None):
-    #     """
-    #     Convolve a data vector (flux) with a wavelength-dependent kernel provided as a callable.
-    #     This is very generic, assumes no regular binning and constant-width kernel but bins should
-    #     be similarly sized.
-    #     :param data:
-    #     :param kernel:
-    #     :param dlam:
-    #     :param wlim:
-    #     :return:
-    #     """
+    def init_psf(self, spec):
+        # Initialize PSF kernel, if not already
 
-    #     # TODO: if bins are not similarly sized we need to compute bin widths and take that into
-    #     # account
+        # TODO: differentiate based on log-wave binning
 
-    #     def get_dispersion(dlambda=None, vdisp=None):
-    #         if dlambda is not None and vdisp is not None:
-    #             raise Exception('Only one of dlambda and vdisp can be specified')
-    #         if dlambda is not None:
-    #             if isinstance(dlambda, collections.Iterable):
-    #                 return dlambda, None
-    #             else:
-    #                 return [dlambda, dlambda], None
-    #         elif vdisp is not None:
-    #             z = Physics.vel_to_z(vdisp)
-    #             return None, z
-    #         else:
-    #             z = Physics.vel_to_z(Constants.DEFAULT_FILTER_VDISP)
-    #             return None, z
+        if self.psf is None:
+            if self.conv_sigma is not None:
+                self.psf = GaussPsf(sigma=self.conv_sigma)
+            elif self.conv_resolution is not None:
+                # TODO: create an interpolated gauss kernel to degrade resolution
+                #       take resolution from the spectrum
+                raise NotImplementedError()
+            elif self.conv_gauss is not None:
+                # Load tabulated kernel file from disk
+                psf = GaussPsf(reuse_kernel=False)
+                psf.load(self.conv_gauss, format='h5')
 
-    #     # Start and end of convolution
-    #     if wlim is not None:
-    #         idx_lim = np.digitize(wlim, wave)
-    #     else:
-    #         idx_lim = [0, wave.shape[0] - 1]
-
-    #     # Dispersion determines the width of the kernel to be taken into account
-    #     dlambda, z = get_dispersion(dlambda, vdisp)
-
-    #     # Construct results and fill-in parts that are not part of the original
-    #     if not isinstance(data, tuple) and not isinstance(data, list):
-    #         data = [data, ]
-    #     res = [ np.zeros(d.shape) for d in data ]
-    #     for d, r in zip(data, res):
-    #         r[:idx_lim[0]] = d[:idx_lim[0]]
-    #         r[idx_lim[1]:] = d[idx_lim[1]:]
-
-    #     # Compute convolution
-    #     for i in range(idx_lim[0], idx_lim[1]):
-    #         if dlambda is not None:
-    #             idx = np.digitize([wave[i] - dlambda[0], wave[i] + dlambda[0]], wave)
-    #         else:
-    #             idx = np.digitize([(1 - z) * wave[i], (1 + z) * wave[i]], wave)
-
-    #         # Evaluate kernel
-    #         k = kernel_func(wave[i], wave[idx[0]:idx[1]])
-
-    #         # Sum up
-    #         for d, r in zip(data, res):
-    #             r[i] += np.sum(k * d[idx[0]:idx[1]])
-
-    #     return res
-
-    # @staticmethod
-    # def convolve_vector_varying_kernel(wave, data, kernel_func, size=None, wlim=None):
-    #     """
-    #     Convolve with a kernel that varies with wavelength. Kernel is computed
-    #     by a function passed as a parameter.
-    #     """
-
-    #     # Get a test kernel from the middle of the wavelength range to have its size
-    #     kernel = kernel_func(wave[wave.shape[0] // 2], size=size)
-
-    #     # Start and end of convolution
-    #     # Outside this range, original values will be used
-    #     if wlim is not None:
-    #         idx = np.digitize(wlim, wave)
-    #     else:
-    #         idx = [0, wave.shape[0]]
-
-    #     idx_lim = [
-    #         max(idx[0], kernel.shape[0] // 2),
-    #         min(idx[1], wave.shape[0] - kernel.shape[0] // 2)
-    #     ]
-
-    #     # Construct results
-    #     if not isinstance(data, tuple) and not isinstance(data, list):
-    #         data = [data, ]
-    #     res = [np.zeros(d.shape) for d in data]
-
-    #     # Do the convolution
-    #     # TODO: can we optimize it further?
-    #     offset = 0 - kernel.shape[0] // 2
-    #     for i in range(idx_lim[0], idx_lim[1]):
-    #         kernel = kernel_func(wave[i], size=size)
-    #         s = slice(i + offset, i + offset + kernel.shape[0])
-    #         for d, r in zip(data, res):
-    #             z = d[i] * kernel
-    #             r[s] += z
-
-    #     # Fill-in parts that are not convolved
-    #     for d, r in zip(data, res):
-    #         r[:idx_lim[0] - offset] = d[:idx_lim[0] - offset]
-    #         r[idx_lim[1] + offset:] = d[idx_lim[1] + offset:]
-
-    #     return res
-
-    def convolve_gaussian_log(self, spec, lambda_ref=5000,  dlambda=None, vdisp=None, wlim=None):
-        """
-        Convolve with a Gaussian filter, assume logarithmic binning in wavelength
-        so the same kernel can be used across the whole spectrum
-        :param dlambda:
-        :param vdisp:
-        :param wlim:
-        :return:
-        """
-
-        def convolve_vector(wave, data, kernel, wlim=None):
-            # Start and end of convolution
-            if wlim is not None:
-                idx = np.digitize(wlim, wave)
-                idx_lim = [max(idx[0] - kernel.shape[0] // 2, 0), min(idx[1] + kernel.shape[0] // 2, wave.shape[0] - 1)]
-            else:
-                idx_lim = [0, wave.shape[0] - 1]
-
-            # Construct results
-            if not isinstance(data, tuple) and not isinstance(data, list):
-                data = [data, ]
-            res = [np.empty(d.shape) for d in data]
-
-            for d, r in zip(data, res):
-                r[idx_lim[0]:idx_lim[1]] = np.convolve(d[idx_lim[0]:idx_lim[1]], kernel, mode='same')
-
-            # Fill-in parts that are not convolved to save a bit of computation
-            if wlim is not None:
-                for d, r in zip(data, res):
-                    r[:idx[0]] = d[:idx[0]]
-                r[idx[1]:] = d[idx[1]:]
-
-            return res
-
-        data = [spec.flux, ]
-        if spec.cont is not None:
-            data.append(spec.cont)
-
-        if dlambda is not None:
-            pass
-        elif vdisp is not None:
-            dlambda = lambda_ref * vdisp / Physics.c * 1000 # km/s
-        else:
-            raise Exception('dlambda or vdisp must be specified')
-
-        # Make sure kernel size is always an odd number, starting from 3
-        idx = np.digitize(lambda_ref, spec.wave)
-        i = 1
-        while lambda_ref - 4 * dlambda < spec.wave[idx - i] or \
-              spec.wave[idx + i] < lambda_ref + 4 * dlambda:
-            i += 1
-        idx = [idx - i, idx + i]
-
-        wave = spec.wave[idx[0]:idx[1]]
-        k = 0.3989422804014327 / dlambda * np.exp(-(wave - lambda_ref) ** 2 / (2 * dlambda ** 2))
-        k = k / np.sum(k)
-
-        res = convolve_vector(spec.wave, data, k, wlim=wlim)
-
-        spec.flux = res[0]
-        if spec.cont is not None:
-            spec.cont = res[1]
-
-    def convolve_varying_kernel(self, spec, kernel_func, size=None, wlim=None):
-        # NOTE: this function does not take model resolution into account!
-
-        def convolve_vectors(wave, data, kernel_func, size=None, wlim=None):
-            """
-            Convolve with a kernel that varies with wavelength. Kernel is computed
-            by a function passed as a parameter.
-            """
-
-            # Get a test kernel from the middle of the wavelength range to have its size
-            kernel = kernel_func(wave[wave.shape[0] // 2], size=size)
-
-            # Start and end of convolution
-            # Outside this range, original values will be used
-            if wlim is not None:
-                idx = np.digitize(wlim, wave)
-            else:
-                idx = [0, wave.shape[0]]
-
-            idx_lim = [
-                max(idx[0], kernel.shape[0] // 2),
-                min(idx[1], wave.shape[0] - kernel.shape[0] // 2)
-            ]
-
-            # Construct results
-            if not isinstance(data, tuple) and not isinstance(data, list):
-                data = [data, ]
-            res = [np.zeros(d.shape) for d in data]
-
-            # Do the convolution
-            # TODO: can we optimize it further?
-            offset = 0 - kernel.shape[0] // 2
-            for i in range(idx_lim[0], idx_lim[1]):
-                kernel = kernel_func(wave[i], size=size)
-                s = slice(i + offset, i + offset + kernel.shape[0])
-                for d, r in zip(data, res):
-                    z = d[i] * kernel
-                    r[s] += z
-
-            # Fill-in parts that are not convolved
-            for d, r in zip(data, res):
-                r[:idx_lim[0] - offset] = d[:idx_lim[0] - offset]
-                r[idx_lim[1] + offset:] = d[idx_lim[1] + offset:]
-
-            return res
-
-        data = [spec.flux, ]
-        if spec.cont is not None:
-            data.append(spec.cont)
-
-        res = convolve_vectors(spec.wave, data, kernel_func, size=size, wlim=wlim)
-
-        spec.flux = res[0]
-        if spec.cont is not None:
-            spec.cont = res[1]
-
-    # TODO: Is it used with both, a Psf object and a number? Separate!
-    def convolve_psf(self, spec, psf, model_res, wlim):
-
-        # NOTE: This a more generic convolution step than what's done
-        #       inside the observation model which only accounts for
-        #       the instrumental effects.
-
-        # TODO: what to do with model resolution?
-        # TODO: add option to do convolution pre/post resampling
-        raise NotImplementedError()
-
-        # Note, that this is in addition to model spectrum resolution
-        # if isinstance(psf, Psf):
-        #     spec.convolve_psf(psf, wlim)
-        # elif isinstance(psf, numbers.Number) and model_res is not None:
-        #     sigma = psf
-        #     spec.convolve_gaussian()
-
-        #     if model_res is not None:
-        #         # Resolution at the middle of the detector
-        #         fwhm = 0.5 * (wlim[0] + wlim[-1]) / model_res
-        #         ss = fwhm / 2 / np.sqrt(2 * np.log(2))
-        #         sigma = np.sqrt(sigma ** 2 - ss ** 2)
-        #     self.convolve_gaussian(spec, dlambda=sigma, wlim=wlim)
-        # elif isinstance(psf, numbers.Number):
-        #     # This is a simplified version when the model resolution is not known
-        #     # TODO: review this
-        #     self.convolve_gaussian_log(spec, 5000, dlambda=psf)
-        # else:
-        #     raise NotImplementedError()
+                # Precompute PCA for faster convolution
+                # TODO: how do we know that wave is constant?
+                size = psf.get_optimal_size(spec.wave)
+                self.psf = PcaPsf.from_psf(psf, spec.wave, size=size)
 
     def run_step_convolution(self, spec, **kwargs):
-        if self.conv == Constants.CONVOLUTION_RESOLUTION:
+        self.init_psf(spec)
 
-            # TODO: modify this to allow pre and post instrument convolution
-            raise NotImplementedError()
-
-            # Degrade resolution with Gaussian kernel
-
-            if spec.resolution is None or self.conv_resolution is None:
-                raise Exception('Cannot determine resolution for convolution')
-
-            if spec.wave_edges is None:
-                raise Exception('Wavelength bin edges are not available.')
-
-            # Determine down-convolution kernel width in the middle of the
-            # wavelength coverage of the spectrum
-            wave_ref_idx = spec.wave.shape[0] // 2
-            wave_ref = spec.wave[wave_ref_idx]
-            sigma_orig = wave_ref / spec.resolution
-            sigma_new = wave_ref / self.conv_resolution
-            sigma_kernel = np.sqrt(sigma_new ** 2 - sigma_orig ** 2)
-            
-            if spec.is_wave_regular is not None and spec.is_wave_regular:
-                if spec.is_wave_log is not None and spec.is_wave_log:
-                    self.convolve_gaussian_log(spec, lambda_ref=wave_ref, dlambda=sigma_kernel)
-                else:
-                    raise NotImplementedError()
-            else:
-                raise NotImplementedError()
-
-        elif self.conv is not None:
-            raise NotImplementedError()
+        if self.psf is not None:
+            # Convolve with a PSF
+            spec.convolve_psf(self.psf)
 
     #endregion
 

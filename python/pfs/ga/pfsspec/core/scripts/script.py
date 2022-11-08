@@ -82,17 +82,22 @@ class Script():
 
                 # Instantiate plugin and register further subparsers
                 plugin = self.create_plugin(self.parser_configurations[c][s])
-                subparsers = plugin.add_subparsers(self.parser_configurations[c][s], sp)
-                if subparsers is not None:
-                    for ss in subparsers:
-                        self.add_args(ss)
-                        plugin.add_args(ss)
-                else:
-                    self.add_args(sp)
-                    plugin.add_args(sp)
+                if plugin is not None:
+                    subparsers = plugin.add_subparsers(self.parser_configurations[c][s], sp)
+                    if subparsers is not None:
+                        for ss in subparsers:
+                            self.add_args(ss)
+                            plugin.add_args(ss)
+                    else:
+                        self.add_args(sp)
+                        plugin.add_args(sp)
 
     def create_plugin(self, config):
-        return config[self.CONFIG_TYPE]()
+        t = config[self.CONFIG_TYPE]
+        if t is not None:
+            return t()
+        else:
+            return None
 
     def get_arg(self, name, old_value, args=None):
         args = args or self.args

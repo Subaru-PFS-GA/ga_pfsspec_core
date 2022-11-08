@@ -28,7 +28,11 @@ class Convert(Script):
         self.resume = self.get_arg('resume', self.resume)
 
     def create_plugin(self, config):
-        return config[self.CONFIG_TYPE](config['config'])
+        t = config[self.CONFIG_TYPE]
+        if t is not None:
+            return t(config['config'])
+        else:
+            return None
 
     def create_converter(self):
         config = self.parser_configurations[self.args[self.CONFIG_CLASS]][self.args[self.CONFIG_SUBCLASS]]

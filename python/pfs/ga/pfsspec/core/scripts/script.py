@@ -61,7 +61,8 @@ class Script():
         for m in pkgutil.iter_modules(pfs.ga.pfsspec.__path__):
             try:
                 module = importlib.import_module('pfs.ga.pfsspec.{}.configurations'.format(m.name))
-            except:
+            except ModuleNotFoundError as ex:
+                logging.info(f'Module `{m.name}` has no configuration.')
                 module = None
             if module is not None and hasattr(module, self.CONFIG_NAME):
                 config = getattr(module, self.CONFIG_NAME)

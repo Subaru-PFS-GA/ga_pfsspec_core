@@ -624,7 +624,7 @@ class ArrayGrid(Grid):
 
         points = ArrayGrid.get_axis_points(axes, padding=padding, squeeze=squeeze, interpolation=interpolation)
         points = np.meshgrid(*points, indexing=indexing)
-        points = { p: points[i] for i, p, ax in enumerate_axes(axes, squeeze=squeeze) }
+        points = { p: points[i] for i, p, ax in Grid.enumerate_axes_impl(axes, squeeze=squeeze) }
 
         return points
 

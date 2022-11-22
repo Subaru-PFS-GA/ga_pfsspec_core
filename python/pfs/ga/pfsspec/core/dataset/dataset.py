@@ -35,6 +35,13 @@ class Dataset(PfsObject):
 
         return self.row_count
 
+    def set_count(self, value):
+        """
+        Sets the number of dataset items.
+        """
+        
+        self.row_count = value
+
     def get_shape(self):
         """
         Gets the shape of the dataset, i.e. the number of dataset items.
@@ -186,9 +193,9 @@ class Dataset(PfsObject):
                 self.params.loc[:, name] = np.zeros((), dtype=values.dtype)
             
             if chunk_id is None:
-                self.params[name].iloc[idx] = values[..., i]
+                self.params.loc[idx, name] = values[..., i]
             else:
-                self.params[name].iloc[chunk_id * chunk_size + idx] = values[..., i]
+                self.params.loc[chunk_id * chunk_size + idx, name] = values[..., i]
 
     def append_params_row(self, row, id_key='id'):
         """

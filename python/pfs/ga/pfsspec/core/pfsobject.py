@@ -287,7 +287,13 @@ class PfsObject():
             #       appending them.
 
             if s is None:
-                item.to_hdf(self.filename, path, mode='a', format='table', min_itemsize=min_string_length)
+                if name in g:
+                    del g[name]
+                
+                # Make sure to close the file first!
+                close_hdf5(f)
+
+                item.to_hdf(self.filename, path, mode='a', format='table', append=False, min_itemsize=min_string_length)
             else:
                 # TODO: this throws an error
                 # TODO: verify if s is at the end of table

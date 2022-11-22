@@ -59,8 +59,11 @@ class Script():
         merged_config = {}
 
         for m in pkgutil.iter_modules(pfs.ga.pfsspec.__path__):
-            module = importlib.import_module('pfs.ga.pfsspec.{}.configurations'.format(m.name))
-            if hasattr(module, self.CONFIG_NAME):
+            try:
+                module = importlib.import_module('pfs.ga.pfsspec.{}.configurations'.format(m.name))
+            except:
+                module = None
+            if module is not None and hasattr(module, self.CONFIG_NAME):
                 config = getattr(module, self.CONFIG_NAME)
                 merged_config.update(config)
 

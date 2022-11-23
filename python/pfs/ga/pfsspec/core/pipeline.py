@@ -216,6 +216,14 @@ class Pipeline(PfsObject):
                 psf = GaussPsf(reuse_kernel=False)
                 psf.load(self.conv_gauss, format='h5')
 
+                # Calculate kernel sigma from target sigma
+                if spec.resolution is not None:
+                    input_dlam = psf.wave / spec.resolution
+                    input_sigma = input_dlam / (2 * np.sqrt(2 * np.log(2)))
+                    # Calculate kernel sigma
+                    psf.sigma = np.sqrt(psf.sigma**2 - input_sigma**2)
+                    psf.init_ip()
+
                 # Precompute PCA for faster convolution
                 # TODO: how do we know that wave is constant?
                 size = psf.get_optimal_size(spec.wave)

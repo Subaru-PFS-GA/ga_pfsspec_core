@@ -32,7 +32,12 @@ class FluxConservingResampler(Resampler):
             ip = interp1d(wave_edges, cs, bounds_error=False, fill_value=(0, cs[-1]), kind=self.kind)
             
             # Interpolate the integral and take the numerical differential
-            ip_value = np.diff(ip(target_wave_edges)) / np.diff(target_wave_edges)
+            if target_wave_edges.ndim == 1:
+                ip_value = np.diff(ip(target_wave_edges)) / np.diff(target_wave_edges)
+            elif target_wave_edges.ndim == 2:
+                ip_value = (ip(target_wave_edges[1]) - ip(target_wave_edges[0])) / (target_wave_edges[1] - target_wave_edges[0])
+            else:
+                raise NotImplementedError()
 
         if error is None:
             ip_error = None

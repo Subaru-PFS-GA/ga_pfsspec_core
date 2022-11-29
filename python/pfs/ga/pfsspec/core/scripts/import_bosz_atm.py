@@ -1,5 +1,3 @@
-#!python
-
 import os
 import glob
 import logging

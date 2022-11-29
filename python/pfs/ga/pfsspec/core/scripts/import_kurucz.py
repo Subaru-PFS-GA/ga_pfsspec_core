@@ -1,5 +1,3 @@
-#!python
-
 import os
 
 from pfs.ga.pfsspec.scripts.import_ import Import

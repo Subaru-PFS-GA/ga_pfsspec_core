@@ -1,5 +1,6 @@
 import os
 import re
+import glob
 from io import open
 from typing import Any, Match, cast
 
@@ -39,6 +40,18 @@ packages = find_packages(
     ]
 )
 
+# Look for the shebang at the beginning of script files and register them as command-line entry points
+console_scripts = []
+for fn in glob.glob(PACKAGE_FOLDER_PATH + '/scripts/*.py'):
+    with open(fn, encoding="utf-8") as f:
+        if f.readline().startswith("#!/usr/bin/env python3"):
+            cls = os.path.splitext(os.path.split(fn)[1])[0]
+            cmd = cls.replace('_', '')
+            console_scripts.append('pfsspec-{} = {}.scripts.{}:main'.format(cmd, NAMESPACE_NAME, cls))
+entry_points={
+    'console_scripts': console_scripts
+}
+
 setup(
     package_dir={"": PACKAGE_ROOT},
     name=PACKAGE_NAME,
@@ -67,10 +80,25 @@ setup(
     python_requires="<4.0,>=3.7",
     install_requires=[
         # NOTE: To avoid breaking changes in a major version bump, all dependencies should pin an upper bound if possible.
-        "tqdm<5.0.0",
+        "tqdm>=4.42.1,<5.0.0",
+        "numpy>=1.18.5,<2.0.0",
+        "pandas>=1.0.1,<2.0.0",
+        "h5py>=2.10.0,<3.0.0",
+        "matplotlib>=3.1.3,<4.0.0",
+        "scipy>=1.5.3,<2.0.0",
+        "scikit-learn>=0.22.1,<1.0.0",
+        "astropy>=4.0,<5.0",
+        "specutils>=1.0,<2.0",
+        "pysynphot>=1.0.0,<2.0.0",
+        "nbparameterise~=0.3",
+        "geopandas",
+        # "alphashape>=1.1.0,<2.0.0",
+        # "tensorflow"
+        # "pytorch"
     ],
     project_urls={
         "Bug Reports": PACKAGE_GITHUB_URL + "/issues",
         "Source": PACKAGE_GITHUB_URL,
     },
+    entry_points=entry_points
 )

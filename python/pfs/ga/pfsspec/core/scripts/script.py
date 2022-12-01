@@ -4,15 +4,14 @@ import pkgutil, importlib
 import json
 import yaml
 import logging
-import argparse
 import numpy as np
 import multiprocessing
 from multiprocessing import set_start_method
 import socket
-from collections.abc import Iterable
 
 import pfs.ga.pfsspec   # NOTE: required by module discovery
 # TODO: python 3.8 has this built-in, replace import
+from ..util import ArgumentParser
 import pfs.ga.pfsspec.core.util.shutil as shutil
 import pfs.ga.pfsspec.core.util as util
 from pfs.ga.pfsspec.core.util.notebookrunner import NotebookRunner
@@ -71,7 +70,7 @@ class Script():
         self.parser_configurations = merged_config
 
     def create_parser(self):
-        self.parser = argparse.ArgumentParser()
+        self.parser = ArgumentParser(load_config_func=Script.load_args_json)
         self.add_subparsers(self.parser)
 
     def add_subparsers(self, parser):
@@ -121,39 +120,10 @@ class Script():
         parser.add_argument('--skip-notebooks', action='store_true', help='Skip notebook step.\n')
         parser.add_argument('--random-seed', type=int, default=None, help='Set random seed\n')
 
-    def get_configs(self, path, args):
-        paths = []
-        configs = []
-        if 'config' in args and args['config'] is not None:
-            if isinstance(args['config'], Iterable):
-                filenames = list(args['config'])
-            else:
-                filenames = [args['config']]
-
-            for filename in filenames:
-                fn = os.path.join(path, filename)
-                config = self.load_args_json(fn)
-                paths.append(fn)
-                configs.append(config)
-
-        return paths, configs
-
     def parse_args(self):
         if self.args is None:
-            # - 1. parse command-line args with defaults enabled (already done above)
-            self.args = self.parser.parse_args().__dict__
-            paths, configs = self.get_configs(os.getcwd(), self.args)
-            if len(configs) > 0:
-                # If a config file is used:
-                # - 2. load config file, override all specified arguments
-                for path, config in zip(paths, configs):
-                    self.merge_args(os.path.dirname(path), config, override=True, recursive=True)
-
-                # - 3. reparse command-line with defaults suppressed, apply overrides
-                self.disable_parser_defaults(self.parser)
-                command_args = self.parser.parse_args().__dict__
-                self.merge_args(os.getcwd(), command_args, override=True, recursive=False)
-
+            self.args = self.parser.parse_args()
+            
             # Parse some special but generic arguments
             self.debug = self.get_arg('debug', self.debug)
             self.threads = self.get_arg('threads', self.threads)
@@ -162,28 +132,6 @@ class Script():
             self.log_copy = self.get_arg('log_copy', self.log_copy)
             self.skip_notebooks = self.get_arg('skip_notebooks', self.skip_notebooks)
             self.random_seed = self.get_arg('random_seed', self.random_seed)
-
-    def merge_args(self, path, other_args, override=True, recursive=False):
-        if 'config' in other_args and recursive:
-            # This is a config within a config file, load configs recursively, if requested
-            paths, configs = self.get_configs(path, other_args)
-            for path, config in zip(path, configs):
-                self.merge_args(os.path.dirname(path), config, override=override, recursive=True)
-
-        for k in other_args:
-            if other_args[k] is not None and (k not in self.args or self.args[k] is None or override):
-                self.args[k] = other_args[k]
-
-    def disable_parser_defaults(self, parser):
-        # Call recursively for subparsers
-        for a in parser._actions:
-            if isinstance(a, (argparse._StoreAction, argparse._StoreConstAction,
-                              argparse._StoreTrueAction, argparse._StoreFalseAction)):
-                a.default = None
-            elif isinstance(a, argparse._SubParsersAction):
-                for k in a.choices:
-                    if isinstance(a.choices[k], argparse.ArgumentParser):
-                        self.disable_parser_defaults(a.choices[k])
 
     @staticmethod
     def get_env_vars(prefix='PFSSPEC'):
@@ -258,7 +206,8 @@ class Script():
         with open(filename, 'w') as f:
             yaml.dump(args, f, indent=4)
 
-    def load_args_json(self, filename):
+    @staticmethod
+    def load_args_json(filename):
         with open(filename, 'r') as f:
             args = json.load(f)
         args = Script.resolve_env_vars(args)

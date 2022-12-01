@@ -255,7 +255,10 @@ class PcaGrid(PfsObject):
         return self.get_values_at(idx, s, names=names)
 
     def get_chunk_shape(self, name, shape, s=None):
-        if name == 'eigv':
+        # Override chunking for eigv to be able to memory map directly from
+        # the file. This is necessary to run on multiple threads.
+        
+        if name.endswith(self.POSTFIX_EIGV):
             return None
         else:
             return super().get_chunk_shape(name, shape, s)

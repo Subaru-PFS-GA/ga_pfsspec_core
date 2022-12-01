@@ -192,6 +192,13 @@ class RbfGrid(Grid):
         idx = self.get_index(**kwargs)
         return self.get_values_at(idx, s, names=names, extrapolate=extrapolate)
 
+    def get_chunk_shape(self, name, shape, s=None):
+        # Override chunking for the nodes to enable mmapping the large array
+        if name.endswith(self.POSTFIX_NODES):
+            return None
+        else:
+            return super().get_chunk_shape(name, shape, s=s)
+
     def save_items(self):
         super(RbfGrid, self).save_items()
         self.save_values()
@@ -234,7 +241,7 @@ class RbfGrid(Grid):
 
             path = self.get_value_path(name)
             xi = self.load_item('/'.join([path, self.POSTFIX_XI]), np.ndarray)
-            nodes = self.load_item('/'.join([path, self.POSTFIX_NODES]), np.ndarray)
+            nodes = self.load_item('/'.join([path, self.POSTFIX_NODES]), np.ndarray, mmap=True)
             c = self.load_item('/'.join([path, self.POSTFIX_C]), np.ndarray)
             function = self.load_item('/'.join([path, self.POSTFIX_FUNCTION]), str)
             epsilon = self.load_item('/'.join([path, self.POSTFIX_EPSILON]), float)

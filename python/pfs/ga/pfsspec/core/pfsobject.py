@@ -494,13 +494,13 @@ class PfsObject():
                     g, name = self.get_hdf5_group(f, path, create=False)
                     if g is not None and name in g:
                         mi = mmapinfo.from_hdf5(g[name], slice=s)
+                        if mi is not None:
+                            data = mmaparray(mi)
+                        else:
+                            raise Exception(f'Cannot mmap HDF5 dataset {path}. Is it chunked?')
+                            #data = self.load_item_hdf5(path, type, s=s, default=default, mmap=False)
                     else:
-                        mi = None
-
-                if mi is not None:
-                    data = mmaparray(mi)
-                else:
-                    data = default
+                        data = None
             else:
                 with h5py.File(self.filename, 'r') as f:
                     g, name = self.get_hdf5_group(f, path, create=False)

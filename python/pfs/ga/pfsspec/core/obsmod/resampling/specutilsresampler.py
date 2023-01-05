@@ -1,7 +1,14 @@
+import logging
 from scipy.interpolate import interp1d
 from astropy import units as u
-from specutils import Spectrum1D
-from specutils.manipulation import FluxConservingResampler
+
+try:
+    from specutils import Spectrum1D
+    from specutils.manipulation import FluxConservingResampler
+except:
+    logging.warn('Module `specutils` is not available.')
+    Spectrum1D = None
+    FluxConservingResampler = None
 
 from .resampler import Resampler
 

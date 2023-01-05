@@ -1,8 +1,14 @@
+import logging
 import numpy as np
 from scipy.interpolate import interp1d
 from astropy import units as u
 
-import pysynphot
+try:
+    import pysynphot
+except:
+    logging.warn('Module `specutils` is not available.')
+    pysynphot = None
+
 from .resampler import Resampler
 
 class PysynphotResampler(Resampler):

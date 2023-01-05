@@ -56,7 +56,7 @@ class Physics():
         Griesen 2006
         """
         wlum = wave * 1e5
-        return (1+1e-6*(287.6155+1.62887/wlum**2+0.01360/wlum**4)) * wave
+        return (1 + 1e-6 * (287.6155 + 1.62887 / wlum**2 + 0.01360 / wlum**4)) * wave
 
     @staticmethod
     def air_to_vac_deriv(wave):
@@ -65,6 +65,12 @@ class Physics():
         """
         wlum = wave * 1e5
         return (1+1e-6*(287.6155 - 1.62877/wlum**2 - 0.04080/wlum**4))
+
+    @staticmethod
+    def vac_to_air(wave):
+        fact = 1.0 + 2.735182e-4 + 131.4182 / wave**2 + 2.76249e8 / wave**4
+        fact = fact * (wave >= 2000) + 1.0 * (wave < 2000)
+        return wave/fact
 
     @staticmethod
     def cm_to_pc(d):

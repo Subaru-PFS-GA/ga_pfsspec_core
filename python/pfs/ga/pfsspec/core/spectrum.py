@@ -3,10 +3,15 @@ import numpy as np
 import numbers
 import collections
 import matplotlib.pyplot as plt
-import pysynphot
-import pysynphot.binning
-import pysynphot.spectrum
-import pysynphot.reddening
+
+try:
+    import pysynphot
+    import pysynphot.binning
+    import pysynphot.spectrum
+    import pysynphot.reddening
+except:
+    logging.warn('Module `pysynphot` is not available.')
+    pysynphot = None
 
 from pfs.ga.pfsspec.core.util.copy import *
 from pfs.ga.pfsspec.core.pfsobject import PfsObject

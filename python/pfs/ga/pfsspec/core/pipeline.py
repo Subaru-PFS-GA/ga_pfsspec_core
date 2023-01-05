@@ -1,17 +1,9 @@
 import numpy as np
-import numbers
 from scipy.interpolate import interp1d
-import collections
-import pysynphot
-import pysynphot.binning
-import pysynphot.spectrum
-import pysynphot.reddening
 
 from .sampling import Parameter
 from .physics import Physics
-from .constants import Constants
 from .pfsobject import PfsObject
-from .filter import Filter
 from .spectrum import Spectrum
 from .obsmod.psf import GaussPsf, PcaPsf
 from .obsmod.resampling import FluxConservingResampler

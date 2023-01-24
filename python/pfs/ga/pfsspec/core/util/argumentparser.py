@@ -155,4 +155,6 @@ class ArgumentParser(argparse.ArgumentParser):
         if self._exit_on_error:
             super().error(message)
         else:
-            raise sys.exc_info()[1]
+            ex = sys.exc_info()[1]
+            if ex is not None:
+                raise ex

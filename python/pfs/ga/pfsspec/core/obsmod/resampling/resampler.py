@@ -38,12 +38,24 @@ class Resampler():
     def resample_value(self, wave, wave_edges, value, error=None, target_wave=None, target_wave_edges=None):
         raise NotImplementedError()
    
-    def resample_mask(self, wave, wave_edges, mask):
+    def resample_mask(self, wave, wave_edges, mask, target_wave=None, target_wave_edges=None):
+        target_wave = target_wave if target_wave is not None else self.target_wave
+
         # TODO: we only take the closest bin here which is incorrect
         #       mask values should be combined using bitwise or across bins
 
         if mask is None:
             return None
         else:
-            wl_idx = np.digitize(self.target_wave, wave)
+            wl_idx = np.digitize(target_wave, wave)
             return mask[wl_idx]
+
+    def resample_weight(self, wave, wave_edges, weight, target_wave=None, target_wave_edges=None):
+        target_wave = target_wave if target_wave is not None else self.target_wave
+
+        # Weights are resampled using 1d interpolation.
+        if weight is None:
+            return None
+        else:
+            ip = interp1d(wave, weight)
+            return ip(target_wave)

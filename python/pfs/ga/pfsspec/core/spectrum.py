@@ -51,6 +51,7 @@ class Spectrum(PfsObject):
             self.flux_sky = None                # Background flux (sky + moon, no detector)
             self.flux_calibration = None
             self.mask = None
+            self.weight = None
             self.cont = None
             self.cont_fit = None
             self.random_seed = None
@@ -87,6 +88,7 @@ class Spectrum(PfsObject):
             self.flux_sky = safe_deep_copy(orig.flux_sky)
             self.flux_calibration = safe_deep_copy(orig.flux_calibration)
             self.mask = safe_deep_copy(orig.mask)
+            self.weight = safe_deep_copy(orig.weight)
             self.cont = safe_deep_copy(orig.cont)
             self.cont_fit = orig.cont_fit
             self.random_seed = orig.random_seed
@@ -203,17 +205,18 @@ class Spectrum(PfsObject):
             self.flux_sky = trim_vector(self.flux_sky, mask)
             self.flux_calibration = trim_vector(self.flux_calibration, mask)
             self.mask = trim_vector(self.mask, mask)
+            self.weight = trim_vector(self.weight, mask)
             self.cont = trim_vector(self.cont, mask)
             self.cont_fit = trim_vector(self.cont_fit, mask)
     
     def apply_resampler_impl(self, resampler):
-
         self.flux, self.flux_err = resampler.resample_value(self.wave, self.wave_edges, self.flux, self.flux_err)
         self.flux_sky, _ = resampler.resample_value(self.wave, self.wave_edges, self.flux_sky)
         self.cont, _ = resampler.resample_value(self.wave, self.wave_edges, self.cont)
         self.cont_fit, _ = resampler.resample_value(self.wave, self.wave_edges, self.cont_fit)
         
         self.mask = resampler.resample_mask(self.wave, self.wave_edges, self.mask)
+        self.weight = resampler.resample_weight(self.wave, self.wave_edges, self.weight)
        
     def zero_mask(self):
         self.flux[self.mask != 0] = 0

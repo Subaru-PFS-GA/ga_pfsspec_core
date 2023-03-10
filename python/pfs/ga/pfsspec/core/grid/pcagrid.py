@@ -114,6 +114,9 @@ class PcaGrid(PfsObject):
     def set_axes(self, axes):
         self.grid.set_axes(axes)
 
+    def get_axis(self, key):
+        return self.grid.get_axis(key)
+
     def enumerate_axes(self, s=None, squeeze=False):
         return self.grid.enumerate_axes(s=s, squeeze=squeeze)
 

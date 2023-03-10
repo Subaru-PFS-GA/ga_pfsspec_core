@@ -5,7 +5,7 @@ from ...pfsobject import PfsObject
 
 class Psf(PfsObject):
     """
-    When implemented in derived classes, it calculates the points spread
+    When implemented in derived classes, it calculates the point spread
     function kernel and computes the convolution.
     """
 

@@ -8,8 +8,8 @@ class Parameter():
         if not isinstance(orig, Parameter):
             self.name = name
             self.value = value
-            self.min = min if min is not None else 0
-            self.max = max if max is not None else 1
+            self.min = min
+            self.max = max
             self.dist = dist
             self.dist_args = dist_args
         else:

@@ -40,8 +40,15 @@ class GridAxis(Parameter):
     def build_index(self):
         # NOTE: assume one dimension here
         self.index = {v: i[0] for i, v in np.ndenumerate(self.values)}
-        self.min = np.min(self.values)
-        self.max = np.max(self.values)
+
+        # If limits are not otherwise set, use maximum extents
+        if self.min is None:
+            self.min = np.min(self.values)
+
+        if self.max is None:
+            self.max = np.max(self.values)
+
+        # Interpolators to go from index to value and vice versa
         if self.values.shape[0] > 1:
             self.ip_to_index = interp1d(self.values, np.arange(self.values.shape[0]), fill_value='extrapolate')
             self.ip_to_value = interp1d(np.arange(self.values.shape[0]), self.values, fill_value='extrapolate')

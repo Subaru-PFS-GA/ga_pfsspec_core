@@ -14,12 +14,14 @@ class BetaDistribution(ScipyDistribution):
             self.b = b if b is not None else orig.b
 
     def init_from_args(self, args):
-        if len(args) == 2:
+        if len(args) == 0:
+            pass
+        elif len(args) == 2:
             [self.a, self.b] = [float(v) for v in args]
         elif len(args) == 4:
-            [self.a, self.b, self.min, self.max] = [float(v) for v in args]
-        elif len(args) == 6:
-            [self.a, self.b, self.min, self.max, self.loc, self.scale] = [float(v) for v in args]
+            [self.a, self.b, self.loc, self.scale] = [float(v) for v in args]
+        elif len(args) == 4:
+            [self.a, self.b, self.loc, self.scale, self.min, self.max] = [float(v) for v in args]
         else:
             raise Exception("Invalid number of arguments for log-normal distribution.")
 

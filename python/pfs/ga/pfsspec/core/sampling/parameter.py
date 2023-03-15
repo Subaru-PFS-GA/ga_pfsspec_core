@@ -1,7 +1,8 @@
 import numpy as np
 
 from ..util.args import *
-from ..util.dist import RANDOM_DISTS
+from .distribution import Distribution
+from .uniformdistribution import UniformDistribution
 
 class Parameter():
     def __init__(self, name, value=None, min=None, max=None, dist=None, dist_args=None, orig=None):
@@ -25,6 +26,7 @@ class Parameter():
         parser.add_argument(f'--{self.name}-dist', type=str, nargs='*', help=f'Distribution type and params for {self.name}.\n')
 
     def init_from_args(self, args):
+        # Parse minimum, maximum and/or value for the parameter
         if is_arg(self.name, args):
             values = args[self.name]
 
@@ -36,13 +38,30 @@ class Parameter():
                 self.min = values[0]
                 self.max = values[0]
             
-        if is_arg(f'{self.name}_dist', args):
-            dist = get_arg(f'{self.name}_dist', self.dist, args)
-            if not isinstance(self.dist, list):
-                self.dist = dist
-            else:
-                self.dist = dist[0]
-                if len(dist) > 1:
-                    self.dist_args = [ float(v) for v in dist[1:] ]
-                else:
-                    self.dist_args = None
+        # Parse the distribution settings of the parameter. If no
+        # distribution is specified but we have a min and max value
+        # that are different, we sample from uniform by default.
+        if self.min is not None and self.max is not None and self.min == self.max:
+            self.dist = 'const'
+            pass
+        elif is_arg(f'{self.name}_dist', args):
+            aa = get_arg(f'{self.name}_dist', self.dist, args)
+            if not isinstance(aa, list):
+                aa = [ aa ]
+
+            self.dist = aa[0]
+            self.dist_args = aa[1:]
+
+    def get_dist(self, random_state=None):
+        d = None
+
+        if self.dist is None and self.min is not None and self.max is not None and self.min != self.max:
+            d = UniformDistribution(self.min, self.max, random_state=random_state)
+        else:
+            d = Distribution.from_args(self.dist, self.dist_args, random_state=random_state)
+            
+            if self.min is not None:
+                d.min = self.min
+
+            if self.max is not None:
+                d.max = self.max

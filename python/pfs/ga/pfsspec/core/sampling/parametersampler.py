@@ -1,6 +1,5 @@
 import numpy as np
 
-from ..util.dist import get_random_dist
 from ..util.args import *
 
 class ParameterSampler():
@@ -43,20 +42,16 @@ class ParameterSampler():
 
     def draw_random_param(self, par):
         # Always draw random parameters from self.random_state
+        
         if par.dist == 'const':
             r = par.value
         elif par.dist == 'int':
             r = np.random.randint(par.min, par.max)
         else:
-            dist = get_random_dist(par.dist, self.random_state)
+            dist = par.get_dist(random_state=self.random_state)
+
             if dist is not None:
-                # Rescale values between the limits and clip to min and max with
-                # rejection sampling
-                while True:
-                    r = dist() if par.dist_args is None else dist(*par.dist_args)
-                    r = par.min + r * (par.max - par.min)
-                    if (par.min <= r) and (r <= par.max):
-                        break
+                r = dist.sample()
             else:
                 r = None
             

@@ -1,6 +1,5 @@
 import numpy as np
 
-from ..util.dist import get_random_dist
 from ..util.args import *
 from ..sampling import ParameterSampler, Parameter
 from .grid import Grid, GridAxis

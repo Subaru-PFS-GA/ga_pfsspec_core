@@ -14,10 +14,11 @@ class Distribution():
             self.max = max if max is not None else orig.max
 
     @staticmethod
-    def from_args(name, args):
+    def from_args(name, args, random_state=None):
         from . import DISTRIBUTIONS
-        dist = DISTRIBUTIONS[name]()
-        dist.init_from_args(args)
+        dist = DISTRIBUTIONS[name](random_state=random_state)
+        if args is not None:
+            dist.init_from_args(args)
         return dist
 
     def init_from_args(self, args):

@@ -4,7 +4,9 @@ from .scipydistribution import ScipyDistribution
 
 class NormalDistribution(ScipyDistribution):
     def init_from_args(self, args):
-        if len(args) == 2:
+        if len(args) == 0:
+            pass
+        elif len(args) == 2:
             [self.loc, self.scale] = [float(a) for a in args]
         elif len(args) == 4:
             [self.loc, self.scale, self.min, self.max] = [float(a) for a in args]

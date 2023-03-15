@@ -12,10 +12,12 @@ class LogNormalDistribution(ScipyDistribution):
             self.shape = shape if shape is not None else orig.shape
 
     def init_from_args(self, args):
-        if len(args) == 1:
+        if len(args) == 0:
+            pass
+        elif len(args) == 1:
             [self.shape] = [float(a) for a in args]
         elif len(args) == 3:
-            [self.shape, self.min, self.max] = [float(a) for a in args]
+            [self.shape, self.loc, self.scale] = [float(a) for a in args]
         elif len(args) == 5:
             [self.shape, self.loc, self.scale, self.min, self.max] = [float(a) for a in args]
         else:

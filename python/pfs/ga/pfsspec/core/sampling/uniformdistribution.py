@@ -5,7 +5,9 @@ class UniformDistribution(Distribution):
         super().__init__(min=min, max=max, random_state=random_state, orig=orig)
 
     def init_from_args(self, args):
-        if len(args) == 2:
+        if len(args) == 0:
+            pass
+        elif len(args) == 2:
             [self.min, self.max] = [float(a) for a in args]
         else:
             raise Exception("Invalid number of arguments for uniform distribution.")

@@ -14,8 +14,11 @@ class Distribution():
             self.max = max if max is not None else orig.max
 
     @staticmethod
-    def from_args(args):
-        raise NotImplementedError()
+    def from_args(name, args):
+        from . import DISTRIBUTIONS
+        dist = DISTRIBUTIONS[name]()
+        dist.init_from_args(args)
+        return dist
 
     def init_from_args(self, args):
         raise NotImplementedError()

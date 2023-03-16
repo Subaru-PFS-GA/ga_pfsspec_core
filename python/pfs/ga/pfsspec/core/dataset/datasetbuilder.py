@@ -14,17 +14,7 @@ class DatasetBuilder(PfsObject):
     def __init__(self, orig=None, random_seed=None):
         super(DatasetBuilder, self).__init__(orig=orig)
 
-        if isinstance(orig, PfsObject):
-            self.random_seed = random_seed or orig.random_seed
-            self.random_state = None
-            self.parallel = orig.parallel
-            self.threads = orig.threads
-            self.resume = orig.resume
-            self.chunk_size = orig.chunk_size
-            self.top = orig.top
-            
-            self.dataset = orig.dataset
-        else:
+        if not isinstance(orig, PfsObject):
             self.random_seed = random_seed
             self.random_state = None
             self.parallel = True
@@ -32,7 +22,20 @@ class DatasetBuilder(PfsObject):
             self.resume = False
             self.chunk_size = None
             self.top = None
+            self.labels = None
+
             self.dataset = None
+        else:
+            self.random_seed = random_seed or orig.random_seed
+            self.random_state = None
+            self.parallel = orig.parallel
+            self.threads = orig.threads
+            self.resume = orig.resume
+            self.chunk_size = orig.chunk_size
+            self.top = orig.top
+            self.labels = orig.labels
+            
+            self.dataset = orig.dataset
 
     def get_arg(self, name, old_value, args=None):
         args = args or self.args
@@ -46,6 +49,9 @@ class DatasetBuilder(PfsObject):
         parser.add_argument('--chunk-size', type=int, help='Dataset chunk size.\n')
         parser.add_argument('--top', type=int, help='Stop after this many items.\n')
 
+        # A generic parameter to create extra dataset columns (labels) with python functions.
+        parser.add_argument('--label', action='append', nargs=2, metavar=('name', 'function'), help='Additional dataset label from python expression.\n')
+
     def init_from_args(self, config, args):
         # Only allow parallel if random seed is not set
         # It would be very painful to reproduce the same dataset with multiprocessing
@@ -58,6 +64,9 @@ class DatasetBuilder(PfsObject):
         if self.chunk_size == 0:
             self.chunk_size = None
         self.top = self.get_arg('top', self.top, args)
+
+        # Additional labels
+        self.labels = self.get_arg('label', self.labels, args)
 
     def create_dataset(self, preload_arrays=False):
         return Dataset(preload_arrays=preload_arrays)
@@ -128,6 +137,12 @@ class DatasetBuilder(PfsObject):
         # If chunking is used, make sure that spectra are processed in batches so no frequent
         # cache misses occur at the boundaries of the chunks.
         
+        total_items, chunk_ranges = self.determine_chunk_ranges()
+        self.process_items(total_items, chunk_ranges)
+        if self.labels is not None:
+            self.process_labels()
+
+    def determine_chunk_ranges(self):
         count = self.get_spectrum_count()
         chunk_ranges = []
         total_items = 0
@@ -148,8 +163,10 @@ class DatasetBuilder(PfsObject):
             total_items += len(rng)
 
         if not self.resume:
+            # TODO: "flux" is spectrum specific, consider generalizing
             self.logger.info('Building a new dataset of size {}'.format(self.dataset.get_value_shape('flux')))
         else:
+            # TODO: "flux" is spectrum specific, consider generalizing
             self.logger.info('Resume building a dataset of size {}'.format(self.dataset.get_value_shape('flux')))
             existing = set(self.dataset.params['id'])
             total_items = 0
@@ -158,6 +175,11 @@ class DatasetBuilder(PfsObject):
                 rng = list(all - existing)
                 chunk_ranges[chunk_id] = rng
                 total_items += len(rng)
+        
+        return total_items, chunk_ranges
+
+    def process_items(self, total_items, chunk_ranges):
+        # Call the processing function for each items, either sequentially or in parallel
 
         t = tqdm(total=total_items)
         if self.chunk_size is not None:
@@ -181,3 +203,21 @@ class DatasetBuilder(PfsObject):
         # we don't need to sort.
         if self.dataset.params is not None:
             self.dataset.params.sort_index(inplace=True)
+
+    def process_labels(self):
+        # Execute the additional column generator expression provided on the command-line
+
+        # Apply each expression on the 
+        for [name, exp] in self.labels:
+            # Take a the list of columns, these will be the parameters to the lambda we
+            # convert the provided expression into. The expression cannot be reused
+            # between calls within this loop because the list of columns changes over
+            # iterations.
+
+            # TODO: here we assume the column names are proper variable names,
+            #       escape column names if necessary.
+            #       also avoid using python reserved words, like class etc.
+            
+            src = "lambda {}: {}".format(', '.join([c for c in self.dataset.params.columns]), exp)
+            fun = eval(src)
+            self.dataset.params[name] = self.dataset.params.apply(lambda r: fun(**r.to_dict()), axis=1)

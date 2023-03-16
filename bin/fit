@@ -1,5 +1,5 @@
 #!/bin/bash
 
 set -o noglob
-./bin/run "-m pfs.ga.pfsspec.core.scripts.fit" $@
+./bin/run "-m pfs.ga.pfsspec.core.scripts.fit" "$@"
 set +o noglob

@@ -65,3 +65,5 @@ class Parameter():
 
             if self.max is not None:
                 d.max = self.max
+
+        return d

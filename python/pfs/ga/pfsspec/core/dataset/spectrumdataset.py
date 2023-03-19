@@ -110,7 +110,7 @@ class SpectrumDataset(ArrayDataset):
         self.set_value('flux', flux, idx, chunk_size, chunk_id)
 
     def has_error(self):
-        return self.has_item('error')
+        return self.has_value('error')
 
     def get_error(self, idx=None, chunk_size=None, chunk_id=None):
         return self.get_value('error', idx, chunk_size, chunk_id)
@@ -119,7 +119,7 @@ class SpectrumDataset(ArrayDataset):
         self.set_value('error', error, idx, chunk_size, chunk_id)
 
     def has_mask(self):
-        return self.has_item('mask')
+        return self.has_value('mask')
 
     def get_mask(self, idx=None, chunk_size=None, chunk_id=None):
         return self.get_value('mask', idx, chunk_size, chunk_id)

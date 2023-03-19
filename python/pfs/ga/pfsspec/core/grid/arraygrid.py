@@ -2,7 +2,7 @@ import os
 import logging
 import numpy as np
 import itertools
-from collections import Iterable
+from collections.abc import Iterable
 from scipy import ndimage
 from scipy.interpolate import LinearNDInterpolator, RegularGridInterpolator, CubicSpline
 from scipy.interpolate import interp1d, interpn
@@ -27,22 +27,24 @@ class ArrayGrid(Grid):
     def __init__(self, config=None, orig=None):
         super(ArrayGrid, self).__init__(orig=orig)
 
-        if isinstance(orig, ArrayGrid):
-            self.config = config if config is not None else orig.config
-            self.preload_arrays = orig.preload_arrays
-            self.values = orig.values
-            self.value_shapes = orig.value_shapes
-            self.value_indexes = orig.value_indexes
-            self.slice = orig.slice
-        else:
+        if not isinstance(orig, ArrayGrid):
             self.config = config        # Grid configuration class
-            self.preload_arrays = False
+            self.preload_arrays = False # Preload arrays into memory
+            self.mmap_arrays = False    # MMap arrays into memory from HDF5
             self.values = {}            # Dictionary of value arrays
             self.value_shapes = {}      # Dictionary of value array shapes (excl. grid shape)
             self.value_indexes = {}     # Dictionary of index array indicating existing grid points
             self.slice = None           # Global mask defined as a slice
 
             self.init_values()
+        else:
+            self.config = config if config is not None else orig.config
+            self.preload_arrays = orig.preload_arrays
+            self.mmap_arrays = orig.mmap_arrays
+            self.values = orig.values
+            self.value_shapes = orig.value_shapes
+            self.value_indexes = orig.value_indexes
+            self.slice = orig.slice
 
     @property
     def array_grid(self):
@@ -83,7 +85,7 @@ class ArrayGrid(Grid):
 
     def ensure_lazy_load(self):
         # This works with HDF5 format only!
-        if not self.preload_arrays and self.fileformat != 'h5':
+        if not (self.preload_arrays or self.mmap_arrays) and self.fileformat != 'h5':
             raise NotImplementedError()
 
     def get_slice(self):
@@ -130,6 +132,9 @@ class ArrayGrid(Grid):
                 self.values[name] = np.full(value_shape, np.nan)
                 self.value_indexes[name] = np.full(grid_shape, False, dtype=np.bool)
                 self.logger.info('Initialized memory for grid "{}" of size {}.'.format(name, value_shape))
+            elif self.mmap_arrays:
+                # TODO: allocate HDF5 dataset then mmap it
+                raise NotImplementedError()
             else:
                 self.values[name] = None
                 self.value_indexes[name] = None
@@ -267,7 +272,7 @@ class ArrayGrid(Grid):
         return ii
 
     def has_value_index(self, name):
-        if self.preload_arrays:
+        if self.preload_arrays or self.mmap_arrays:
             return self.value_indexes is not None and \
                    name in self.value_indexes and self.value_indexes[name] is not None
         else:
@@ -308,7 +313,7 @@ class ArrayGrid(Grid):
             super(ArrayGrid, self).get_chunk_shape(name, shape, s=s)
 
     def has_value(self, name):
-        if self.preload_arrays:
+        if self.preload_arrays or self.mmap_arrays:
             return name in self.values and self.values[name] is not None and \
                    name in self.value_indexes and self.value_indexes[name] is not None
         else:
@@ -350,13 +355,13 @@ class ArrayGrid(Grid):
         if self.has_value_index(name):
             if valid is None:
                 valid = self.is_value_valid(name, value)
-            if self.preload_arrays:
+            if self.preload_arrays or self.mmap_arrays:
                 self.value_indexes[name][idx] = valid
             else:
                 self.save_item(self.get_index_path(name), np.array(valid), s=idx)
 
         idx = Grid.rectify_index(idx, s)
-        if self.preload_arrays:
+        if self.preload_arrays or self.mmap_arrays:
             self.values[name][idx] = value
         else:
             self.save_item(self.get_value_path(name), value, idx)
@@ -398,7 +403,7 @@ class ArrayGrid(Grid):
         idx = Grid.rectify_index(idx)
         if self.has_value_at(name, idx):
             idx = Grid.rectify_index(idx, s)
-            if self.preload_arrays:
+            if self.preload_arrays or self.mmap_arrays:
                 return self.values[name][idx]
             else:
                 self.ensure_lazy_load()
@@ -433,6 +438,8 @@ class ArrayGrid(Grid):
                     self.logger.info('Saving grid "{}" of size {}'.format(name, self.values[name].shape))
                     self.save_item(self.get_value_path(name), self.values[name])
                     self.logger.info('Saved grid "{}" of size {}'.format(name, self.values[name].shape))
+                elif self.mmap_arrays:
+                    raise NotImplementedError()
                 else:
                     shape = self.get_value_shape(name)
                     self.logger.info('Allocating grid "{}" with size {}...'.format(name, shape))
@@ -455,6 +462,13 @@ class ArrayGrid(Grid):
                 if self.values[name] is not None:
                     self.value_shapes[name] = self.values[name].shape[len(grid_shape):]
                     self.logger.info('Loaded grid "{}" of size {}'.format(name, self.value_shapes[name]))
+            elif self.mmap_arrays:
+                # When mmap'ing, we simply ignore the slice
+                self.logger.info('Memory mapping grid "{}"'.format(name))
+                self.values[name] = self.load_item(self.get_value_path(name), np.ndarray, mmap=True)
+                if self.values[name] is not None:
+                    self.value_shapes[name] = self.values[name].shape[len(grid_shape):]
+                    self.logger.info('Memory mapped grid "{}" of size {}'.format(name, self.value_shapes[name]))
             else:
                 # When lazy-loading, we simply ignore the slice
                 shape = self.get_item_shape(self.get_value_path(name))
@@ -510,7 +524,41 @@ class ArrayGrid(Grid):
         value = a + (x - xa) * m
         return value, kwargs
 
+    # def interpolate_value_linearNd(self, name, **kwargs):
+    #     idx = self.get_nearby_indexes(**kwargs)
+    #     if idx is None:
+    #         return None
+    #     else:
+    #         idx1, idx2 = idx
+    #         if not self.has_value_at(name, idx1) or not self.has_value_at(name, idx2):
+    #             return None
+
+    #     # Parameter values to interpolate between
+    #     # Only keep dimensions where interpolation is necessary, i.e. skip
+    #     # where axis has a single value only
+    #     x = []
+    #     for i, p, axis in self.enumerate_axes(squeeze=True): 
+    #         x.append([axis.values[idx1[i]], axis.values[idx2[i]]])
+    #     x = tuple(x)
+
+    #     # Will hold data values
+    #     s = [2, ] * len(x)
+    #     value = self.get_value_at(name, idx1)
+    #     s.append(value.shape[0])
+    #     V = np.empty(s)
+
+    #     ii = tuple(np.array(tuple(itertools.product(*([[0, 1],] * len(x))))).transpose())
+    #     kk = tuple(np.array(tuple(itertools.product(*[[idx1[i], idx2[i]] for i in range(len(idx1)) if idx1[i] != idx2[i]]))).transpose())
+
+    #     V[ii] = np.squeeze(self.get_value_at(name, kk))
+
+    #     fn = RegularGridInterpolator(x, V)
+    #     pp = tuple([ kwargs[p] for i, p, axis in self.enumerate_axes(squeeze=True) ])
+    #     value = fn(pp)
+    #     return value, kwargs
+
     def interpolate_value_linearNd(self, name, **kwargs):
+        # Find lower and upper neighboring indices around the coordinates
         idx = self.get_nearby_indexes(**kwargs)
         if idx is None:
             return None
@@ -518,30 +566,50 @@ class ArrayGrid(Grid):
             idx1, idx2 = idx
             if not self.has_value_at(name, idx1) or not self.has_value_at(name, idx2):
                 return None
-
-        # Parameter values to interpolate between
+            
         # Only keep dimensions where interpolation is necessary, i.e. skip
         # where axis has a single value only
         x = []
+        xx = []
         for i, p, axis in self.enumerate_axes(squeeze=True): 
-            x.append([axis.values[idx1[i]], axis.values[idx2[i]]])
-        x = tuple(x)
+            x.append(kwargs[p])
+            xx.append((axis.values[idx1[i]], axis.values[idx2[i]]))
+        x = np.array(x)
+        xx = np.array(xx)
 
-        # Will hold data values
-        s = [2, ] * len(x)
-        value = self.get_value_at(name, idx1)
-        s.append(value.shape[0])
+        # Dimensions
+        D = x.size
+
+        # Generate the indices of all neighboring gridpoints
+        # The shape of ii and kk is (D, 2**D)
+        # TODO: what to do with squeezed indices?
+        ii = np.array(list(itertools.product(*([[0, 1],] * D)))).transpose()
+        kk = np.array(list(itertools.product(*[[idx1[i], idx2[i]] for i in range(len(idx1)) if idx1[i] != idx2[i]]))).transpose()
+        
+        # Retrieve the value arrays for each of the surrounding grid points
+        s = D * (2, ) + self.get_value_shape(name)[D:]
         V = np.empty(s)
+        # TODO: Does this squeeze solves the problem above?
+        V[tuple(ii)] = np.squeeze(self.get_value_at(name, kk))
 
-        ii = tuple(np.array(tuple(itertools.product(*([[0, 1],] * len(x))))).transpose())
-        kk = tuple(np.array(tuple(itertools.product(*[[idx1[i], idx2[i]] for i in range(len(idx1)) if idx1[i] != idx2[i]]))).transpose())
+        # Now perform the 1d interpolations along each axis, going backwards
+        # for d in reversed(range(0, D)):
+        #    s = s[1:]
+        #    x0 = xx[d, 0]
+        #    x1 = xx[d, 1]
+        #    V0 = V[tuple(ii[:, 0::2])].reshape(s)
+        #    V1 = V[tuple(ii[:, 1::2])].reshape(s)
+           
+        #    # Perform the reduction
+        #    V = V0 + (V1 - V0) / (x1 - x0) * (x[d] - x0)
+        #    ii = ii[:-1, ::2]
 
-        V[ii] = np.squeeze(self.get_value_at(name, kk))
+        for d in range(D):
+            x0 = xx[d, 0]
+            x1 = xx[d, 1]
+            V = V[0] + (V[1] - V[0]) / (x1 - x0) * (x[d] - x0)
 
-        fn = RegularGridInterpolator(x, V)
-        pp = tuple([ kwargs[p] for i, p, axis in self.enumerate_axes(squeeze=True) ])
-        value = fn(pp)
-        return value, kwargs
+        return V, kwargs
 
     def interpolate_value_spline(self, name, free_param, **kwargs):
         axis_list = list(self.axes.keys())
@@ -573,7 +641,7 @@ class ArrayGrid(Grid):
             self.logger.debug('Parameters are at the edge of grid, no interpolation possible.')
             return None
 
-        if self.preload_arrays:
+        if self.preload_arrays or self.mmap_arrays:
             value = self.values[name][idx][valid_value]
         else:
             self.ensure_lazy_load()

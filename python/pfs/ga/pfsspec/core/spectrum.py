@@ -393,7 +393,7 @@ class Spectrum(PfsObject):
 
         ndata = np.empty(data.shape)
         for i in range(len(wave)):
-            if isinstance(dlambda, collections.Iterable):
+            if isinstance(dlambda, collections.abc.Iterable):
                 mask = (wave[i] - dlambda[0] <= wave) & (wave < wave[i] + dlambda[1])
             elif dlambda is not None:
                 mask = (wave[i] - dlambda <= wave) & (wave < wave[i] + dlambda)

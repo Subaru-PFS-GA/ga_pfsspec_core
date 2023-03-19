@@ -9,7 +9,7 @@ import h5py
 import json
 import multiprocessing as mp
 import numbers
-from collections import Iterable
+from collections.abc import Iterable
 
 from .constants import Constants
 from pfs.ga.pfsspec.core.util.args import get_arg, is_arg
@@ -497,8 +497,8 @@ class PfsObject():
                         if mi is not None:
                             data = mmaparray(mi)
                         else:
-                            raise Exception(f'Cannot mmap HDF5 dataset {path}. Is it chunked?')
-                            #data = self.load_item_hdf5(path, type, s=s, default=default, mmap=False)
+                            logging.warn(f'Cannot mmap HDF5 dataset {path}. Is it chunked?')
+                            data = None
                     else:
                         data = None
             else:

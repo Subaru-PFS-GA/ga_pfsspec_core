@@ -2,7 +2,7 @@ import os
 import logging
 import numbers
 import numpy as np
-from collections import Iterable
+from collections.abc import Iterable
 
 from ..util.array import *
 from ..pfsobject import PfsObject

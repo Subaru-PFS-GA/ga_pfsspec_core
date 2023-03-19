@@ -67,7 +67,7 @@ class PcaPsf(Psf):
 
     def init_ip(self):
         # Interpolate PCs
-        self.pc_ip = interp1d(self.wave, self.pc.T, bounds_error=False, fill_value=(self.pc[0], self.pc[-1]))
+        self.pc_ip = interp1d(self.wave, self.pc.T, bounds_error=False, fill_value=(self.pc[0], self.pc[-1]), assume_sorted=True)
 
     @staticmethod
     def from_psf(source_psf, wave, dwave=None, size=None, s=slice(None), normalize=True, truncate=None):

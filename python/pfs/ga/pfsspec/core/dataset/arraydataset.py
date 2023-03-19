@@ -287,6 +287,9 @@ class ArrayDataset(Dataset):
     #endregion
     #region Array access with chunking and caching support
 
+    def has_value(self, name):
+        return self.has_item(self.get_value_path(name))
+
     def get_value(self, name, idx=None, chunk_size=None, chunk_id=None):
         """
         Gets an indexed slice of a value array with optional chunking and data

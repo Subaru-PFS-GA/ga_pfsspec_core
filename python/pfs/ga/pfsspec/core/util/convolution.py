@@ -20,7 +20,7 @@
 #         if dlambda is not None and vdisp is not None:
 #             raise Exception('Only one of dlambda and vdisp can be specified')
 #         if dlambda is not None:
-#             if isinstance(dlambda, collections.Iterable):
+#             if isinstance(dlambda, collections.abc.Iterable):
 #                 return dlambda, None
 #             else:
 #                 return [dlambda, dlambda], None

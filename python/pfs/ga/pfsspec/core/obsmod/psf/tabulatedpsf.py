@@ -68,6 +68,15 @@ class TabulatedPsf(Psf):
 
         # Return 0 for shift since we have the kernel for the entire wavelength range
         return w, dw, k, idx[s], 0
+    
+    def has_size(self):
+        return True
+    
+    def get_size(self):
+        return self.dwave.shape[-1]
+    
+    def has_optimal_size(self):
+        return False
 
     def get_optimal_size(self, wave, tol=1e-5):
         raise NotImplementedError()

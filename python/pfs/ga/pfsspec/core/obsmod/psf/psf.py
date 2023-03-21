@@ -79,6 +79,15 @@ class Psf(PfsObject):
 
     def normalize(self, k):
         return k / np.sum(k, axis=-1, keepdims=True)
+    
+    def has_size(self):
+        return False
+    
+    def get_size(self):
+        raise NotImplementedError()
+    
+    def has_optimal_size(self):
+        return True
 
     def get_optimal_size(self, wave, tol=1e-5):
         """

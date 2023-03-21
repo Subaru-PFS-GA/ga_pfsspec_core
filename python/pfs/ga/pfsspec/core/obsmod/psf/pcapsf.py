@@ -141,6 +141,15 @@ class PcaPsf(Psf):
 
         # Return 0 for shift since we have the kernel for the entire wavelength range
         return w, dw, k, idx[s], 0
+    
+    def has_size(self):
+        return True
+    
+    def get_size(self):
+        return self.eigv.shape[-1]
+    
+    def has_optimal_size(self):
+        return False
 
     def get_optimal_size(self, wave, tol=1e-5):
         raise NotImplementedError()
@@ -201,6 +210,7 @@ class PcaPsf(Psf):
         if isinstance(errors, np.ndarray):
             re = re[0]
 
+        # wave, convolved values, convolved errors, shift with respect to input
         return w, rv, re, shift
 
     def warn(self, id):

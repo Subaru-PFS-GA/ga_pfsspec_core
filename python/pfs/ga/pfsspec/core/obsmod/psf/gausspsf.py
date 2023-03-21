@@ -93,3 +93,4 @@ class GaussPsf(Psf):
             k = self.normalize(k)
         
         return k
+    

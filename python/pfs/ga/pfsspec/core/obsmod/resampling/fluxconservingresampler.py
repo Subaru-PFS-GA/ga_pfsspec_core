@@ -37,6 +37,8 @@ class FluxConservingResampler(Resampler):
                 ip_value = (ip(target_wave_edges[1]) - ip(target_wave_edges[0])) / (target_wave_edges[1] - target_wave_edges[0])
             else:
                 raise NotImplementedError()
+            
+        # TODO: some time can be saved by only building the interpolator between the min and max of target_wave
 
         if error is None:
             ip_error = None

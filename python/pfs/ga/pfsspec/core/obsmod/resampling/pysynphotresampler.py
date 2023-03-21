@@ -6,7 +6,7 @@ from astropy import units as u
 try:
     import pysynphot
 except:
-    logging.warn('Module `specutils` is not available.')
+    logging.warn('Module `pysynphot` is not available.')
     pysynphot = None
 
 from .resampler import Resampler

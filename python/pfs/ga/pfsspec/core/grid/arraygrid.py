@@ -25,7 +25,7 @@ class ArrayGrid(Grid):
     POSTFIX_INDEX = 'index'
 
     def __init__(self, config=None, orig=None):
-        super(ArrayGrid, self).__init__(orig=orig)
+        super().__init__(orig=orig)
 
         if not isinstance(orig, ArrayGrid):
             self.config = config        # Grid configuration class
@@ -36,6 +36,8 @@ class ArrayGrid(Grid):
             self.value_indexes = {}     # Dictionary of index array indicating existing grid points
             self.slice = None           # Global mask defined as a slice
 
+            self.value_cache = None
+
             self.init_values()
         else:
             self.config = config if config is not None else orig.config
@@ -45,6 +47,8 @@ class ArrayGrid(Grid):
             self.value_shapes = orig.value_shapes
             self.value_indexes = orig.value_indexes
             self.slice = orig.slice
+
+            self.value_cache = orig.value_cache
 
     @property
     def array_grid(self):
@@ -106,9 +110,14 @@ class ArrayGrid(Grid):
 
 #endregion
 
-    def get_value_shape(self, name):
+    def get_value_shape(self, name, s=None):
         # Gets the full shape of the grid. It assumes different last
         # dimensions for each data array.
+
+        if s is not None:
+            # Allow slicing of values, this requires some calculations
+            raise NotImplementedError()
+
         shape = self.get_shape(s=self.slice, squeeze=False) + self.value_shapes[name]
         return shape
 
@@ -374,13 +383,13 @@ class ArrayGrid(Grid):
         idx = self.get_nearest_index(**kwargs)
         return self.get_values_at(idx, s, names=names)
 
-    def get_values_at(self, idx, s=None, names=None):
+    def get_values_at(self, idx, s=None, names=None, raw=False, post_process=None, cache_key=()):
         names = names or self.values.keys()
-        return {name: self.get_value_at(name, idx, s) for name in names}
+        return {name: self.get_value_at(name, idx, s=s, raw=raw, post_process=post_process, cache_key=cache_key) for name in names}
 
     def get_value(self, name, s=None, squeeze=False, **kwargs):
         idx = self.get_index(**kwargs)
-        v = self.get_value_at(name, idx, s)
+        v = self.get_value_at(name, idx, s=s)
         if squeeze:
             v = np.squeeze(v)
         return v
@@ -396,20 +405,34 @@ class ArrayGrid(Grid):
 
     def get_nearest_value(self, name, s=None, **kwargs):
         idx = self.get_nearest_index(**kwargs)
-        return self.get_value_at(name, idx, s)
+        return self.get_value_at(name, idx, s=s)
 
-    def get_value_at(self, name, idx, s=None, raw=None):
+    def get_value_at(self, name, idx, s=None, raw=None, post_process=None, cache_key_prefix=()):
         # TODO: consider adding a squeeze=False option to keep exactly indexed dimensions
+        
+        if self.value_cache is not None:
+            cache_key = cache_key_prefix + (name, idx, s, raw)
+            if self.value_cache.is_cached(cache_key):
+                return self.value_cache.get(cache_key)
+
         idx = Grid.rectify_index(idx)
         if self.has_value_at(name, idx):
             idx = Grid.rectify_index(idx, s)
             if self.preload_arrays or self.mmap_arrays:
-                return self.values[name][idx]
+                v = np.array(self.values[name][idx], copy=True)
             else:
                 self.ensure_lazy_load()
-                return self.load_item(self.get_value_path(name), np.ndarray, idx)
+                v = self.load_item(self.get_value_path(name), np.ndarray, idx)
         else:
-            return None
+            v = None
+
+        if post_process is not None and v is not None:
+            v = post_process(v)
+        
+        if self.value_cache is not None:
+            self.value_cache.push(cache_key, v)
+
+        return v
 
     def get_error_at(self, name, idx, s=None, raw=None):
         """Return the error associated to the value `name`."""
@@ -419,7 +442,7 @@ class ArrayGrid(Grid):
 
     def load(self, filename, s=None, format=None):
         s = s or self.slice
-        super(ArrayGrid, self).load(filename, s=s, format=format)
+        super().load(filename, s=s, format=format)
 
     def enum_values(self):
         # Figure out values from the file, if possible
@@ -489,22 +512,22 @@ class ArrayGrid(Grid):
             self.value_indexes[name] = self.load_item(self.get_index_path(name), np.ndarray, s=None)
 
     def save_items(self):
-        super(ArrayGrid, self).save_items()
+        super().save_items()
         self.save_value_indexes()
         self.save_values()
 
     def load_items(self, s=None):
-        super(ArrayGrid, self).load_items(s=s)
+        super().load_items(s=s)
         self.load_value_indexes()
         self.load_values(s)
 
-    def interpolate_value_linear(self, name, **kwargs):
+    def interpolate_value_linear(self, name, s=None, post_process=None, cache_key_prefix=(), **kwargs):
         if len(self.axes) == 1:
-            return self.interpolate_value_linear1d(name, **kwargs)
+            return self.interpolate_value_linear1d(name, s=s, post_process=post_process, cache_key_prefix=cache_key_prefix, **kwargs)
         else:
-            return self.interpolate_value_linearNd(name, **kwargs)
+            return self.interpolate_value_linearNd(name, s=s, post_process=post_process, cache_key_prefix=cache_key_prefix, **kwargs)
 
-    def interpolate_value_linear1d(self, name, **kwargs):
+    def interpolate_value_linear1d(self, name, s=None, post_process=None, cache_key_prefix=(), **kwargs):
         idx = self.get_nearby_indexes(**kwargs)
         if idx is None:
             return None
@@ -518,67 +541,39 @@ class ArrayGrid(Grid):
         x = kwargs[p]
         xa = self.axes[p].values[idx1[0]]
         xb = self.axes[p].values[idx2[0]]
-        a = self.get_value_at(name, idx1)
-        b = self.get_value_at(name, idx2)
+        a = self.get_value_at(name, idx1, s=s, post_process=post_process, cache_key_prefix=cache_key_prefix)
+        b = self.get_value_at(name, idx2, s=s, post_process=post_process, cache_key_prefix=cache_key_prefix)
         m = (b - a) / (xb - xa)
         value = a + (x - xa) * m
         return value, kwargs
 
-    # def interpolate_value_linearNd(self, name, **kwargs):
-    #     idx = self.get_nearby_indexes(**kwargs)
-    #     if idx is None:
-    #         return None
-    #     else:
-    #         idx1, idx2 = idx
-    #         if not self.has_value_at(name, idx1) or not self.has_value_at(name, idx2):
-    #             return None
+    def get_nearby_value(self, name, **kwargs):
+        # TODO: implement multi-value version
 
-    #     # Parameter values to interpolate between
-    #     # Only keep dimensions where interpolation is necessary, i.e. skip
-    #     # where axis has a single value only
-    #     x = []
-    #     for i, p, axis in self.enumerate_axes(squeeze=True): 
-    #         x.append([axis.values[idx1[i]], axis.values[idx2[i]]])
-    #     x = tuple(x)
-
-    #     # Will hold data values
-    #     s = [2, ] * len(x)
-    #     value = self.get_value_at(name, idx1)
-    #     s.append(value.shape[0])
-    #     V = np.empty(s)
-
-    #     ii = tuple(np.array(tuple(itertools.product(*([[0, 1],] * len(x))))).transpose())
-    #     kk = tuple(np.array(tuple(itertools.product(*[[idx1[i], idx2[i]] for i in range(len(idx1)) if idx1[i] != idx2[i]]))).transpose())
-
-    #     V[ii] = np.squeeze(self.get_value_at(name, kk))
-
-    #     fn = RegularGridInterpolator(x, V)
-    #     pp = tuple([ kwargs[p] for i, p, axis in self.enumerate_axes(squeeze=True) ])
-    #     value = fn(pp)
-    #     return value, kwargs
-
-    def interpolate_value_linearNd(self, name, **kwargs):
         # Find lower and upper neighboring indices around the coordinates
         idx = self.get_nearby_indexes(**kwargs)
         if idx is None:
             return None
         else:
             idx1, idx2 = idx
-            if not self.has_value_at(name, idx1) or not self.has_value_at(name, idx2):
-                return None
+
+        # TODO: This verification is not enough, all
+        #       indices have to be checked in case of holes
+        if not self.has_value_at(name, idx1) or not self.has_value_at(name, idx2):
+            return None
             
-        # Only keep dimensions where interpolation is necessary, i.e. skip
-        # where axis has a single value only
-        x = []
-        xx = []
-        for i, p, axis in self.enumerate_axes(squeeze=True): 
-            x.append(kwargs[p])
-            xx.append((axis.values[idx1[i]], axis.values[idx2[i]]))
-        x = np.array(x)
-        xx = np.array(xx)
+        return self.get_nearby_value_at(name, idx1, idx2)
+    
+    def get_nearby_value_at(self, name, idx1, idx2, s=None, raw=None, post_process=None, cache_key_prefix=()):
+        # TODO: implement multi-value version
+
+        if self.value_cache is not None:
+            cache_key = cache_key_prefix + (name, idx1, idx2, s, raw, post_process)
+            if self.value_cache.is_cached(cache_key):
+                return self.value_cache.get(cache_key)
 
         # Dimensions
-        D = x.size
+        D = len(idx1)
 
         # Generate the indices of all neighboring gridpoints
         # The shape of ii and kk is (D, 2**D)
@@ -587,29 +582,49 @@ class ArrayGrid(Grid):
         kk = np.array(list(itertools.product(*[[idx1[i], idx2[i]] for i in range(len(idx1)) if idx1[i] != idx2[i]]))).transpose()
         
         # Retrieve the value arrays for each of the surrounding grid points
-        s = D * (2, ) + self.get_value_shape(name)[D:]
-        V = np.empty(s)
+        shape = D * (2, ) + self.get_value_shape(name, s=s)[D:]
+        v = np.empty(shape)
         # TODO: Does this squeeze solves the problem above?
-        V[tuple(ii)] = np.squeeze(self.get_value_at(name, kk))
+        v[tuple(ii)] = np.squeeze(self.get_value_at(name, kk, s=s, raw=raw, post_process=post_process, cache_key_prefix=cache_key_prefix))
 
-        # Now perform the 1d interpolations along each axis, going backwards
-        # for d in reversed(range(0, D)):
-        #    s = s[1:]
-        #    x0 = xx[d, 0]
-        #    x1 = xx[d, 1]
-        #    V0 = V[tuple(ii[:, 0::2])].reshape(s)
-        #    V1 = V[tuple(ii[:, 1::2])].reshape(s)
-           
-        #    # Perform the reduction
-        #    V = V0 + (V1 - V0) / (x1 - x0) * (x[d] - x0)
-        #    ii = ii[:-1, ::2]
+        if self.value_cache is not None:
+            self.value_cache.push(cache_key, v)
 
-        for d in range(D):
+        return v
+
+    def interpolate_value_linearNd(self, name, s=None, post_process=None, cache_key_prefix=(), **kwargs):
+        # TODO: implement multi-value version
+
+        # Find lower and upper neighboring indices around the coordinates
+        idx = self.get_nearby_indexes(**kwargs)
+        if idx is None:
+            return None
+        else:
+            idx1, idx2 = idx
+
+        # Only keep dimensions where interpolation is necessary, i.e. skip
+        # where axis has a single value only
+
+        d = len(idx1)
+        
+        x = []
+        xx = []
+        for i, p, axis in self.enumerate_axes(squeeze=True): 
+            x.append(kwargs[p])
+            xx.append((axis.values[idx1[i]], axis.values[idx2[i]]))
+        x = np.array(x)
+        xx = np.array(xx)
+
+        v = self.get_nearby_value_at(name, idx1, idx2, s=s, post_process=post_process, cache_key_prefix=cache_key_prefix)
+        
+        # Perform the 1d interpolations along each axis
+        for d in range(d):
             x0 = xx[d, 0]
             x1 = xx[d, 1]
-            V = V[0] + (V[1] - V[0]) / (x1 - x0) * (x[d] - x0)
+            
+            v = v[0] + (v[1] - v[0]) / (x1 - x0) * (x[d] - x0)
 
-        return V, kwargs
+        return v, kwargs
 
     def interpolate_value_spline(self, name, free_param, **kwargs):
         axis_list = list(self.axes.keys())

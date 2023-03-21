@@ -5,8 +5,8 @@ from astropy import units as u
 try:
     from specutils import Spectrum1D
     from specutils.manipulation import FluxConservingResampler
-except:
-    logging.warn('Module `specutils` is not available.')
+except ModuleNotFoundError as ex:
+    logging.warn(ex.msg)
     Spectrum1D = None
     FluxConservingResampler = None
 

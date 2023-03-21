@@ -5,8 +5,8 @@ from astropy import units as u
 
 try:
     import pysynphot
-except:
-    logging.warn('Module `pysynphot` is not available.')
+except ModuleNotFoundError as ex:
+    logging.warn(ex.msg)
     pysynphot = None
 
 from .resampler import Resampler

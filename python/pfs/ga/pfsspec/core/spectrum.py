@@ -9,8 +9,8 @@ try:
     import pysynphot.binning
     import pysynphot.spectrum
     import pysynphot.reddening
-except:
-    logging.warn('Module `pysynphot` is not available.')
+except ModuleNotFoundError as ex:
+    logging.warn(ex.msg)
     pysynphot = None
 
 from pfs.ga.pfsspec.core.util.copy import *

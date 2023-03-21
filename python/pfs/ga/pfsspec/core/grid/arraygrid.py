@@ -72,13 +72,13 @@ class ArrayGrid(Grid):
         # If a limit is specified on any of the parameters on the command-line,
         # try to slice the grid while loading from HDF5
         s = []
-        for k in self.axes:
+        for i, k, ax in self.enumerate_axes():
             if k in args and args[k] is not None:
                 if len(args[k]) == 2:
-                    idx = np.digitize([args[k][0], args[k][1]], self.axes[k].values)
+                    idx = np.digitize([args[k][0], args[k][1]], ax.values)
                     s.append(slice(max(0, idx[0] - 1), idx[1], None))
                 elif len(args[k]) == 1:
-                    idx = np.digitize([args[k][0]], self.axes[k].values)
+                    idx = np.digitize([args[k][0]], ax.values)
                     s.append(max(0, idx[0] - 1))
                 else:
                     raise Exception('Only two or one values are allowed for parameter {}'.format(k))
@@ -117,8 +117,9 @@ class ArrayGrid(Grid):
         if s is not None:
             # Allow slicing of values, this requires some calculations
             raise NotImplementedError()
+        else:
+            shape = self.get_shape(s=self.slice, squeeze=False) + self.value_shapes[name]
 
-        shape = self.get_shape(s=self.slice, squeeze=False) + self.value_shapes[name]
         return shape
 
     # TODO: add support for dtype
@@ -408,14 +409,15 @@ class ArrayGrid(Grid):
         return self.get_value_at(name, idx, s=s)
 
     def get_value_at(self, name, idx, s=None, raw=None, post_process=None, cache_key_prefix=()):
-        # TODO: consider adding a squeeze=False option to keep exactly indexed dimensions
-        
+        # TODO: consider adding a squeeze=False option to keep exactly indexed dimensions       
+
         if self.value_cache is not None:
             cache_key = cache_key_prefix + (name, idx, s, raw)
             if self.value_cache.is_cached(cache_key):
                 return self.value_cache.get(cache_key)
 
         idx = Grid.rectify_index(idx)
+        
         if self.has_value_at(name, idx):
             idx = Grid.rectify_index(idx, s)
             if self.preload_arrays or self.mmap_arrays:
@@ -578,14 +580,18 @@ class ArrayGrid(Grid):
         # Generate the indices of all neighboring gridpoints
         # The shape of ii and kk is (D, 2**D)
         # TODO: what to do with squeezed indices?
-        ii = np.array(list(itertools.product(*([[0, 1],] * D)))).transpose()
-        kk = np.array(list(itertools.product(*[[idx1[i], idx2[i]] for i in range(len(idx1)) if idx1[i] != idx2[i]]))).transpose()
+        ii = np.array(list(itertools.product(*([[0, 1],] * D))))
+        kk = np.array(list(itertools.product(*[[idx1[i], idx2[i]] for i in range(len(idx1)) if idx1[i] != idx2[i]])))
         
         # Retrieve the value arrays for each of the surrounding grid points
-        shape = D * (2, ) + self.get_value_shape(name, s=s)[D:]
-        v = np.empty(shape)
-        # TODO: Does this squeeze solves the problem above?
-        v[tuple(ii)] = np.squeeze(self.get_value_at(name, kk, s=s, raw=raw, post_process=post_process, cache_key_prefix=cache_key_prefix))
+        v = None
+        for i in range(ii.shape[0]):
+            # TODO: Does this squeeze solves the problem above?
+            y = np.squeeze(self.get_value_at(name, kk[i], s=s, raw=raw, post_process=post_process, cache_key_prefix=cache_key_prefix))
+            if v is None:
+                shape = D * (2, ) + y.shape
+                v = np.empty(shape)
+            v[tuple(ii[i])] = y
 
         if self.value_cache is not None:
             self.value_cache.push(cache_key, v)

@@ -77,16 +77,16 @@ class Grid(PfsObject):
         """
         order = { k: axes[k].order for k in axes.keys() }
         keys = sorted(axes.keys(), key=lambda k: order[k])
-        i = 0
-        for k in keys:
+        i = 0 
+        for j, k in enumerate(keys):
             axis = axes[k]
 
-            if s is None or s[i] is None:
+            if s is None or s[j] is None:
                 sliced = False
                 v = axis.values
             else:
                 sliced = True
-                v = axis.values[s[i]]
+                v = axis.values[s[j]]
                 
                 # In case the slice resulted in a scalar
                 if not isinstance(v, np.ndarray):

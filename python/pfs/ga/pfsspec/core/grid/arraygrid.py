@@ -586,8 +586,17 @@ class ArrayGrid(Grid):
         # Retrieve the value arrays for each of the surrounding grid points
         v = None
         for i in range(ii.shape[0]):
+            y = self.get_value_at(name, kk[i], s=s, raw=raw, post_process=post_process, cache_key_prefix=cache_key_prefix)
+
+            # Missing value at gridpoint. This means we cannot interpolate.
+            # Not just return None but also cache it.
+            if y is None:
+                v = None
+                break
+
             # TODO: Does this squeeze solves the problem above?
-            y = np.squeeze(self.get_value_at(name, kk[i], s=s, raw=raw, post_process=post_process, cache_key_prefix=cache_key_prefix))
+            y = np.squeeze(y)
+
             if v is None:
                 shape = D * (2, ) + y.shape
                 v = np.empty(shape)
@@ -622,6 +631,10 @@ class ArrayGrid(Grid):
         xx = np.array(xx)
 
         v = self.get_nearby_value_at(name, idx1, idx2, s=s, post_process=post_process, cache_key_prefix=cache_key_prefix)
+
+        # Some of the nearby models are missing, interpolation cannot proceed
+        if v is None:
+            return None
         
         # Perform the 1d interpolations along each axis
         for d in range(d):

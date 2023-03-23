@@ -128,6 +128,7 @@ class SpectrumDataset(ArrayDataset):
         self.set_value('mask', mask, idx, chunk_size, chunk_id)
 
     def add_predictions(self, labels, prediction):
+        # TODO: this is not used, cf: dnnmodelpredictor.py:predict
         i = 0
         for l in labels:
             if prediction.shape[2] == 1:

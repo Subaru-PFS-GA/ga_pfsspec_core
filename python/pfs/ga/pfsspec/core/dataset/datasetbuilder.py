@@ -126,6 +126,8 @@ class DatasetBuilder(PfsObject):
 
         # TODO: chunking here?
         row = spec.get_params_as_datarow()
+
+        # TODO: move append params logic from dataset here.
         self.dataset.append_params_row(row)
 
     def process_and_store_item(self, i):
@@ -201,7 +203,11 @@ class DatasetBuilder(PfsObject):
         # Sort dataset parameters which can be shuffled due to parallel execution
         # If we write params to the HDF5 file directly, params will be None so
         # we don't need to sort.
-        if self.dataset.params is not None:
+
+        # TODO: cf comments in Dataset.append_params_row
+
+        if isinstance(self.dataset.params, dict):
+            self.dataset.params = pd.DataFrame(self.dataset.params, index=self.dataset.params['id'])
             self.dataset.params.sort_index(inplace=True)
 
     def process_labels(self):

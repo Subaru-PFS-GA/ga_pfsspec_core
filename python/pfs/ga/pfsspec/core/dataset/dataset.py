@@ -199,17 +199,22 @@ class Dataset(PfsObject):
 
     def append_params_row(self, row, id_key='id'):
         """
-        Appends a row to the params DataFrame. If the params DataFrame is None,
-        it will consists of a single row.
+        Appends a row to the params. Later it will be converted into a data frame.
+        This function is called by the dataset builder.
 
         :param row: A dictionary of values to be appended.
         :param id_key: The dictionary item to be used as index. Defaults to "id".
         """
 
+        # TODO: consider moving it to the dataset builder because it requires
+        #       additional operation (convert to DataFrame) before being
+        #       consistent with the mechanics of this class.
+
         if self.params is None:
-            self.params = pd.DataFrame(row, index=[row[id_key]])
-        else:
-            self.params = self.params.append(pd.Series(row, index=self.params.columns, name=row[id_key]))
+            self.params = { k: [] for k in row.keys() }
+
+        for k, v in row.items():
+            self.params[k].append(v)
 
     #endregion
     #region Split, merge and filter

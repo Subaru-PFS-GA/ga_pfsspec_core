@@ -27,6 +27,7 @@ import os, sys
 from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import Pool
 import logging
+import traceback
 import multiprocessing
 from multiprocessing import Manager, Pool, Queue
 import numpy as np
@@ -88,6 +89,12 @@ def srl_map(init_func, worker_func, items, verbose=False):
             results.append(worker_func(i))
     return results
 
+class SmartParallelError(Exception):
+    def __init__(self, type, exception, traceback):
+        self.type = type
+        self.exception = exception
+        self.traceback = traceback
+
 class IterableQueue():
     def __init__(self, queue, length):
         self.logger = logging.getLogger()
@@ -101,10 +108,10 @@ class IterableQueue():
         if self.length > 0:
             self.length -= 1
             o = self.queue.get()
-            if isinstance(o, Exception):
-                print(o, file=sys.stderr)
-                self.logger.error(str(o))
-                raise o
+            if isinstance(o, SmartParallelError):
+                ex = o
+                msg = "An error occured in a Smart Parallel worker process.\n\nOriginal {}".format(''.join(ex.traceback))
+                raise ex.type(msg)
             else:
                 return o
         else:
@@ -172,7 +179,7 @@ class SmartParallel():
                         o = worker(i, *args, **kwargs)
                     queue_out.put(o)
                 except Exception as e:
-                    queue_out.put(e)
+                    queue_out.put(SmartParallelError(*sys.exc_info()[:2], traceback.format_exception(*sys.exc_info())))
 
     def map(self, worker, items, *args, obj=None, **kwargs):
         if self.parallel:

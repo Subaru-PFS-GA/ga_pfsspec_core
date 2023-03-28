@@ -60,6 +60,8 @@ class Spectrum(PfsObject):
             self.is_wave_regular = None
             self.is_wave_lin = None
             self.is_wave_log = None
+
+            self.history = []
         else:
             self.index = orig.index
             self.id = orig.id
@@ -97,6 +99,11 @@ class Spectrum(PfsObject):
             self.is_wave_regular = orig.is_wave_regular
             self.is_wave_lin = orig.is_wave_lin
             self.is_wave_log = orig.is_wave_log
+
+            self.history = safe_deep_copy(self.history)
+
+    def append_history(self, msg):
+        self.history.append(msg)
 
     def get_param_names(self):
         return ['id',
@@ -273,6 +280,7 @@ class Spectrum(PfsObject):
         self.mag = mag
 
     def normalize_by_continuum(self):
+        self.cont_model = self.cont.copy()             # Save for later
         self.multiply(1.0 / self.cont)
 
     def apply_noise(self, noise_model, noise_level=None, random_state=None):

@@ -400,7 +400,7 @@ class PfsObject():
 
     # TODO: move these functions into a serializer class that should be passed to all PfsObject
     #       instances instead of implementing them here
-    def load_item(self, name, type, s=None, default=None, mmap=False):
+    def load_item(self, name, type, s=None, default=None, mmap=False, skip_mmap=False):
         """
         Loads a data item which can be a simple type, array or pandas data frame.
 
@@ -435,7 +435,7 @@ class PfsObject():
             else:
                 return None
         elif self.fileformat == 'h5':
-            return self.load_item_hdf5(name, type, s=s, default=default, mmap=mmap)
+            return self.load_item_hdf5(name, type, s=s, default=default, mmap=mmap, skip_mmap=skip_mmap)
         else:
             raise NotImplementedError()
 
@@ -461,7 +461,7 @@ class PfsObject():
                 g = g[part]
         return g, parts[-1]
 
-    def load_item_hdf5(self, path, type, s=None, default=None, mmap=False):
+    def load_item_hdf5(self, path, type, s=None, default=None, mmap=False, skip_mmap=False):
         """
         Loads an item from an HDF5 file. Supports partial arrays.
 
@@ -489,82 +489,87 @@ class PfsObject():
             else:
                 return pd.read_hdf(self.filename, path)
         elif type == np.ndarray:
+            # Try to mmap first            
             if mmap:
                 with h5py.File(self.filename, 'r') as f:
                     g, name = self.get_hdf5_group(f, path, create=False)
                     if g is not None and name in g:
                         mi = mmapinfo.from_hdf5(g[name], slice=s)
                         if mi is not None:
-                            data = mmaparray(mi)
+                            return mmaparray(mi)
                         else:
-                            logging.warn(f'Cannot mmap HDF5 dataset {path}. Is it chunked?')
-                            data = None
+                            # If skip_mmap is True, it's OK to load the array into memory
+                            logging.warn(f'Cannot mmap HDF5 dataset {path} of file `{self.filename}`. Is it chunked?')
+                            if not skip_mmap:
+                                return None
                     else:
-                        data = None
-            else:
-                with h5py.File(self.filename, 'r') as f:
-                    g, name = self.get_hdf5_group(f, path, create=False)
-                    if g is not None and name in g:
-                        # Do some smart indexing magic here because index arrays are not supported by h5py
-                        # This is not full fancy indexing!
+                        return None
 
-                        shape = None
-                        idxshape = None
-                        if isinstance(s, Iterable):
-                            # TODO: also handle when ellipsis in the middle
-                            if not isinstance(s[0], np.ndarray) and s[0] == Ellipsis:
-                                slice_idx = range(1, len(s))
-                                array_idx = range(len(g[name].shape) - len(s) + 1, len(g[name].shape))
-                            else:
-                                slice_idx = range(len(s))
-                                array_idx = range(len(s))
+            # Try without mmap
+            with h5py.File(self.filename, 'r') as f:
+                g, name = self.get_hdf5_group(f, path, create=False)
+                if g is not None and name in g:
+                    # Do some smart indexing magic here because index arrays are not supported by h5py
+                    # This is not full fancy indexing!
 
-                            for si, ai in zip(slice_idx, array_idx):
-                                if isinstance(s[si], (np.int32, np.int64)):
-                                    if shape is None:
-                                        shape = (1,)
-                                elif isinstance(s[si], np.ndarray):
-                                    if shape is None or shape == (1,):
-                                        shape = s[si].shape
-                                    if idxshape is not None and idxshape != s[si].shape:
-                                        raise Exception('Incompatible shapes')
-                                    idxshape = s[si].shape
-                                elif isinstance(s[si], slice):
-                                    k = len(range(*s[si].indices(g[name].shape[ai])))
-                                    if shape is None:
-                                        shape = (k, )
-                                    else:
-                                        shape = shape + (k, )
+                    shape = None
+                    idxshape = None
+                    if isinstance(s, Iterable):
+                        # TODO: also handle when ellipsis in the middle
+                        if not isinstance(s[0], np.ndarray) and s[0] == Ellipsis:
+                            slice_idx = range(1, len(s))
+                            array_idx = range(len(g[name].shape) - len(s) + 1, len(g[name].shape))
+                        else:
+                            slice_idx = range(len(s))
+                            array_idx = range(len(s))
 
-                            if shape is None:
-                                shape = g[name].shape
-                            else:
-                                shape = shape + g[name].shape[len(s):]
+                        for si, ai in zip(slice_idx, array_idx):
+                            if isinstance(s[si], (np.int32, np.int64)):
+                                if shape is None:
+                                    shape = (1,)
+                            elif isinstance(s[si], np.ndarray):
+                                if shape is None or shape == (1,):
+                                    shape = s[si].shape
+                                if idxshape is not None and idxshape != s[si].shape:
+                                    raise Exception('Incompatible shapes')
+                                idxshape = s[si].shape
+                            elif isinstance(s[si], slice):
+                                k = len(range(*s[si].indices(g[name].shape[ai])))
+                                if shape is None:
+                                    shape = (k, )
+                                else:
+                                    shape = shape + (k, )
 
-                            if idxshape is None:
-                                data = g[name][s]
-                            else:
-                                data = np.empty(shape)
-                                for idx in np.ndindex(idxshape):
-                                    ii = []
-                                    for i in range(len(s)):
-                                        if isinstance(s[i], (np.int32, np.int64)):
-                                            ii.append(s[i])
-                                        elif isinstance(s[i], np.ndarray):
-                                            ii.append(s[i][idx])
-                                        elif isinstance(s[i], slice):
-                                            ii.append(s[i])
-                                    data[idx] = g[name][tuple(ii)]
-                        elif s is not None:
+                        if shape is None:
+                            shape = g[name].shape
+                        else:
+                            shape = shape + g[name].shape[len(s):]
+
+                        if idxshape is None:
                             data = g[name][s]
                         else:
-                            data = g[name][:]
-
-                        # If data is a scalar, wrap it into an array.
-                        if not isinstance(data, np.ndarray):
-                            data = np.array(data)
+                            data = np.empty(shape)
+                            for idx in np.ndindex(idxshape):
+                                ii = []
+                                for i in range(len(s)):
+                                    if isinstance(s[i], (np.int32, np.int64)):
+                                        ii.append(s[i])
+                                    elif isinstance(s[i], np.ndarray):
+                                        ii.append(s[i][idx])
+                                    elif isinstance(s[i], slice):
+                                        ii.append(s[i])
+                                data[idx] = g[name][tuple(ii)]
+                    elif s is not None:
+                        data = g[name][s]
                     else:
-                        data = default
+                        data = g[name][:]
+
+                    # If data is a scalar, wrap it into an array.
+                    if not isinstance(data, np.ndarray):
+                        data = np.array(data)
+                else:
+                    data = default
+
             return data
         elif type == np.float or type == np.int:
             # Try attributes first, then dataset, otherwise return None

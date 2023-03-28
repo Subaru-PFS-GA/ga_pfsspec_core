@@ -572,7 +572,10 @@ class ArrayGrid(Grid):
         if self.value_cache is not None:
             cache_key = cache_key_prefix + (name, idx1, idx2, s, raw, post_process)
             if self.value_cache.is_cached(cache_key):
+                logging.debug(f'Nearby values between {idx1} and {idx2} are found in cache.')
                 return self.value_cache.get(cache_key)
+            
+        logging.debug(f'Loading nearby grid values between {idx1} and {idx2}.')
 
         # Dimensions
         D = len(idx1)
@@ -604,6 +607,7 @@ class ArrayGrid(Grid):
 
         if self.value_cache is not None:
             self.value_cache.push(cache_key, v)
+            logging.debug(f'Nearby values between {idx1} and {idx2} are written to the cache.')
 
         return v
 
@@ -619,6 +623,8 @@ class ArrayGrid(Grid):
 
         # Only keep dimensions where interpolation is necessary, i.e. skip
         # where axis has a single value only
+
+        self.logger.debug('Finding values to intrpolate to {} using linear Nd.'.format(kwargs))
 
         d = len(idx1)
         
@@ -636,6 +642,8 @@ class ArrayGrid(Grid):
         if v is None:
             return None
         
+        self.logger.debug('Interpolating values to {} using linead Nd.'.format(kwargs))
+        
         # Perform the 1d interpolations along each axis
         for d in range(d):
             x0 = xx[d, 0]
@@ -645,8 +653,16 @@ class ArrayGrid(Grid):
 
         return v, kwargs
 
-    def interpolate_value_spline(self, name, free_param, **kwargs):
-        axis_list = list(self.axes.keys())
+    def interpolate_value_spline(self, name, free_param, s=None, post_process=None, cache_key_prefix=(), **kwargs):
+        # Interpolate a value vector using cubic splines in 1D, along a single dimension.
+
+        # TODO: implement multi-value version
+        # TODO: implement caching
+
+        self.logger.debug('Finding values to interpolate to {} using cubic splines along {}.'.format(kwargs, free_param))
+
+        # Find the index of the free parameter
+        axis_list = list( p for i, p, ax in self.enumerate_axes())
         free_param_idx = axis_list.index(free_param)
 
         # Find nearest model to requested parameters
@@ -654,17 +670,21 @@ class ArrayGrid(Grid):
         if idx is None:
             self.logger.debug('No nearest model found.')
             return None
-
+        
         # Set all params to nearest value except the one in which we interpolate
-        for i, p in enumerate(self.axes):
+        params = {}
+        for i, p, ax in self.enumerate_axes():
             if p != free_param:
-                kwargs[p] = self.axes[p].values[idx[i]]
+                params[p] = ax.values[idx[i]]
+            else:
+                params[p] = kwargs[p]
 
-        # Determine index of models
+        # Determine index of models, we need an entire line of models (array of arrays)
+        # to perform a cubic spline interpolation
         idx[free_param_idx] = slice(None)
-        idx = tuple(idx)
+        idx = Grid.rectify_index(idx)
 
-        # Find index of models that actually exists
+        # Find index of models that actually exists along this line
         valid_value = self.value_indexes[name][idx]
         pars = self.axes[free_param].values[valid_value]
 
@@ -675,12 +695,18 @@ class ArrayGrid(Grid):
             self.logger.debug('Parameters are at the edge of grid, no interpolation possible.')
             return None
 
+        idx = Grid.rectify_index(idx, s)
         if self.preload_arrays or self.mmap_arrays:
-            value = self.values[name][idx][valid_value]
+            value = np.array(self.values[name][idx][valid_value], copy=True)
         else:
             self.ensure_lazy_load()
             value = self.load_item(self.get_value_path(name), np.ndarray, idx)
             value = value[valid_value]
+
+        # Apply post processing to each data vector
+        # value.shape: (models, wave)
+        if post_process is not None and value is not None:
+            value = post_process(value)
 
         self.logger.debug('Interpolating values to {} using cubic splines along {}.'.format(kwargs, free_param))
 
@@ -688,7 +714,7 @@ class ArrayGrid(Grid):
         x, y = pars, value
         fn = CubicSpline(x, y)
 
-        return fn(kwargs[free_param]), kwargs
+        return fn(kwargs[free_param]), params
 
     @staticmethod
     def get_axis_points(axes, padding=False, squeeze=False, interpolation='ijk'):

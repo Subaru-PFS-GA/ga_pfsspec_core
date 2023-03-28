@@ -227,6 +227,18 @@ class Grid(PfsObject):
             idx = idx + (s,)
 
         return tuple(idx)
+    
+    def get_params_at(self, idx=None, **kwargs):
+        params = {}
+
+        if kwargs is not None:
+            params = { k: v for k, v in kwargs.items()}
+
+        if idx is not None:
+            for i, p, axis in self.enumerate_axes():
+                params[p] = float(axis.values[idx[i]])
+
+        return params
 
     def set_object_params(self, obj, idx=None, **kwargs):
         if kwargs is not None:

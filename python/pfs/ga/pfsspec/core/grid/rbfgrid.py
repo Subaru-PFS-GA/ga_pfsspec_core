@@ -105,15 +105,20 @@ class RbfGrid(Grid):
                 idx += (None,)
 
         return idx
-
-    def get_params(self, idx):
-        # Convert axis index to axis values
+    
+    def get_params_at(self, idx=None, **kwargs):
         params = {}
-        for i, k in enumerate(self.axes):
-            if idx[i] is not None:
-                params[k] = self.axes[k].ip_to_value(idx[i])
-            else:
-                params[k] = None
+
+        if kwargs is not None:
+            params = { k: v for k, v in kwargs.items()}
+
+        if idx is not None:
+            for i, p, axis in self.enumerate_axes():
+                if idx[i] is not None:
+                    params[p] = float(axis.ip_to_value(idx[i]))
+                else:
+                    params[p] = None
+
         return params
 
     def has_value(self, name):
@@ -147,11 +152,20 @@ class RbfGrid(Grid):
                 return True
         return False
 
-    def get_value_at(self, name, idx, s=None, extrapolate=False):
+    def get_value_at(self, name, idx, s=None, post_process=None, cache_key_prefix=(), extrapolate=False):
         idx = Grid.rectify_index(idx)
+        
         if not extrapolate and self.check_extrapolation(idx):
+            logging.warn("Requested point of RBF grid would result in extrapolation")
             return None
+        
         value = self.values[name](*idx)
+
+        if post_process is not None:
+            # TODO: we cannot post-process, nor cache templates yet,
+            #       implement it
+            raise NotImplementedError()
+
         return value[s or ()]
 
     def get_error_at(self, name, idx):
@@ -241,7 +255,7 @@ class RbfGrid(Grid):
 
             path = self.get_value_path(name)
             xi = self.load_item('/'.join([path, self.POSTFIX_XI]), np.ndarray)
-            nodes = self.load_item('/'.join([path, self.POSTFIX_NODES]), np.ndarray, mmap=True)
+            nodes = self.load_item('/'.join([path, self.POSTFIX_NODES]), np.ndarray, mmap=True, skip_mmap=True)
             c = self.load_item('/'.join([path, self.POSTFIX_C]), np.ndarray)
             function = self.load_item('/'.join([path, self.POSTFIX_FUNCTION]), str)
             epsilon = self.load_item('/'.join([path, self.POSTFIX_EPSILON]), float)

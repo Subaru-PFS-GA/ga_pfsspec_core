@@ -187,6 +187,8 @@ class Pipeline(PfsObject):
             z = Physics.vel_to_z(rv)
         elif self.is_arg('z', kwargs):
             z = self.get_arg('z', None, kwargs)
+        elif self.is_arg('redshift', kwargs):
+            z = self.get_arg('redshift', None, kwargs)
         else:
             z = None
 

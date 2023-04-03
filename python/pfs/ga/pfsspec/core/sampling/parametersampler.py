@@ -25,7 +25,7 @@ class ParameterSampler():
         self.parameters[parameter.name] = parameter
 
     def add_args(self, parser):
-        parser.add_argument('--sample-count', type=int, default=None, help='Number of samples to be interpolated between models\n')
+        parser.add_argument('--sample-count', type=int, default=None, help='Number of samples to be generated.\n')
 
         # Additional axes
         for i, k, par in self.enumerate_parameters():
@@ -60,13 +60,16 @@ class ParameterSampler():
     def draw_random_params(self, params=None):
         """
         Draw random values for each of the axes, those of the grid as well as
-        auxiliary.
+        auxiliary. If the distribution is not specified (and min and max are None),
+        do not sample the value.
         """
         
         params = params or {}
 
         for i, k, par in self.enumerate_parameters():
-            params[k] = self.draw_random_param(par)
+            v = self.draw_random_param(par)
+            if v is not None:
+                params[k] = self.draw_random_param(par)
 
         return params
 

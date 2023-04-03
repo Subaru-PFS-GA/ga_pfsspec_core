@@ -74,11 +74,15 @@ class ArrayGrid(Grid):
         s = []
         for i, k, ax in self.enumerate_axes():
             if k in args and args[k] is not None:
-                if len(args[k]) == 2:
-                    idx = np.digitize([args[k][0], args[k][1]], ax.values)
+                values = args[k]
+                if not isinstance(values, Iterable):
+                    values = [ values ]
+
+                if len(values) == 2:
+                    idx = np.digitize([values[0], values[1]], ax.values)
                     s.append(slice(max(0, idx[0] - 1), idx[1], None))
-                elif len(args[k]) == 1:
-                    idx = np.digitize([args[k][0]], ax.values)
+                elif len(values) == 1:
+                    idx = np.digitize([values[0]], ax.values)
                     s.append(max(0, idx[0] - 1))
                 else:
                     raise Exception('Only two or one values are allowed for parameter {}'.format(k))
@@ -570,6 +574,7 @@ class ArrayGrid(Grid):
         # TODO: implement multi-value version
 
         if self.value_cache is not None:
+            # TODO: do we want the post process function in the cache key?
             cache_key = cache_key_prefix + (name, idx1, idx2, s, raw, post_process)
             if self.value_cache.is_cached(cache_key):
                 logging.debug(f'Nearby values between {idx1} and {idx2} are found in cache.')
@@ -624,7 +629,8 @@ class ArrayGrid(Grid):
         # Only keep dimensions where interpolation is necessary, i.e. skip
         # where axis has a single value only
 
-        self.logger.debug('Finding values to intrpolate to {} using linear Nd.'.format(kwargs))
+        self.logger.debug('Finding values to interpolate to {} using linear Nd.'
+                          .format({ k: kwargs[k] for _, k, v in self.enumerate_axes(squeeze=True) }))
 
         d = len(idx1)
         

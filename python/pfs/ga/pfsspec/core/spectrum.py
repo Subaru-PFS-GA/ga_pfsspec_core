@@ -100,7 +100,12 @@ class Spectrum(PfsObject):
             self.is_wave_lin = orig.is_wave_lin
             self.is_wave_log = orig.is_wave_log
 
-            self.history = safe_deep_copy(self.history)
+            self.history = safe_deep_copy(orig.history)
+
+    def copy(self):
+        s = super().copy()
+        s.append_history('A copy of a spectrum is created.')
+        return s
 
     def append_history(self, msg):
         self.history.append(msg)
@@ -168,6 +173,8 @@ class Spectrum(PfsObject):
         
         self.redshift = z
 
+        self.append_history(f'Redshift changed from {0.0} to {self.redshift}.')
+
     def set_restframe(self):
         """
         Correct for Doppler shift by chaning the wave grid only, but not the flux density.
@@ -175,6 +182,8 @@ class Spectrum(PfsObject):
 
         if self.redshift is None or np.isnan(self.redshift):
             raise ValueError("Unknown redshift, cannot convert to rest-frame.")
+        
+        self.append_history(f'Redshift changed from {self.redshift} to {0.0}.')
 
         self.wave = self.wave / (1 + self.redshift)
         if self.wave_edges is not None:
@@ -188,6 +197,8 @@ class Spectrum(PfsObject):
         
         self.wave = target_wave
         self.wave_edges = target_wave_edges
+
+        self.append_history(f'Resampled using a resampler of type `{type(resampler).__name__}`.')
 
     def trim_wave(self, wlim):
         """
@@ -241,6 +252,8 @@ class Spectrum(PfsObject):
                 self.flux_sky = a * self.flux_sky
             if self.cont is not None:
                 self.cont = a * self.cont
+
+            self.append_history(f'Multiplied by {a}.')
         elif not silent:
             raise Exception('Cannot multiply by NaN of Inf')
 
@@ -266,6 +279,8 @@ class Spectrum(PfsObject):
         fl = func(fl)
         self.multiply(value / fl)
 
+        self.append_history(f'Normalized to unit flux within {lam} using {func.__name__}.')
+
     def normalize_to_mag(self, filt, mag):
         try:
             m = self.synthmag(filt)
@@ -283,6 +298,8 @@ class Spectrum(PfsObject):
         self.cont_model = self.cont.copy()             # Save for later
         self.multiply(1.0 / self.cont)
 
+        self.append_history('Normalized by continuum vector.')
+
     def apply_noise(self, noise_model, noise_level=None, random_state=None):
         """
         Generate the noise based on a noise model and add to the flux.
@@ -290,8 +307,12 @@ class Spectrum(PfsObject):
 
         self.flux = noise_model.apply_noise(self.wave, self.flux, self.flux_err, mag=self.mag, noise_level=noise_level, random_state=random_state)
 
+        self.append_history(f'Applied noise model of type `{type(noise_model).__name__}`.')
+
     def calculate_snr(self, snr):
         self.snr = snr.get_snr(self.flux, self.flux_err)
+
+        self.append_history(f'S/N calculated to be {self.snr} using method `{type(snr).__name__}`')
         
     def redden(self, extval=None):
         extval = extval or self.ext
@@ -301,6 +322,8 @@ class Spectrum(PfsObject):
         # Cardelli, Clayton, & Mathis (1989, ApJ, 345, 245) R_V = 3.10.
         obs = spec * pysynphot.reddening.Extinction(extval, 'mwavg')
         self.flux = obs.flux
+
+        self.append_history(f'Applied reddening of {extval} using `mwavg`.')
 
     def deredden(self, extval=None):
         extval = extval or self.ext
@@ -385,6 +408,9 @@ class Spectrum(PfsObject):
         
         if self.flux_err is not None:
             self.flux_err = set_array(self.flux_err, error.pop(0))
+
+        # TODO: try to estimate the resolution or give name to PSF to be able to distinguish
+        self.append_history(f'Convolved with PSF of type `{type(psf).__name__}` with width of {2 * shift + 1}.')
            
     # TODO: Move to spectrum tools
     @staticmethod
@@ -459,6 +485,8 @@ class Spectrum(PfsObject):
 
     def apply_calibration(self, calibration):
         calibration.apply_calibration(self)
+
+        self.append_history(f'Applied flux calibration of type `{type(calibration).__name__}`.')
 
     def load(self, filename):
         raise NotImplementedError()

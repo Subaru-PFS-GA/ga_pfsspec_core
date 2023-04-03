@@ -6,7 +6,7 @@ from .physics import Physics
 from .pfsobject import PfsObject
 from .spectrum import Spectrum
 from .obsmod.psf import GaussPsf, PcaPsf
-from .obsmod.resampling import FluxConservingResampler
+from .obsmod.resampling import Interp1dResampler, FluxConservingResampler
 
 class Pipeline(PfsObject):
     """
@@ -60,7 +60,6 @@ class Pipeline(PfsObject):
 
     def add_args(self, parser):
         parser.add_argument('--restframe', action='store_true', help='Convert to rest-frame.\n')
-        parser.add_argument('--redshift', type=float, nargs='?', help='Shift to given redshift.\n')
         parser.add_argument('--conv-sigma', type=float, help='Gaussian convolution sigma in AA.\n')
         parser.add_argument('--conv-resolution', type=float, help='Gaussian convolution to resolution.\n')
         parser.add_argument('--conv-gauss', type=str, help='Convolve using a Gauss PSF file.\n')
@@ -69,14 +68,13 @@ class Pipeline(PfsObject):
         parser.add_argument('--wave-bins', type=int, help='Number of wavelength bins.\n')
         parser.add_argument('--wave-lin', action='store_true', help='Linear wavelength binning.\n')
         parser.add_argument('--wave-log', action='store_true', help='Logarithmic wavelength binning.\n')
+        parser.add_argument('--wave-resampler', type=str, default='rebin', choices=['interp', 'rebin'], help='Flux resampler.\n')
 
         parser.add_argument('--norm', type=str, default=None, help='Normalization method\n')
         parser.add_argument('--norm-wave', type=float, nargs=2, default=[4200, 6500], help='Normalization method\n')
 
     def init_from_args(self, args):
         self.restframe = self.get_arg('restframe', self.restframe, args)
-        if self.is_arg('z'):
-            raise NotImplementedError()
             
         self.conv_sigma = self.get_arg('conv_sigma', self.conv_sigma, args)
         self.conv_resolution = self.get_arg('conv_resolution', self.conv_resolution, args)
@@ -88,6 +86,16 @@ class Pipeline(PfsObject):
         self.wave_bins = self.get_arg('wave_bins', self.wave_bins, args)
         self.wave_lin = self.get_arg('wave_lin', self.wave_lin, args)
         self.wave_log = self.get_arg('wave_log', self.wave_log, args)
+
+        resampler = self.get_arg('wave_resampler', None, args)
+        if resampler == 'interp':
+            self.wave_resampler = Interp1dResampler()
+        elif resampler == 'rebin':
+            self.wave_resampler = FluxConservingResampler()
+        elif resampler is None:
+            pass
+        else:
+            raise NotImplementedError()
         
         self.norm = self.get_arg('norm', self.norm, args)
         self.norm_wave = self.get_arg('norm_wave', self.norm_wave, args)
@@ -100,7 +108,8 @@ class Pipeline(PfsObject):
         Initialize additional axes (parameters) that will be sampled.
         """
 
-        sampler.add_parameter(Parameter('z', min=0, max=0, dist='const'))
+        sampler.add_parameter(Parameter('z'))
+        sampler.add_parameter(Parameter('rv'))
       
     def is_constant_wave(self):
         # Returns true when the wavelength grid is the same for all processed spectra
@@ -192,6 +201,11 @@ class Pipeline(PfsObject):
     #region Convolution
 
     def init_psf(self, spec):
+
+        # TODO: This is all wrong because the wavelength grid might change
+        #       due to redshifting
+        raise NotImplementedError()
+
         # Initialize PSF kernel, if not already
 
         # TODO: differentiate based on log-wave binning
@@ -222,15 +236,16 @@ class Pipeline(PfsObject):
                 self.psf = PcaPsf.from_psf(psf, spec.wave, size=size)
 
     def run_step_convolution(self, spec, **kwargs):
-        self.init_psf(spec)
-
         if self.psf is not None:
+            self.init_psf(spec)
+
             # Convolve with a PSF
             spec.convolve_psf(self.psf)
 
     #endregion
 
     def run_step_normalize(self, spec, **kwargs):
+        # TODO: rewrite these to classes?
         # Normalization in wavelength range overrides previous normalization
         wave = self.norm_wave or (spec.wave[0], spec.wave[-1])
         if self.norm == 'none':
@@ -240,6 +255,8 @@ class Pipeline(PfsObject):
         elif self.norm == 'mean':
             spec.normalize_in([wave], np.mean, value=0.5)
         elif self.norm == 'integral':
+            # TODO: This is not integral flux but sum of flux only!
+            #       It only works when binning is linear       
             spec.normalize_in([wave], np.sum, value=1.0)
         elif self.norm is not None:
             raise NotImplementedError()

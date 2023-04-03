@@ -31,6 +31,9 @@ class Script():
         self.parser = None
         self.args = None
         self.debug = False
+        self.trace = False
+        self.trace_level = None
+        self.trace_plot = None
         self.random_seed = None
         self.log_level = None
         self.log_dir = None
@@ -125,7 +128,10 @@ class Script():
 
     def add_args(self, parser):
         parser.add_argument('--config', type=str, nargs='+', help='Load config from json file.')
-        parser.add_argument('--debug', action='store_true', help='Run in debug mode\n')
+        parser.add_argument('--debug', action='store_true', help='Run in debug mode.\n')
+        parser.add_argument('--trace', action='store_true', help='Run in trace mode..\n')
+        parser.add_argument('--trace-level', type=str, default=None, help='Trace level\n')
+        parser.add_argument('--trace-plot', action='store_true', help='Generate trace plots.\n')
         parser.add_argument('--threads', type=int, help='Number of processing threads.\n')
         parser.add_argument('--log-level', type=str, default=None, help='Logging level\n')
         parser.add_argument('--log-dir', type=str, default=None, help='Log directory\n')
@@ -139,6 +145,9 @@ class Script():
             
             # Parse some special but generic arguments
             self.debug = self.get_arg('debug', self.debug)
+            self.trace = self.get_arg('trace', self.trace)
+            self.trace_level = self.get_arg('trace_level', self.trace_level)
+            self.trace_plot = self.get_arg('trace_plot', self.trace_plot)
             self.threads = self.get_arg('threads', self.threads)
             self.log_level = self.get_arg('log_level', self.log_level)
             self.log_dir = self.get_arg('log_dir', self.log_dir)

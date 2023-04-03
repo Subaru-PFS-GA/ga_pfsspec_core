@@ -1,6 +1,7 @@
 from datetime import datetime
 from collections import namedtuple
 import numpy as np
+import types
 
 class ReadOnlyCache():
     # Implements a key-value read-only cache
@@ -20,6 +21,9 @@ class ReadOnlyCache():
 
             self.dict = orig.dict
 
+    def __len__(self):
+        return len(self.dict)
+
     def reset(self):
         self.dict = {}
 
@@ -34,6 +38,8 @@ class ReadOnlyCache():
             return self.sanitize_key(tuple(key))
         elif isinstance(key, slice):
             return (key.start, key.stop, key.step)
+        elif isinstance(key, types.FunctionType):
+            return key.__qualname__
         else:
             return key
 

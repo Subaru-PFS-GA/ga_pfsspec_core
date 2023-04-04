@@ -47,6 +47,8 @@ class ParameterSampler():
             r = par.value
         elif par.dist == 'int':
             r = np.random.randint(par.min, par.max)
+        elif par.dist == 'choice':
+            r = np.random.choice(par.dist_args)
         else:
             dist = par.get_dist(random_state=self.random_state)
 

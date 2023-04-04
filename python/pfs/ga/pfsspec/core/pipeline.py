@@ -73,7 +73,7 @@ class Pipeline(PfsObject):
         parser.add_argument('--norm', type=str, default=None, help='Normalization method\n')
         parser.add_argument('--norm-wave', type=float, nargs=2, default=[4200, 6500], help='Normalization method\n')
 
-    def init_from_args(self, args):
+    def init_from_args(self, config, args, sampler=None):
         self.restframe = self.get_arg('restframe', self.restframe, args)
             
         self.conv_sigma = self.get_arg('conv_sigma', self.conv_sigma, args)

@@ -69,7 +69,7 @@ class Dataset(PfsObject):
         :param s: Optional slice.
         """
 
-        super(Dataset, self).load(filename, format=format, s=s)
+        super().load(filename, format=format, s=s)
 
         self.logger.info("Loaded dataset with shapes:")
         self.logger.info("  params:  {}".format(self.params.shape))

@@ -107,6 +107,11 @@ class ArrayDataset(Dataset):
 
         shape = self.get_shape() + self.value_shapes[name]
         return shape
+    
+    def reset_values(self):
+        self.values = {}
+        self.value_shapes = {}
+        self.value_dtypes = {}
 
     def init_values(self, row_count=None):
         """

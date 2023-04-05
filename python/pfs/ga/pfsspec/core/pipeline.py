@@ -117,7 +117,7 @@ class Pipeline(PfsObject):
 
     def get_wave(self, spec: Spectrum = None, **kwargs):
         if isinstance(self.wave, np.ndarray):
-            return self.wave, self.wave_edges
+            return self.wave, self.wave_edges, None
         elif spec is None:
             return self.get_wave_const()
         else:
@@ -139,14 +139,14 @@ class Pipeline(PfsObject):
             centers = 0.5 * (edges[1:] + edges[:-1])
             self.wave = centers
             self.wave_edges = np.stack([edges[:-1], edges[1:]])
-            return self.wave, self.wave_edges
+            return self.wave, self.wave_edges, None
         elif self.wave_log:
             # Logarithmic binning with a constant grid
             edges = np.linspace(np.log10(self.wave[0]), np.log10(self.wave[1]), self.wave_bins + 1)
             centers = 0.5 * (edges[1:] + edges[:-1])
             self.wave = 10 ** centers
             self.wave_edges = 10 ** np.stack([edges[:-1], edges[1:]])
-            return self.wave, self.wave_edges
+            return self.wave, self.wave_edges, None
         else:
             raise ValueError("No wavelength limits are specified.")
     
@@ -197,7 +197,7 @@ class Pipeline(PfsObject):
 
     def run_step_resample(self, spec, **kwargs):
         if self.wave is not None:
-            wave, wave_edges = self.get_wave()
+            wave, wave_edges, _ = self.get_wave()
             spec.apply_resampler(self.wave_resampler, wave, wave_edges)
 
     #region Convolution

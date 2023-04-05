@@ -1,6 +1,7 @@
 import scipy.stats
 import numpy as np
 
+from pfs.ga.pfsspec.core.util.copy import safe_deep_copy
 from .arraydataset import ArrayDataset
 from ..spectrum import Spectrum
 
@@ -16,26 +17,29 @@ class SpectrumDataset(ArrayDataset):
     PREFIX_SPECTRUMDATASET = 'spectrumdataset'
 
     def __init__(self, constant_wave=None, preload_arrays=False, orig=None):
-        if isinstance(orig, SpectrumDataset):
-            self.constant_wave = constant_wave if constant_wave is not None else orig.constant_wave
-            self.wave = orig.wave
-        else:
+        if not isinstance(orig, SpectrumDataset):
             self.constant_wave = constant_wave if constant_wave is not None else True
             self.wave = None
+            self.wave_edges = None
+        else:
+            self.constant_wave = constant_wave if constant_wave is not None else orig.constant_wave
+            self.wave = safe_deep_copy(orig.wave)
+            self.wave_edges = safe_deep_copy(orig.wave_edges)
 
-        super(SpectrumDataset, self).__init__(preload_arrays=preload_arrays, orig=orig)
+        super().__init__(preload_arrays=preload_arrays, orig=orig)
 
     def init_values(self, row_count=None):
-        super(SpectrumDataset, self).init_values(row_count=row_count)
+        super().init_values(row_count=row_count)
 
         if not self.constant_wave:
             self.init_value('wave', dtype=np.float)
+            self.init_value('wave_edges', dtype=np.float)
         self.init_value('flux', dtype=np.float)
         self.init_value('error', dtype=np.float)
         self.init_value('mask', dtype=np.int)
 
     def allocate_values(self, spectrum_count=None, wave_count=None):
-        super(SpectrumDataset, self).allocate_values(row_count=spectrum_count)
+        super().allocate_values(row_count=spectrum_count)
 
         if spectrum_count is None:
             spectrum_count = self.row_count
@@ -45,21 +49,38 @@ class SpectrumDataset(ArrayDataset):
 
         if not self.constant_wave:
             self.allocate_value('wave', shape=(wave_count,), dtype=np.float)
+            self.allocate_value('wave_edges', shape=(2, wave_count,), dtype=np.float)
         self.allocate_value('flux', shape=(wave_count,), dtype=np.float)
         self.allocate_value('error', shape=(wave_count,), dtype=np.float)
         self.allocate_value('mask', shape=(wave_count,), dtype=np.int)
 
     def load_items(self, s=None):
+        # If we know the spectra has individual wave vectors we reinitialize the dataset value
+        # dictionaries here to contain entries for wave and wave_edges
+        if self.has_value('wave'):
+            self.constant_wave = False
+        else:
+            self.constant_wave = True
+        
+        self.reset_values()
+        self.init_values()
+
         super().load_items(s)
 
-        if self.constant_wave:
+        # If there is a wave array, the wave grid is not constant
+        if self.has_value('wave'):
+            self.wave = None
+            self.wave_edges = None
+        else:
             self.wave = self.load_item('/'.join([self.PREFIX_SPECTRUMDATASET, 'wave']), np.ndarray)
+            self.wave_edges = self.load_item('/'.join([self.PREFIX_SPECTRUMDATASET, 'wave_edges']), np.ndarray)
 
     def save_items(self):
         super().save_items()
 
         if self.constant_wave:
             self.save_item('/'.join([self.PREFIX_SPECTRUMDATASET, 'wave']), self.wave)
+            self.save_item('/'.join([self.PREFIX_SPECTRUMDATASET, 'wave_edges']), self.wave_edges)
 
     def get_value_shape(self, name=None):
         if name is None:
@@ -71,18 +92,33 @@ class SpectrumDataset(ArrayDataset):
         # Override this function to return a specific kind of class derived from Spectrum.
         return Spectrum()
 
-    def get_spectrum(self, i):
+    def get_spectrum(self, idx=None, chunk_size=None, chunk_id=None, trim=True):
         spec = self.create_spectrum()
 
         if self.constant_wave:
-            spec.wave = self.get_wave()
+            spec.wave, spec.wave_edges, wave_mask = self.wave, self.wave_edges, None
         else:
-            spec.wave = self.get_wave(idx=i)
-        spec.flux = self.get_flux(idx=i)
-        spec.flux_err = self.get_error(idx=i)
-        spec.mask = self.get_mask(idx=i)
+            spec.wave, spec.wave_edges, wave_mask = self.get_wave(idx=idx, chunk_size=chunk_size, chunk_id=chunk_id)
 
-        params = self.params.loc[i].to_dict()
+        spec.flux = self.get_flux(idx=idx, chunk_size=chunk_size, chunk_id=chunk_id)
+        spec.flux_err = self.get_error(idx=idx, chunk_size=chunk_size, chunk_id=chunk_id)
+        spec.mask = self.get_mask(idx=idx, chunk_size=chunk_size, chunk_id=chunk_id)
+
+        spec.merge_mask(wave_mask)
+
+        # Trim the data vectors if wave contains nan values
+        if wave_mask is not None and trim:
+            def trim_vector(v, s):
+                return None if v is None else v[s]
+            s = ~np.isnan(spec.wave) & wave_mask
+            spec.wave = trim_vector(spec.wave, s)
+            spec.wave_edges = trim_vector(spec.wave_edges, s)
+            spec.flux = trim_vector(spec.flux, s)
+            spec.flux_err = trim_vector(spec.flux_err, s)
+            spec.mask = trim_vector(spec.mask, s)
+
+        params = self.get_params(None, idx=idx, chunk_size=chunk_size, chunk_id=chunk_id).to_dict()
+
         for p in params:
             if hasattr(spec, p):
                 setattr(spec, p, params[p])
@@ -91,17 +127,27 @@ class SpectrumDataset(ArrayDataset):
 
     def get_wave(self, idx=None, chunk_size=None, chunk_id=None):
         if self.constant_wave:
-            return self.wave
+            return self.wave, self.wave_edges, None
         else:
-            return self.get_value('wave', idx, chunk_size, chunk_id)
+            wave = self.get_value('wave', idx, chunk_size, chunk_id)
+            wave_edges = self.get_value('wave_edges', idx, chunk_size, chunk_id)
+            mask = ~np.isnan(wave)
+            return wave, wave_edges, None
 
-    def set_wave(self, wave, idx=None, chunk_size=None, chunk_id=None):
+    def set_wave(self, wave, wave_edges=None, idx=None, chunk_size=None, chunk_id=None):
         if self.constant_wave:
             self.wave = wave
+            self.wave_edges = wave_edges
             if not self.preload_arrays:
                 self.save_item('/'.join([self.PREFIX_SPECTRUMDATASET, 'wave']), self.wave)
+                if wave_edges is not None:
+                    self.save_item('/'.join([self.PREFIX_SPECTRUMDATASET, 'wave_edges']), self.wave)
         else:
             self.set_value('wave', wave, idx, chunk_size, chunk_id)
+            if wave_edges is not None:
+                if wave.ndim == wave_edges.ndim:
+                    wave_edges = np.stack([wave_edges[..., :-1], wave_edges[..., 1:]], axis=-2)
+                self.set_value('wave_edges', wave_edges, idx, chunk_size, chunk_id)
 
     def get_flux(self, idx=None, chunk_size=None, chunk_id=None):
         return self.get_value('flux', idx, chunk_size, chunk_id)

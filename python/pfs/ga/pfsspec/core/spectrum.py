@@ -43,6 +43,8 @@ class Spectrum(PfsObject):
             self.mag = None
             ###
 
+            self.fiberid = None
+
             self.wave = None
             self.wave_edges = None
             self.flux = None                    # Flux (+noise when frozen)
@@ -81,6 +83,8 @@ class Spectrum(PfsObject):
             self.snr = orig.snr
             self.mag = orig.mag
             ###
+
+            self.fiberid = safe_deep_copy(orig.fiberid)
             
             self.wave = safe_deep_copy(orig.wave)
             self.wave_edges = safe_deep_copy(orig.wave_edges)
@@ -125,6 +129,7 @@ class Spectrum(PfsObject):
                 'moon_phase',
                 'snr',
                 'mag',
+                'fiberid',
                 'cont_fit',
                 'random_seed']
 
@@ -157,7 +162,67 @@ class Spectrum(PfsObject):
                 row[p] = v
 
         return row
+    
+    def merge_mask(self, mask):
+        mask = self.get_mask_asint(mask)
 
+        if mask is None:
+            return
+        elif self.mask is None:
+            self.mask = mask
+        else:
+            self.mask = np.bitwise_or(self.mask, mask)
+
+    def mask_asbool(self):
+        return self.get_mask_asbool(self.mask)
+    
+    def mask_asint(self):
+        return self.get_mask_asint(self.mask)
+
+    @staticmethod
+    def get_mask_asbool(mask):
+        if mask is None:
+            return None
+        elif mask.dtype != bool:
+            return (mask > 0)
+        else:
+            return mask
+        
+    @staticmethod
+    def get_mask_asint(mask):
+        # TODO: which bit?
+        if mask is None:
+            return None
+        elif mask.dtype == bool:
+            return mask.astype(int)
+        elif mask.dtype == int:
+            return mask
+        else:
+            raise NotImplementedError("Unknown mask format")
+        
+    @staticmethod
+    def get_wave_edges_1d(wave_edges):
+        if wave_edges is None:
+            return None
+        elif wave_edges.ndim == 1:
+            return wave_edges
+        elif wave_edges.ndim == 2:
+            # TODO: this assumes that the bind are adjecent!
+            return np.concatenate([wave_edges[0], wave_edges[1][-1:]])
+        else:
+            raise NotImplementedError()
+
+    @staticmethod
+    def get_wave_edges_2d(wave_edges):
+        if wave_edges is None:
+            return None
+        elif wave_edges.ndim == 1:
+            return np.stack([wave_edges[:-1], [wave_edges[1:]]], axis=0)
+        elif wave_edges.ndim == 2:
+            return wave_edges
+        else:
+            raise NotImplementedError()
+        
     def set_redshift(self, z):
         """
         Apply Doppler shift by chaning the wave grid only, but not the flux density.
@@ -310,7 +375,7 @@ class Spectrum(PfsObject):
         self.append_history(f'Applied noise model of type `{type(noise_model).__name__}`.')
 
     def calculate_snr(self, snr):
-        self.snr = snr.get_snr(self.flux, self.flux_err)
+        self.snr = snr.get_snr(self.flux, self.flux_err, self.mask_asbool())
 
         self.append_history(f'S/N calculated to be {self.snr} using method `{type(snr).__name__}`')
         

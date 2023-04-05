@@ -24,9 +24,13 @@ class TestSpectrumDataset(TestBase):
         })
 
         if constant_wave:
-            ds.set_wave(np.linspace(3000, 9000, wave_count))
+            wave_edges = np.linspace(3000, 9000, wave_count + 1) 
+            wave = 0.5 * (wave_edges[1:] + wave_edges[:-1])
+            ds.set_wave(wave, wave_edges=wave_edges)
         else:
-            ds.set_wave(np.stack(spectrum_count * [np.linspace(3000, 9000, wave_count)]))
+            wave_edges = np.stack(spectrum_count * [np.linspace(3000, 9000, wave_count + 1)])
+            wave = 0.5 * (wave_edges[..., 1:] + wave_edges[..., :-1])
+            ds.set_wave(wave, wave_edges=wave_edges)
 
         ds.set_flux(1e-17 * np.random.normal(1, 0.1, size=(spectrum_count, wave_count)))
         ds.set_error(1e-17 * np.random.normal(1, 0.1, size=(spectrum_count, wave_count)))
@@ -60,7 +64,7 @@ class TestSpectrumDataset(TestBase):
             self.create_test_datasets(format=format)
 
             filename = self.get_test_filename(filename='small_dataset', ext=PfsObject.get_extension(format))
-            ds = SpectrumDataset(constant_wave=True, preload_arrays=True)
+            ds = SpectrumDataset(preload_arrays=True)
             ds.load(filename, format)
             self.assertEqual((100, 4), ds.params.shape)
             self.assertTrue(ds.constant_wave)
@@ -83,10 +87,23 @@ class TestSpectrumDataset(TestBase):
     def test_get_spectrum(self):
         format = 'h5'
         filename = self.get_test_filename(filename='small_dataset', ext=PfsObject.get_extension(format))
-        ds = SpectrumDataset(constant_wave=True, preload_arrays=True)
+        ds = SpectrumDataset(preload_arrays=True)
         ds.load(filename, format)
         
         spec = ds.get_spectrum(23)
 
         self.assertEqual((6000,), spec.wave.shape)
+        self.assertEqual((6001,), spec.wave_edges.shape)
+        self.assertEqual((6000,), spec.flux.shape)
+
+    def test_get_spectrum_wave(self):
+        format = 'h5'
+        filename = self.get_test_filename(filename='small_wave_dataset', ext=PfsObject.get_extension(format))
+        ds = SpectrumDataset(preload_arrays=True)
+        ds.load(filename, format)
+        
+        spec = ds.get_spectrum(23)
+
+        self.assertEqual((6000,), spec.wave.shape)
+        self.assertEqual((2, 6000), spec.wave_edges.shape)
         self.assertEqual((6000,), spec.flux.shape)

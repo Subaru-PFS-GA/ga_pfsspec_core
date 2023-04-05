@@ -21,7 +21,7 @@ class SpecutilsResampler(Resampler):
         else:
             self.resampler = orig.resampler
 
-    def resample_value(self, wave, wave_edges, value, error=None, target_wave=None, target_wave_edges=None):
+    def resample_value(self, wave, wave_edges, value, error=None, mask=None, target_wave=None, target_wave_edges=None, target_mask=None):
         # NOTE: SLOW!
 
         # TODO: specutils version on the dev system is outdated,

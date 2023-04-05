@@ -13,12 +13,19 @@ class FluxConservingResampler(Resampler):
         else:
             self.kind = orig.kind
 
-    def resample_value(self, wave, wave_edges, value, error=None, target_wave=None, target_wave_edges=None):
+    def resample_value(self, wave, wave_edges, value, error=None, mask=None, target_wave=None, target_wave_edges=None, target_mask=None):
+        # TODO: How to properly resample using the flux conseving method
+        #       when the source vector has masks?
+        if mask is not None:
+            raise NotImplementedError()
+        
         target_wave = target_wave if target_wave is not None else self.target_wave
         target_wave_edges = target_wave_edges if target_wave_edges is not None else self.target_wave_edges
 
         wave_edges = wave_edges if wave_edges is not None else self.find_wave_edges(wave)
         target_wave_edges = target_wave_edges if target_wave_edges is not None else self.find_wave_edges(target_wave)
+
+        target_mask = target_mask if target_mask is not None else np.s_[:]
 
         if value is None:
             ip_value = None

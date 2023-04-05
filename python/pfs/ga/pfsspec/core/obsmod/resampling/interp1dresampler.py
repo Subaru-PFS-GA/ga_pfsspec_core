@@ -11,7 +11,7 @@ class Interp1dResampler(Resampler):
         else:
             self.kind = orig.kind
 
-    def resample_value(self, wave, wave_edges, value, error=None, target_wave=None, target_wave_edges=None):
+    def resample_value(self, wave, wave_edges, value, error=None, mask=None, target_wave=None, target_wave_edges=None, target_mask=None):
         target_wave = target_wave if target_wave is not None else self.target_wave
 
         if value is None:

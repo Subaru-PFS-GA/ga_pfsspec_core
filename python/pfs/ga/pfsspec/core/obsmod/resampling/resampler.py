@@ -9,17 +9,21 @@ class Resampler():
         if not isinstance(orig, Resampler):
             self.target_wave = None
             self.target_wave_edges = None
+            self.target_mask = None
         else:
             self.target_wave = safe_deep_copy(orig.target_wave)
             self.target_wave_edges = safe_deep_copy(orig.target_wave_edges)
+            self.target_mask = safe_deep_copy(orig.target_mask)
 
-    def init(self, target_wave, target_wave_edges=None):
+    def init(self, target_wave, target_wave_edges=None, target_mask=None):
         self.target_wave = target_wave
         self.target_wave_edges = target_wave_edges if target_wave_edges is not None else self.find_wave_edges(target_wave)
+        self.target_mask = target_mask
 
     def reset(self):
         self.target_wave = None
         self.target_wave_edges = None
+        self.target_mask = None
 
     def find_wave_edges(self, wave):
         # TODO: Do not automatically assume linear binning
@@ -35,7 +39,7 @@ class Resampler():
         # TODO: Do not automatically assume linear binning
         return 0.5 * (wave_edges[1:] + wave_edges[:-1])
 
-    def resample_value(self, wave, wave_edges, value, error=None, target_wave=None, target_wave_edges=None):
+    def resample_value(self, wave, wave_edges, value, error=None, mask=None, target_wave=None, target_wave_edges=None, target_mask=None):
         raise NotImplementedError()
    
     def resample_mask(self, wave, wave_edges, mask, target_wave=None, target_wave_edges=None):

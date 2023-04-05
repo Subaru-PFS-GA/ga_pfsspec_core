@@ -64,9 +64,14 @@ class Script():
 
         for m in pkgutil.iter_modules(pfs.ga.pfsspec.__path__):
             try:
-                module = importlib.import_module('pfs.ga.pfsspec.{}.configurations'.format(m.name))
+                modulename = f'pfs.ga.pfsspec.{m.name}.configurations'
+                module = importlib.import_module(modulename)
             except ModuleNotFoundError as ex:
-                self.logger.debug(f'Module `{m.name}` has no namespace for script configurations.')
+                # In case something else is missing we cannot continue
+                if ex.msg == f"No module named '{modulename}'":
+                    self.logger.debug(f'Module `{m.name}` has no namespace for script configurations.')
+                else:
+                    raise
                 module = None
             if module is not None and hasattr(module, self.CONFIG_NAME):
                 config = getattr(module, self.CONFIG_NAME)

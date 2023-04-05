@@ -452,6 +452,14 @@ class ArrayDataset(Dataset):
 
         self.reset_cache_all(chunk_size, chunk_id)
 
+    def flush(self):
+        """
+        Flush the
+        """
+        if self.cache_dirty:
+            self.flush_cache_all(self.cache_chunk_size, self.cache_chunk_id)
+
+
     #endregion
     #region Split, merge and filter
 

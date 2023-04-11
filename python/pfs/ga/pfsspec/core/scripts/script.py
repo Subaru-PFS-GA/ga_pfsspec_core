@@ -1,5 +1,6 @@
 import os
 import sys
+import psutil
 import pkgutil, importlib
 import json
 import yaml
@@ -34,6 +35,7 @@ class Script():
         self.trace = False
         self.trace_level = None
         self.trace_plot = None
+        self.random_state = None
         self.random_seed = None
         self.log_level = None
         self.log_dir = None
@@ -100,19 +102,20 @@ class Script():
                 sp = sps.add_parser(s)
 
                 # Instantiate plugin and register further subparsers
-                plugin = self.create_plugin(self.parser_configurations[c][s])
+                config = self.parser_configurations[c][s]
+                plugin = self.create_plugin(config)
                 if plugin is not None:
                     self.logger.debug(f'Instantiated script plugin of type `{plugin.__class__.__name__}`.')
-                    subparsers = plugin.add_subparsers(self.parser_configurations[c][s], sp)
+                    subparsers = plugin.add_subparsers(config, sp)
                     if subparsers is not None:
                         self.logger.debug(f'Registering sub-parser for script plugin `{plugin.__class__.__name__}`.')
                         for ss in subparsers:
-                            self.add_args(ss)
-                            plugin.add_args(ss)
+                            self.add_args(ss, config)
+                            plugin.add_args(ss, config)
                     else:
                         self.logger.debug(f'No sub-parser found for script plugin `{plugin.__class__.__name__}`.')
-                        self.add_args(sp)
-                        plugin.add_args(sp)
+                        self.add_args(sp, config)
+                        plugin.add_args(sp, config)
                 else:
                     self.logger.debug(f'No script plugin could be created for class `{c}` sub-class `{s}`.')
 
@@ -131,7 +134,7 @@ class Script():
         args = args or self.args
         return util.args.is_arg(name, args)
 
-    def add_args(self, parser):
+    def add_args(self, parser, config):
         parser.add_argument('--config', type=str, nargs='+', help='Load config from json file.')
         parser.add_argument('--debug', action='store_true', help='Run in debug mode.\n')
         parser.add_argument('--trace', action='store_true', help='Run in trace mode..\n')
@@ -245,6 +248,40 @@ class Script():
             for k in os.environ:
                 f.write('{}="{}"\n'.format(k, os.environ[k]))
 
+    def dump_command_line(self, filename):
+        # Environmental variables, these will be substituted into the arguments
+        # to make them shorter, if possible
+        vars = Script.get_env_vars()
+        
+        # See if python script is called from a bash script and retrieve original
+        # arguments. This should work for all python entry points called via
+        # the `./bin/run` script.
+        # TODO: Verify when lib is installed as a package
+        # TODO: Make this more generic, /bin/bash is os specific
+        parent = psutil.Process().parent()
+        if parent is not None and parent.cmdline()[0] == '/bin/bash':
+            args = parent.cmdline()[1:]
+        else:
+            args = sys.argv
+
+        mode = 'a' if os.path.isfile(filename) else 'w'
+        with open(filename, mode) as f:
+            if mode == 'a':
+                f.write('\n')
+                f.write('\n')
+            for i, arg in enumerate(args):
+                arg = self.substitute_env_vars(arg, vars)
+                arg = arg.replace('"', '\\"')
+                for pattern in [' ']:
+                    if pattern in arg:
+                        arg = f'\"{arg}\"'
+                        break
+
+                if i > 0:
+                    f.write(' ')
+                f.write(arg)
+            f.write('\n')
+
     def load_json(self, filename):
         with open(filename, 'r') as f:
             return json.load(f)
@@ -330,14 +367,6 @@ class Script():
     def resume_logging(self):
         if self.logging_console_handler is not None:
             self.logging_console_handler.setLevel(self.get_logging_level())
-
-    def save_command_line(self, filename):
-        mode = 'a' if os.path.isfile(filename) else 'w'
-        with open(filename, mode) as f:
-            if mode == 'a':
-                f.write('\n')
-                f.write('\n')
-            f.write(' '.join(sys.argv))
     
     def init_logging(self, outdir):
         logdir = self.log_dir or os.path.join(outdir, 'logs')
@@ -348,7 +377,7 @@ class Script():
         self.setup_logging(logfile=logfile)
 
         if self.dump_config:
-            self.save_command_line(os.path.join(outdir, 'command.sh'))
+            self.dump_command_line(os.path.join(outdir, 'command.sh'))
             self.dump_env(os.path.join(outdir, 'env.sh'))
             self.dump_args_json(os.path.join(outdir, 'args.json'))
 

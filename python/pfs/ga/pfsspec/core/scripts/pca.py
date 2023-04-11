@@ -15,8 +15,8 @@ class Pca(Script):
 
         self.pca = None
 
-    def add_args(self, parser):
-        super(Pca, self).add_args(parser)
+    def add_args(self, parser, config):
+        super(Pca, self).add_args(parser, config)
 
         parser.add_argument('--in', type=str, help="Input data path.\n")
         parser.add_argument('--out', type=str, help='Output data path.\n')

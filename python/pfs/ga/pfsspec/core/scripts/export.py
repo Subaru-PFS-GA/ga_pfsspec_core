@@ -4,7 +4,7 @@ import os
 import logging
 import numpy as np
 
-from pfs.ga.pfsspec.scripts.script import Script
+from pfs.ga.pfsspec.core.scripts import Script
 from pfs.ga.pfsspec.data.dataset import Dataset
 from pfs.ga.pfsspec.data.datasetspectrumwriter import DatasetSpectrumWriter
 
@@ -16,8 +16,8 @@ class Export(Script):
         self.writer = None
 
 
-    def add_args(self, parser):
-        super(Export, self).add_args(parser)
+    def add_args(self, parser, config):
+        super(Export, self).add_args(parser, config)
         parser.add_argument('--in', type=str, help="Data set directory\n")
         parser.add_argument('--out', type=str, help='Export output directory\n')
 

@@ -18,8 +18,8 @@ class Import(Script):
 
         self.importer = None
 
-    def add_args(self, parser):
-        super(Import, self).add_args(parser)
+    def add_args(self, parser, config):
+        super(Import, self).add_args(parser, config)
 
         parser.add_argument("--in", type=str, required=True, help="Model/data directory base path\n")
         parser.add_argument("--out", type=str, required=True, help="Output file, must be .h5 or .npz\n")

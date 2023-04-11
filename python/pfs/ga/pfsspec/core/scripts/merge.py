@@ -32,8 +32,8 @@ class Merge(Script):
             self.add_args(mp)
             Merge.MERGER_TYPES[mm]().add_args(mp)
 
-    def add_args(self, parser):
-        super(Merge, self).add_args(parser)
+    def add_args(self, parser, config):
+        super(Merge, self).add_args(parser, config)
         parser.add_argument("--in", type=str, nargs='+', help="List of inputs.\n")
         parser.add_argument("--out", type=str, help="Output directory\n")
 

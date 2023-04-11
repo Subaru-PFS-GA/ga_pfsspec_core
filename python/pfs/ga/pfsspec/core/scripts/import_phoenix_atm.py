@@ -15,8 +15,8 @@ class ImportPhoenixAtm(Import):
     def __init__(self):
         super(ImportPhoenixAtm, self).__init__()
 
-    def add_args(self, parser):
-        super(ImportPhoenixAtm, self).add_args(parser)
+    def add_args(self, parser, config):
+        super(ImportPhoenixAtm, self).add_args(parser, config)
         parser.add_argument("--max", type=int, default=None, help="Stop after this many items.\n")
         parser.add_argument('--preload-arrays', action='store_true', help='Do not preload flux arrays to save memory\n')
         print('attempting to add continuum model argument in import_phoenix_atm')

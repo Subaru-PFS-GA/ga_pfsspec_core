@@ -17,8 +17,8 @@ class Download(Script):
 
         self.downloader = None
 
-    def add_args(self, parser):
-        super(Download, self).add_args(parser)
+    def add_args(self, parser, config):
+        super(Download, self).add_args(parser, config)
 
         parser.add_argument("--out", type=str, required=True, help="Output directory\n")
         parser.add_argument('--resume', action='store_true', help='Resume existing but aborted download.\n')

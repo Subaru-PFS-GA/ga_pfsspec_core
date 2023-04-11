@@ -6,6 +6,7 @@ import multiprocessing
 
 from pfs.ga.pfsspec.core import PfsObject
 
+# TODO: Inherit from Plugin
 class GridBuilder(PfsObject):
     def __init__(self, input_grid=None, output_grid=None, orig=None):
         super(GridBuilder, self).__init__()

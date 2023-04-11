@@ -45,8 +45,8 @@ class PcaGridBuilder(GridBuilder):
             self.V = orig.V
             self.PC = orig.PC
 
-    def add_args(self, parser):
-        super(PcaGridBuilder, self).add_args(parser)
+    def add_args(self, parser, config):
+        super(PcaGridBuilder, self).add_args(parser, config)
 
         parser.add_argument('--pca-method', type=str, default='cov', choices=['svd', 'cov', 'dual'], help='PCA method\n')
         parser.add_argument('--pca-subtract-mean', action='store_true', help='Subtract mean from data matrix\n')

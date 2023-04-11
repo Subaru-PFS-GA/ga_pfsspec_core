@@ -14,7 +14,7 @@ class Downloader(PfsObject):
     def add_subparsers(self, configurations, parser):
         return []
 
-    def add_args(self, parser):
+    def add_args(self, parser, config):
         pass
 
     def init_from_args(self, config, args):

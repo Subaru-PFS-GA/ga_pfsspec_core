@@ -32,8 +32,8 @@ class RbfGridBuilder(GridBuilder):
             self.smoothing = 0.0
             self.method = None
 
-    def add_args(self, parser):
-        super(RbfGridBuilder, self).add_args(parser)
+    def add_args(self, parser, config):
+        super(RbfGridBuilder, self).add_args(parser, config)
         parser.add_argument('--padding', action='store_true', help='Pad array by one prior to RBF.\n')
         parser.add_argument('--fill', dest='fill', action='store_true', help='Fill in masked points.\n')
         parser.add_argument('--no-fill', dest='fill', action='store_false', help='Do not fill in masked points.\n')

@@ -5,65 +5,39 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-import pfs.ga.pfsspec.core.util as util
+from pfs.ga.pfsspec.core.scripts import Plugin
 from pfs.ga.pfsspec.core.util.smartparallel import SmartParallel
-from pfs.ga.pfsspec.core import PfsObject
 from .dataset import Dataset
 
-class DatasetBuilder(PfsObject):
-    def __init__(self, orig=None, random_seed=None):
-        super(DatasetBuilder, self).__init__(orig=orig)
+class DatasetBuilder(Plugin):
+    def __init__(self, random_state=None, random_seed=None, orig=None):
+        super().__init__(random_state=random_state, random_seed=random_seed, orig=orig)
 
-        if not isinstance(orig, PfsObject):
-            self.random_seed = random_seed
-            self.random_state = None
-            self.parallel = True
-            self.threads = None
-            self.resume = False
+        if not isinstance(orig, DatasetBuilder):
             self.chunk_size = None
-            self.top = None
             self.labels = None
 
             self.dataset = None
         else:
-            self.random_seed = random_seed or orig.random_seed
-            self.random_state = None
-            self.parallel = orig.parallel
-            self.threads = orig.threads
-            self.resume = orig.resume
             self.chunk_size = orig.chunk_size
-            self.top = orig.top
             self.labels = orig.labels
             
             self.dataset = orig.dataset
 
-    def get_arg(self, name, old_value, args=None):
-        args = args or self.args
-        return util.args.get_arg(name, old_value, args)
+    def add_args(self, parser, config):
+        super().add_args(parser, config)
 
-    def is_arg(self, name, args=None):
-        args = args or self.args
-        return util.args.is_arg(name, args)
-
-    def add_args(self, parser):
         parser.add_argument('--chunk-size', type=int, help='Dataset chunk size.\n')
-        parser.add_argument('--top', type=int, help='Stop after this many items.\n')
 
         # A generic parameter to create extra dataset columns (labels) with python functions.
         parser.add_argument('--label', action='append', nargs=2, metavar=('name', 'function'), help='Additional dataset label from python expression.\n')
 
     def init_from_args(self, config, args):
-        # Only allow parallel if random seed is not set
-        # It would be very painful to reproduce the same dataset with multiprocessing
-        self.threads = self.get_arg('threads', self.threads, args)
-        self.parallel = self.random_seed is None and (self.threads is None or self.threads > 1)
-        if not self.parallel:
-            self.logger.info('Dataset builder running in sequential mode.')
-        self.resume = self.get_arg('resume', self.resume, args)
+        super().init_from_args(config, args)
+        
         self.chunk_size = self.get_arg('chunk_size', self.chunk_size, args)
         if self.chunk_size == 0:
             self.chunk_size = None
-        self.top = self.get_arg('top', self.top, args)
 
         # Additional labels
         self.labels = self.get_arg('label', self.labels, args)
@@ -84,16 +58,6 @@ class DatasetBuilder(PfsObject):
         #       the worker process before the class data is copied over (although not sure why, since the
         #       process is supposed to be forked rather than a new one started...)
         pass
-
-    def init_random_state(self):
-        if self.random_state is None:
-            if self.random_seed is not None:
-                # NOTE: this seed won't be consistent across runs because pids can vary
-                self.random_state = np.random.RandomState(self.random_seed + os.getpid() + 1)
-            else:
-                self.random_state = np.random.RandomState(None)
-            
-            self.logger.debug("Initialized random state on pid {}, rnd={}".format(os.getpid(), self.random_state.rand()))
 
     def process_item(self, i):
         self.init_random_state()

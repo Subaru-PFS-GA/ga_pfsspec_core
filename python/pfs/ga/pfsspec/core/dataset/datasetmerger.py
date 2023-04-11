@@ -41,7 +41,7 @@ class DatasetMerger():
         args = args or self.args
         return util.args.is_arg(name, args)
 
-    def add_args(self, parser):
+    def add_args(self, parser, config):
         parser.add_argument('--preload-arrays', action='store_true', help='Preload flux arrays into memory.\n')
         parser.add_argument('--chunk-size', type=int, help='Dataset chunk size.\n')
 

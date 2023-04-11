@@ -34,8 +34,8 @@ class GridReader(Importer):
 
             self.grid = grid if grid is not None else orig.grid
 
-    def add_args(self, parser):
-        super(GridReader, self).add_args(parser)
+    def add_args(self, parser, config):
+        super(GridReader, self).add_args(parser, config)
 
         parser.add_argument('--top', type=int, default=None, help='Limit number of items.')
         parser.add_argument('--preload-arrays', action='store_true', help='Preload arrays, do not use to save memory\n')

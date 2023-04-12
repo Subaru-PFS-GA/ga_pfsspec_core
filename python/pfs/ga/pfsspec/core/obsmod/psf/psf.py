@@ -46,7 +46,7 @@ class Psf(PfsObject):
         if dwave is None:
             if size is None and self.has_optimal_size():
                 size = self.get_optimal_size(wave)
-            else:
+            elif size is None:
                 raise Exception('Cannot determine kernel optimal size and no dwave array is provided.')
             shift = size // 2
             idx = (np.arange(size) - shift) + np.arange(shift, wave.size - shift)[:, np.newaxis]

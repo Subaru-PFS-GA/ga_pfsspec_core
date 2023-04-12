@@ -62,6 +62,7 @@ class Spectrum(PfsObject):
             self.is_wave_lin = None
             self.is_wave_log = None
 
+            self.aux_params = {}
             self.history = []
         else:
             self.index = orig.index
@@ -102,6 +103,7 @@ class Spectrum(PfsObject):
             self.is_wave_lin = orig.is_wave_lin
             self.is_wave_log = orig.is_wave_log
 
+            self.aux_params = safe_deep_copy(orig.aux_params)
             self.history = safe_deep_copy(orig.history)
 
     def copy(self):
@@ -129,12 +131,14 @@ class Spectrum(PfsObject):
                 'mag',
                 'fiberid',
                 'cont_fit',
-                'random_seed']
+                'random_seed'] + list(self.aux_params.keys())
 
     def get_params(self):
         params = {}
         for p in self.get_param_names():
             params[p] = getattr(self, p)
+        for p, v in self.aux_params.items():
+            params[p] = self.aux_params[p]
         return params
 
     def set_params(self, params):
@@ -145,7 +149,10 @@ class Spectrum(PfsObject):
     def get_params_as_datarow(self):
         row = {}
         for p in self.get_param_names():
-            v = getattr(self, p)
+            if p in self.aux_params:
+                v = self.aux_params[p]
+            else:
+                v = getattr(self, p)
 
             # If parameter is an array, assume it's equal length and copy to
             # pandas as a set of columns instead of a single column

@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -11,8 +12,11 @@ class Filter(PfsObject):
         self.wave = None
         self.thru = None
 
-    def read(self, file):
-        [wave, thru] = np.loadtxt(file).transpose()
+    def read(self, filename):
+        self.filename = filename
+        self.name = os.path.splitext(os.path.basename(filename))[0]
+        
+        [wave, thru] = np.loadtxt(filename).transpose()
         ix = np.argsort(wave)
         self.wave = wave[ix]
         self.thru = thru[ix]

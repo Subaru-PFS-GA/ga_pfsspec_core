@@ -1,3 +1,5 @@
+import numbers
+
 def safe_deep_copy(orig, **kwargs):
     if orig is list:
         return [ safe_deep_copy(i, **kwargs) for i in orig ]
@@ -5,6 +7,8 @@ def safe_deep_copy(orig, **kwargs):
         return tuple([ safe_deep_copy(i, **kwargs) for i in orig ])
     elif orig is dict:
         return { k: safe_deep_copy(i, **kwargs) for k, i in orig.items() }
+    elif isinstance(orig, numbers.Number):
+        return orig
     elif orig is not None and hasattr(orig, 'copy'):
         return orig.copy(**kwargs)
     elif orig is None:

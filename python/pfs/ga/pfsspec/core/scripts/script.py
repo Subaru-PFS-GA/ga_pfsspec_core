@@ -15,6 +15,7 @@ import pfs.ga.pfsspec   # NOTE: required by module discovery
 from ..util import ArgumentParser
 import pfs.ga.pfsspec.core.util.shutil as shutil
 import pfs.ga.pfsspec.core.util as util
+from pfs.ga.pfsspec.core.plotting import TracePlots
 from pfs.ga.pfsspec.core.util.notebookrunner import NotebookRunner
 
 class Script():
@@ -33,10 +34,7 @@ class Script():
         self.args = None
         self.debug = False
         self.trace = False
-        self.trace_level = None
-        self.trace_plot = None
-        self.random_state = None
-        self.random_seed = None
+        self.trace_plot_level = TracePlots.PLOT_LEVEL_NONE
         self.log_level = None
         self.log_dir = None
         self.log_copy = False
@@ -47,6 +45,7 @@ class Script():
         self.dir_history = []
         self.outdir = None
         self.skip_notebooks = False
+        self.random_seed = None
         self.is_batch = 'SLURM_JOBID' in os.environ
         if 'SLURM_CPUS_PER_TASK' in os.environ:
             self.threads = int(os.environ['SLURM_CPUS_PER_TASK'])
@@ -122,7 +121,9 @@ class Script():
     def create_plugin(self, config):
         t = config[self.CONFIG_TYPE]
         if t is not None:
-            return t()
+            plugin = t()
+            plugin.init_random_state(random_seed=self.random_seed)
+            return plugin
         else:
             return None
 
@@ -138,8 +139,7 @@ class Script():
         parser.add_argument('--config', type=str, nargs='+', help='Load config from json file.')
         parser.add_argument('--debug', action='store_true', help='Run in debug mode.\n')
         parser.add_argument('--trace', action='store_true', help='Run in trace mode..\n')
-        parser.add_argument('--trace-level', type=str, default=None, help='Trace level\n')
-        parser.add_argument('--trace-plot', action='store_true', help='Generate trace plots.\n')
+        parser.add_argument('--trace-plot-level', type=int, help='Trace plot level.\n')
         parser.add_argument('--threads', type=int, help='Number of processing threads.\n')
         parser.add_argument('--log-level', type=str, default=None, help='Logging level\n')
         parser.add_argument('--log-dir', type=str, default=None, help='Log directory\n')
@@ -154,8 +154,7 @@ class Script():
             # Parse some special but generic arguments
             self.debug = self.get_arg('debug', self.debug)
             self.trace = self.get_arg('trace', self.trace)
-            self.trace_level = self.get_arg('trace_level', self.trace_level)
-            self.trace_plot = self.get_arg('trace_plot', self.trace_plot)
+            self.trace_plot_level = self.get_arg('trace_plot_level', self.trace_plot_level)
             self.threads = self.get_arg('threads', self.threads)
             self.log_level = self.get_arg('log_level', self.log_level)
             self.log_dir = self.get_arg('log_dir', self.log_dir)
@@ -403,8 +402,6 @@ class Script():
 
         if self.debug:
             np.seterr(divide='raise', over='raise', invalid='raise')
-        if self.random_seed is not None:
-            np.random.seed(self.random_seed)
 
     def run(self):
         raise NotImplementedError()

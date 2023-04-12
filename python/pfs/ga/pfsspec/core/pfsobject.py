@@ -44,12 +44,18 @@ class PfsObject():
         self.logger = logging.getLogger()
 
         if isinstance(orig, PfsObject):
+            self.random_state = orig.random_state
+            self.random_seed = orig.random_seed
+
             self.file = None
 
             self.filename = orig.filename
             self.fileformat = orig.fileformat
             self.filedata = orig.filedata
         else:
+            self.random_state = None
+            self.random_seed = None
+
             self.file = None
 
             self.filename = None
@@ -58,6 +64,33 @@ class PfsObject():
 
     def copy(self):
         return type(self)(orig=self)
+    
+    def init_random_state(self, random_state=None, random_seed=None, worker_id=None):
+        """
+        Initialize the random state or just reseeds the existing one. When worker_id is
+        specified, it is added to the seed.
+        """
+
+        self.random_state = random_state if random_state is not None else self.random_state
+        self.random_seed = random_seed if random_seed is not None else self.random_seed
+        
+        # If worker ID
+        if worker_id is not None:
+            if self.random_seed is not None:
+                seed = (self.random_seed + worker_id) % 0xFFFFFFFF
+            else:    
+                seed = (self.random_state.tomaxint() + worker_id) % 0xFFFFFFFF
+        else:
+            seed = self.random_seed
+
+        # Create random state with defaults if does not already exist, otherwise
+        # just reseed
+        if self.random_state is None:
+            self.random_state = np.random.RandomState(seed=seed)
+            self.logger.debug("Initialized random state on pid {} with seed {}".format(os.getpid(), seed))
+        elif seed is not None:
+            self.random_state.seed(seed)
+            self.logger.debug("Re-seeded random state on pid {} with seed {}".format(os.getpid(), seed))
 
     def get_arg(self, name, old_value, args=None):
         """

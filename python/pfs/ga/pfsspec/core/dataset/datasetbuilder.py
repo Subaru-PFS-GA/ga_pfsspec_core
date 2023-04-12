@@ -10,8 +10,8 @@ from pfs.ga.pfsspec.core.util.smartparallel import SmartParallel
 from .dataset import Dataset
 
 class DatasetBuilder(Plugin):
-    def __init__(self, random_state=None, random_seed=None, orig=None):
-        super().__init__(random_state=random_state, random_seed=random_seed, orig=orig)
+    def __init__(self, orig=None):
+        super().__init__(orig=orig)
 
         if not isinstance(orig, DatasetBuilder):
             self.chunk_size = None
@@ -32,8 +32,8 @@ class DatasetBuilder(Plugin):
         # A generic parameter to create extra dataset columns (labels) with python functions.
         parser.add_argument('--label', action='append', nargs=2, metavar=('name', 'function'), help='Additional dataset label from python expression.\n')
 
-    def init_from_args(self, config, args):
-        super().init_from_args(config, args)
+    def init_from_args(self, script, config, args):
+        super().init_from_args(script, config, args)
         
         self.chunk_size = self.get_arg('chunk_size', self.chunk_size, args)
         if self.chunk_size == 0:
@@ -57,13 +57,13 @@ class DatasetBuilder(Plugin):
         # NOTE: cannot initialize class-specific data here because the initializer function is executed inside
         #       the worker process before the class data is copied over (although not sure why, since the
         #       process is supposed to be forked rather than a new one started...)
-        pass
+        self.init_random_state(worker_id=worker_id)
 
     def process_item(self, i):
-        self.init_random_state()
+        raise NotImplementedError()
 
     def store_item(self, i, spec):
-        pass
+        raise NotImplementedError()
 
     def process_and_store_item(self, i):
         spec = self.process_item(i)

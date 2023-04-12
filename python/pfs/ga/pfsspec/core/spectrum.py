@@ -56,7 +56,6 @@ class Spectrum(PfsObject):
             self.weight = None
             self.cont = None
             self.cont_fit = None
-            self.random_seed = None
 
             self.resolution = None
             self.is_wave_regular = None
@@ -97,7 +96,6 @@ class Spectrum(PfsObject):
             self.weight = safe_deep_copy(orig.weight)
             self.cont = safe_deep_copy(orig.cont)
             self.cont_fit = orig.cont_fit
-            self.random_seed = orig.random_seed
 
             self.resolution = orig.resolution
             self.is_wave_regular = orig.is_wave_regular
@@ -178,6 +176,9 @@ class Spectrum(PfsObject):
     
     def mask_asint(self):
         return self.get_mask_asint(self.mask)
+    
+    def mask_from_wave(self):
+        return ~np.isnan(self.wave)
 
     @staticmethod
     def get_mask_asbool(mask):

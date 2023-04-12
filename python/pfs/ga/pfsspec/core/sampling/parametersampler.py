@@ -1,25 +1,23 @@
 import numpy as np
 
-from ..util.args import *
+from pfs.ga.pfsspec.core.util.args import *
+from pfs.ga.pfsspec.core import PfsObject
 
-class ParameterSampler():
-    def __init__(self, random_state=None, orig=None):
+class ParameterSampler(PfsObject):
+    def __init__(self, orig=None):
+        super().__init__(orig=orig)
+
         if not isinstance(orig, ParameterSampler):
-            self.random_state = random_state
             self.parameters = {}
             self.sample_count = 0               # Number of samples to generate
                                                 # TODO: move this elsewhere?
         else:
-            self.random_state = random_state if random_state is not None else orig.random_state
             self.parameters = orig.parameters
             self.sample_count = orig.sample_count
 
     def enumerate_parameters(self):
         for i, (k, par) in enumerate(self.parameters.items()):
             yield i, k, par
-
-    def init_random_state(self, random_state):
-        self.random_state = random_state
 
     def add_parameter(self, parameter):
         self.parameters[parameter.name] = parameter
@@ -41,8 +39,6 @@ class ParameterSampler():
             par.init_from_args(args)
 
     def draw_random_param(self, par):
-        # Always draw random parameters from self.random_state
-        
         if par.dist == 'const':
             r = par.value
         elif par.dist == 'int':

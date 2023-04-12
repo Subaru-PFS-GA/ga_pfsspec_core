@@ -17,9 +17,9 @@ class Pipeline(PfsObject):
     """
 
     def __init__(self, orig=None):
-        if not isinstance(orig, Pipeline):
-            self.random_state = None
+        super().__init__(orig=orig)
 
+        if not isinstance(orig, Pipeline):
             self.restframe = False          # When true, use value from spectra to convert to restframe
             self.redshift = None            # When true, use value from spectra to shift to certain redshift,
                                             # when value, use value to redshift spectrum to
@@ -40,8 +40,6 @@ class Pipeline(PfsObject):
             self.norm = None                # Post process normalization method
             self.norm_wave = None           # Post process normalization wavelength range
         else:
-            self.random_state = orig.random_state
-
             self.conv_sigma = orig.conv_sigma
             self.conv_resolution = orig.conv_resolution
             self.conv_gauss = orig.conv_gauss
@@ -99,9 +97,6 @@ class Pipeline(PfsObject):
         
         self.norm = self.get_arg('norm', self.norm, args)
         self.norm_wave = self.get_arg('norm_wave', self.norm_wave, args)
-
-    def init_random_state(self, random_state):
-        self.random_state = random_state
 
     def init_sampler_parameters(self, sampler):
         """

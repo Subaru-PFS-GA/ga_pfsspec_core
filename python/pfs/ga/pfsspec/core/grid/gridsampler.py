@@ -11,8 +11,8 @@ class GridSampler(ParameterSampler):
     support matching parameters from an existing dataset.
     """
 
-    def __init__(self, random_state=None, orig=None):
-        super().__init__(random_state=random_state, orig=orig)
+    def __init__(self, orig=None):
+        super().__init__(orig=orig)
 
         if not isinstance(orig, GridSampler):
             self.grid = None                    # Stellar spectrum grid

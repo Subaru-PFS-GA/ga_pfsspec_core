@@ -9,19 +9,25 @@ class Plugin(PfsObject):
         super().__init__(orig=orig)
 
         if not isinstance(orig, Plugin):
+            self.config = None
+            self.args = None
             self.parallel = True
             self.threads = None
             self.debug = False
             self.trace = None
             self.top = None
             self.resume = False
+            self.verbose = False
         else:
+            self.config = orig.config
+            self.args = orig.args
             self.parallel = orig.parallel
             self.threads = orig.threads
             self.debug = orig.debug
             self.trace = orig.trace
             self.top = orig.top
             self.resume = orig.resume
+            self.verbose = orig.verbose
 
     def get_arg(self, name, old_value, args=None):
         args = args or self.args
@@ -36,10 +42,13 @@ class Plugin(PfsObject):
         parser.add_argument('--resume', action='store_true', help='Resume processing with existing output.\n')
 
     def init_from_args(self, script, config, args):
+        self.config = config
+        self.args = args
+
         # Only allow parallel if random seed is not set
         # It would be very painful to reproduce the same dataset with multiprocessing
         self.threads = self.get_arg('threads', self.threads, args)
-        self.parallel = self.threads is None or self.threads > 1
+        self.parallel = self.random_seed is None and (self.threads is None or self.threads > 1)
         if not self.parallel:
             self.logger.info(f'Script plugin `{type(self).__name__}` running in sequential mode.')
         

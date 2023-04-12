@@ -4,26 +4,19 @@ import time
 from tqdm import tqdm
 import multiprocessing
 
-from pfs.ga.pfsspec.core import PfsObject
+from pfs.ga.pfsspec.core.scripts import Plugin
 
-# TODO: Inherit from Plugin
-class GridBuilder(PfsObject):
+class GridBuilder(Plugin):
     def __init__(self, input_grid=None, output_grid=None, orig=None):
-        super(GridBuilder, self).__init__()
+        super(GridBuilder, self).__init__(orig=orig)
 
         if isinstance(orig, GridBuilder):
-            self.parallel = orig.parallel
-            self.threads = orig.threads
-            self.top = orig.top
-
             self.input_grid = input_grid if input_grid is not None else orig.input_grid
             self.output_grid = output_grid if output_grid is not None else orig.output_grid
             self.input_grid_index = None
             self.output_grid_index = None
             self.grid_shape = None
         else:
-            self.parallel = True
-            self.threads = multiprocessing.cpu_count() // 2
 
             self.input_grid = input_grid
             self.output_grid = output_grid
@@ -31,17 +24,15 @@ class GridBuilder(PfsObject):
             self.output_grid_index = None
             self.grid_shape = None
 
-            self.top = None
-
-    def add_args(self, parser):
-        parser.add_argument('--top', type=int, default=None, help='Limit number of results')
+    def add_args(self, parser, config):
+        super().add_args(parser, config)
 
         # Axes of input grid can be used as parameters to filter the range
         grid = self.create_input_grid()
         grid.add_args(parser)
 
     def init_from_args(self, config, args):
-        self.top = self.get_arg('top', self.top, args)
+        super().init_from_args(config, args)
 
     def create_input_grid(self):
         raise NotImplementedError()

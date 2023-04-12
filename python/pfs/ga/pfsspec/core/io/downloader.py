@@ -1,24 +1,22 @@
-from pfs.ga.pfsspec.core import PfsObject
+from pfs.ga.pfsspec.core.scripts import Plugin
 
-class Downloader(PfsObject):
+class Downloader(Plugin):
     def __init__(self, orig=None):
-        super(Downloader, self).__init__()
+        super().__init__(orig=orig)
 
         if not isinstance(orig, Downloader):
-            self.resume = False
             self.outdir = None
         else:
-            self.resume = orig.resume
             self.outdir = orig.outdir
 
     def add_subparsers(self, configurations, parser):
         return []
 
     def add_args(self, parser, config):
-        pass
+        super().add_args(parser, config)
 
     def init_from_args(self, config, args):
-        pass
+        super().init_from_args(config, args)
 
     def execute_notebooks(self, script):
         pass

@@ -23,7 +23,6 @@ class Import(Script):
 
         parser.add_argument("--in", type=str, required=True, help="Model/data directory base path\n")
         parser.add_argument("--out", type=str, required=True, help="Output file, must be .h5 or .npz\n")
-        parser.add_argument('--resume', action='store_true', help='Resume existing but aborted import.\n')
 
     def parse_args(self):
         super(Import, self).parse_args()
@@ -33,9 +32,6 @@ class Import(Script):
     def create_importer(self):
         config = self.parser_configurations[self.args[self.CONFIG_CLASS]][self.args[self.CONFIG_SUBCLASS]]
         self.importer = config[self.CONFIG_TYPE]()
-        self.importer.parallel = self.threads != 1
-        self.importer.threads = self.threads
-        self.importer.resume = self.resume
         self.importer.init_from_args(config, self.args)
 
     def open_data(self, args):

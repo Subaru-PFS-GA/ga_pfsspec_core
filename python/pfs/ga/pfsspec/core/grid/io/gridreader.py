@@ -10,42 +10,29 @@ from pfs.ga.pfsspec.core.io import Importer
 
 class GridReader(Importer):
     def __init__(self, grid=None, orig=None):
-        super(GridReader, self).__init__(orig=orig)
+        super().__init__(orig=orig)
 
         if not isinstance(orig, GridReader):
             self.args = None
-            self.parallel = True
-            self.threads = multiprocessing.cpu_count() // 2
-            self.resume = False
-
-            self.top = None
             self.preload_arrays = False
 
             self.path = None
             self.grid = grid
         else:
             self.args = orig.args
-            self.parallel = orig.parallel
-            self.threads = orig.threads
-            self.resume = orig.resume
-
-            self.top = orig.top
             self.preload_arrays = orig.preload_arrays
 
+            self.path = orig.path
             self.grid = grid if grid is not None else orig.grid
 
     def add_args(self, parser, config):
-        super(GridReader, self).add_args(parser, config)
+        super().add_args(parser, config)
 
-        parser.add_argument('--top', type=int, default=None, help='Limit number of items.')
         parser.add_argument('--preload-arrays', action='store_true', help='Preload arrays, do not use to save memory\n')
 
     def init_from_args(self, config, args):
-        super(GridReader, self).init_from_args(config, args)
+        super().init_from_args(config, args)
         
-        self.args = args
-
-        self.top = self.get_arg('top', self.top, args)
         self.preload_arrays = self.get_arg('preload_arrays', self.preload_arrays, args)
 
     def create_grid(self):

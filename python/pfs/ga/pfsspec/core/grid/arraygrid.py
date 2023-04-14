@@ -464,16 +464,16 @@ class ArrayGrid(Grid):
         for name in self.enum_values():
             if self.values[name] is not None:
                 if self.preload_arrays:
-                    self.logger.info('Saving grid "{}" of size {}'.format(name, self.values[name].shape))
+                    self.logger.debug('Saving grid "{}" of size {}'.format(name, self.values[name].shape))
                     self.save_item(self.get_value_path(name), self.values[name])
-                    self.logger.info('Saved grid "{}" of size {}'.format(name, self.values[name].shape))
+                    self.logger.debug('Saved grid "{}" of size {}'.format(name, self.values[name].shape))
                 elif self.mmap_arrays:
                     raise NotImplementedError()
                 else:
                     shape = self.get_value_shape(name)
-                    self.logger.info('Allocating grid "{}" with size {}...'.format(name, shape))
+                    self.logger.debug('Allocating grid "{}" with size {}...'.format(name, shape))
                     self.allocate_item(self.get_value_path(name), shape, np.float)
-                    self.logger.info('Allocated grid "{}" with size {}. Will write directly to storage.'.format(name, shape))
+                    self.logger.debug('Allocated grid "{}" with size {}. Will write directly to storage.'.format(name, shape))
 
     def load_values(self, s=None):
         grid_shape = self.get_shape()
@@ -482,22 +482,22 @@ class ArrayGrid(Grid):
             # If not running in memory saver mode, load entire array
             if self.preload_arrays:
                 if s is not None:
-                    self.logger.info('Loading grid "{}" of size {}'.format(name, s))
+                    self.logger.debug('Loading grid "{}" of size {}'.format(name, s))
                     self.values[name][s] = self.load_item(self.get_value_path(name), np.ndarray, s=s)
                 else:
-                    self.logger.info('Loading grid "{}"'.format(name))
+                    self.logger.debug('Loading grid "{}"'.format(name))
                     self.values[name] = self.load_item(self.get_value_path(name), np.ndarray)
                     
                 if self.values[name] is not None:
                     self.value_shapes[name] = self.values[name].shape[len(grid_shape):]
-                    self.logger.info('Loaded grid "{}" of size {}'.format(name, self.value_shapes[name]))
+                    self.logger.debug('Loaded grid "{}" of size {}'.format(name, self.value_shapes[name]))
             elif self.mmap_arrays:
                 # When mmap'ing, we simply ignore the slice
-                self.logger.info('Memory mapping grid "{}"'.format(name))
+                self.logger.debug('Memory mapping grid "{}"'.format(name))
                 self.values[name] = self.load_item(self.get_value_path(name), np.ndarray, mmap=True)
                 if self.values[name] is not None:
                     self.value_shapes[name] = self.values[name].shape[len(grid_shape):]
-                    self.logger.info('Memory mapped grid "{}" of size {}'.format(name, self.value_shapes[name]))
+                    self.logger.debug('Memory mapped grid "{}" of size {}'.format(name, self.value_shapes[name]))
             else:
                 # When lazy-loading, we simply ignore the slice
                 shape = self.get_item_shape(self.get_value_path(name))
@@ -507,7 +507,7 @@ class ArrayGrid(Grid):
                 else:
                     self.value_shapes[name] = None
                 
-                self.logger.info('Skipped loading grid "{}". Will read directly from storage.'.format(name))
+                self.logger.debug('Skipped loading grid "{}". Will read directly from storage.'.format(name))
 
     def save_value_indexes(self):
         for name in self.values:

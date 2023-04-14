@@ -165,16 +165,16 @@ class ArrayDataset(Dataset):
             self.value_dtypes[name] = dtype
           
             if self.preload_arrays:
-                self.logger.info('Initializing memory for dataset value array "{}" of size {}...'.format(name, full_shape))
+                self.logger.debug('Initializing memory for dataset value array "{}" of size {}...'.format(name, full_shape))
                 self.values[name] = np.full(full_shape, self.get_dtype_invalid_value(dtype))
-                self.logger.info('Initialized memory for dataset value array "{}" of size {}.'.format(name, full_shape))
+                self.logger.debug('Initialized memory for dataset value array "{}" of size {}.'.format(name, full_shape))
             else:
                 self.values[name] = None
 
-                self.logger.info('Initializing data file for dataset value array "{}" of size {}...'.format(name, full_shape))
+                self.logger.debug('Initializing data file for dataset value array "{}" of size {}...'.format(name, full_shape))
                 if not self.has_item(self.get_value_path(name)):
                     self.allocate_item(self.get_value_path(name), full_shape, dtype=dtype)
-                self.logger.info('Skipped memory initialization for dataset value array "{}". Will read random slices from storage.'.format(name))
+                self.logger.debug('Skipped memory initialization for dataset value array "{}". Will read random slices from storage.'.format(name))
 
     def allocate_value(self, name, shape=None, dtype=None, **kwargs):
         """

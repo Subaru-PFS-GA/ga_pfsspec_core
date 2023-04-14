@@ -71,26 +71,49 @@ class PfsObject():
         specified, it is added to the seed.
         """
 
-        self.random_state = random_state if random_state is not None else self.random_state
-        self.random_seed = random_seed if random_seed is not None else self.random_seed
-        
+        random_state = random_state if random_state is not None else self.random_state        
+        random_seed = random_seed if random_seed is not None else self.random_seed
+
+        # TODO: Right now, always use the default
+        if random_state is None:
+            random_state = np.random
+               
         # If worker ID
         if worker_id is not None:
-            if self.random_seed is not None:
-                seed = (self.random_seed + worker_id) % 0xFFFFFFFF
-            else:    
-                seed = (self.random_state.tomaxint() + worker_id) % 0xFFFFFFFF
+            if random_seed is not None:
+                seed = (random_seed + worker_id) % 0xFFFFFFFF
+            else:
+                # This would not works, seed from the outside
+                raise ValueError("Value of `random_seed` must be set along with `worker_id`.")
+                seed = (random_state.randint(0, np.iinfo(np.int_).max) + worker_id) % 0xFFFFFFFF
         else:
-            seed = self.random_seed
+            seed = random_seed
 
         # Create random state with defaults if does not already exist, otherwise
         # just reseed
-        if self.random_state is None:
-            self.random_state = np.random.RandomState(seed=seed)
+        if random_state is None:
+            # TODO: This is causing problems with multiprocessing
+            raise NotImplementedError()
+            random_state = np.random.RandomState(seed=seed)
             self.logger.debug("Initialized random state on pid {} with seed {}".format(os.getpid(), seed))
         elif seed is not None:
-            self.random_state.seed(seed)
+            random_state.seed(seed)
             self.logger.debug("Re-seeded random state on pid {} with seed {}".format(os.getpid(), seed))
+
+        # TODO: These are not saved now because they're causing problems
+        #       with multiprocessing
+        # self.random_state = random_state
+        # self.random_seed = random_seed
+
+        pass
+
+    def get_random_state(self, random_state=None):
+        if random_state is not None:
+            return random_state
+        elif self.random_state is not None:
+            return self.random_state
+        else:
+            return np.random
 
     def get_arg(self, name, old_value, args=None):
         """

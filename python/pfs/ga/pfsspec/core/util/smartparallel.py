@@ -164,8 +164,15 @@ class SmartParallel():
         pass
 
     @staticmethod
-    def pool_worker(worker_id, initializer, worker, queue_in, queue_out, *args, obj=None, **kwargs):
+    def pool_worker(worker_id, random_seed, initializer, worker, queue_in, queue_out, *args, obj=None, **kwargs):
+        # This executes in the worker process
+
         if initializer is not None:
+            # Make sure random generator is reseeded on the new thread (sub-process)
+            if random_seed is not None:
+                np.random.seed(random_seed)
+                logging.debug("Re-seeded random state on pid {} with seed {}".format(os.getpid(), random_seed))
+            
             initializer(worker_id)
         while True:
             i = queue_in.get()
@@ -182,6 +189,8 @@ class SmartParallel():
                     queue_out.put(SmartParallelError(*sys.exc_info()[:2], traceback.format_exception(*sys.exc_info())))
 
     def map(self, worker, items, *args, obj=None, **kwargs):
+        # This executes in the main process
+        
         if self.parallel:
             self.queue_in = self.manager.Queue()
             self.queue_out = self.manager.Queue(1024)
@@ -196,7 +205,9 @@ class SmartParallel():
             kwargs = {**kwargs, 'obj': obj}
             self.pool_results = []
             for i in range(self.cpus):
-                ar = self.pool.apply_async(SmartParallel.pool_worker, args=(i,) + args, kwds=kwargs)
+                # Start pool worker processes, pass in worker id and a random seed
+                random_seed = np.random.randint(0, np.iinfo(np.int_).max) % 0xFFFFFFFF
+                ar = self.pool.apply_async(SmartParallel.pool_worker, args=(i, random_seed) + args, kwds=kwargs)
                 self.pool_results.append(ar)
 
             m = IterableQueue(self.queue_out, len(items))

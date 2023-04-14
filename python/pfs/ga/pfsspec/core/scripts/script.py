@@ -122,7 +122,6 @@ class Script():
         t = config[self.CONFIG_TYPE]
         if t is not None:
             plugin = t()
-            plugin.init_random_state(random_seed=self.random_seed)
             return plugin
         else:
             return None

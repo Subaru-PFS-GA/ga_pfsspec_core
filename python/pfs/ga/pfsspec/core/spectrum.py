@@ -20,6 +20,13 @@ from .physics import Physics
 from .constants import Constants
 
 class Spectrum(PfsObject):
+
+    MASK_DEFAULT = 0x1                      # Default lowest bit mask
+    MASK_NOWAVE = 0x10000                   # Wavelength of pixel is not calibrated
+    MASK_NOSKY = 0x20000                    # No sky model available
+    MASK_SKYLINE = 0x30000                  # Strong sky line
+    MASK_ALL = 0xEFFFFFFF                   # All bits (signed int)
+
     def __init__(self, orig=None):
         super().__init__(orig=orig)
         
@@ -168,45 +175,76 @@ class Spectrum(PfsObject):
 
         return row
     
-    def merge_mask(self, mask):
-        mask = self.get_mask_asint(mask)
-
-        if mask is None:
-            return
-        elif self.mask is None:
-            self.mask = mask
-        else:
-            self.mask = np.bitwise_or(self.mask, mask)
-
-    def mask_asbool(self):
-        return self.get_mask_asbool(self.mask)
+    #region Mask manipulation
     
-    def mask_asint(self):
-        return self.get_mask_asint(self.mask)
+    def merge_mask(self, mask, bits=MASK_DEFAULT):
+        self.mask = self.get_mask_merged(self.wave, self.mask, mask, bits2=bits)
+
+    def mask_as_bool(self, bits=MASK_ALL):
+        return self.get_mask_as_bool(self.wave, self.mask, bits=bits)
+    
+    def mask_as_int(self):
+        return self.get_mask_as_int(self.wave, self.mask)
     
     def mask_from_wave(self):
         return ~np.isnan(self.wave)
 
     @staticmethod
-    def get_mask_asbool(mask):
+    def get_mask_as_bool(wave, mask, bits=MASK_ALL):
         if mask is None:
             return None
-        elif mask.dtype != bool:
-            return (mask > 0)
+        elif isinstance(mask, slice):
+            m = np.full_like(wave, False)
+            m[mask] = True
+            return m
+        elif isinstance(mask, np.ndarray) and mask.dtype == bool:
+            return mask
+        elif isinstance(mask, np.ndarray) and mask.dtype != bool:
+            return (np.bitwise_and(mask, bits) == 0)
         else:
             return mask
         
     @staticmethod
-    def get_mask_asint(mask):
-        # TODO: which bit?
+    def get_mask_as_int(wave, mask, bits=MASK_ALL):
+        """
+        Convert any type of mask into an integer mask.
+        If the mask is already integer, keep it as is. If it's a boolean
+        mask, True means valid values so it has to be inverted before
+        converting into an integer where 0 means valid. If it is a slice,
+        do similarly as with boolean.
+        """
+
         if mask is None:
             return None
+        elif isinstance(mask, slice):
+            m = np.full_like(wave, bits, dtype=int)
+            m[mask] = 0
+            return m
         elif mask.dtype == bool:
-            return mask.astype(int)
+            m = np.full_like(wave, bits, dtype=int)
+            m[mask] = 0
+            return m
         elif mask.dtype == int:
             return mask
         else:
             raise NotImplementedError("Unknown mask format")
+        
+    @staticmethod
+    def get_mask_merged(wave, mask1, mask2, bits1=MASK_DEFAULT, bits2=MASK_DEFAULT):
+        mask1 = Spectrum.get_mask_as_int(wave, mask1, bits=bits1)
+        mask2 = Spectrum.get_mask_as_int(wave, mask2, bits=bits2)
+
+        if mask1 is None and mask2 is None:
+            return None
+        elif mask1 is not None and mask2 is None:
+            return mask1
+        elif mask1 is None and mask2 is not None:
+            return mask2
+        else:
+            return np.bitwise_or(mask1, mask2)
+
+    #endregion
+    #region Wave manipulation
         
     @staticmethod
     def get_wave_edges_1d(wave_edges):
@@ -230,6 +268,8 @@ class Spectrum(PfsObject):
             return wave_edges
         else:
             raise NotImplementedError()
+        
+    #endregion
         
     def set_redshift(self, z):
         """
@@ -263,6 +303,22 @@ class Spectrum(PfsObject):
             self.wave_edges = self.wave_edges / (1 + self.redshift)
         self.redshift = 0.0
 
+    #region Resampling
+
+    def apply_resampler_impl(self, resampler):
+        # TODO: use MASK_NOWAVE but also look for nan values in wave inside resampler
+
+        self.flux, self.flux_err = resampler.resample_value(self.wave, self.wave_edges, self.flux, self.flux_err)
+        self.flux_sky, _ = resampler.resample_value(self.wave, self.wave_edges, self.flux_sky)
+        self.cont, _ = resampler.resample_value(self.wave, self.wave_edges, self.cont)
+        self.cont_fit, _ = resampler.resample_value(self.wave, self.wave_edges, self.cont_fit)
+
+        # TODO: flux_calibration
+        #       flux_model
+        
+        self.mask = resampler.resample_mask(self.wave, self.wave_edges, self.mask)
+        self.weight = resampler.resample_weight(self.wave, self.wave_edges, self.weight)
+
     def apply_resampler(self, resampler, target_wave, target_wave_edges):
         resampler.init(target_wave, target_wave_edges)
         self.apply_resampler_impl(resampler)
@@ -272,6 +328,8 @@ class Spectrum(PfsObject):
         self.wave_edges = target_wave_edges
 
         self.append_history(f'Resampled using a resampler of type `{type(resampler).__name__}`.')
+
+    #endregion
 
     def trim_wave(self, wlim):
         """
@@ -299,15 +357,6 @@ class Spectrum(PfsObject):
             self.weight = trim_vector(self.weight, mask)
             self.cont = trim_vector(self.cont, mask)
             self.cont_fit = trim_vector(self.cont_fit, mask)
-    
-    def apply_resampler_impl(self, resampler):
-        self.flux, self.flux_err = resampler.resample_value(self.wave, self.wave_edges, self.flux, self.flux_err)
-        self.flux_sky, _ = resampler.resample_value(self.wave, self.wave_edges, self.flux_sky)
-        self.cont, _ = resampler.resample_value(self.wave, self.wave_edges, self.cont)
-        self.cont_fit, _ = resampler.resample_value(self.wave, self.wave_edges, self.cont_fit)
-        
-        self.mask = resampler.resample_mask(self.wave, self.wave_edges, self.mask)
-        self.weight = resampler.resample_weight(self.wave, self.wave_edges, self.weight)
        
     def zero_mask(self):
         self.flux[self.mask != 0] = 0
@@ -383,7 +432,7 @@ class Spectrum(PfsObject):
         self.append_history(f'Applied noise model of type `{type(noise_model).__name__}`.')
 
     def calculate_snr(self, snr):
-        self.snr = snr.get_snr(self.flux, self.flux_err, self.mask_asbool())
+        self.snr = snr.get_snr(self.flux, self.flux_err, self.mask_as_bool())
 
         self.append_history(f'S/N calculated to be {self.snr} using method `{type(snr).__name__}`')
         
@@ -416,22 +465,29 @@ class Spectrum(PfsObject):
 
         try:
             obs = pysynphot.observation.Observation(spec, filt)
-            flux = obs.effstim('Jy')
+            return obs.effstim('Jy')
         except Exception as ex:
-            raise ex
-        return flux
+            logging.debug(f'Synthetic flux in filter `{filter.name}` turned out to be negative.')
+            return np.nan
 
     def synthmag(self, filter, norm=1.0):
         flux = norm * self.synthflux(filter)
         return -2.5 * np.log10(flux) + 8.90
 
-    def get_wlim_slice(self, wlim):
+    def get_wlim_slice(self, wlim, buffer=None):
         if wlim is not None:
-            return slice(*np.digitize(wlim, self.wave))
+            if buffer is not None:
+                wlim = (wlim[0] - buffer, wlim[1] + buffer)
+
+            if self.mask is not None:
+                mask = self.mask_as_bool(bits=Spectrum.MASK_NOWAVE)
+                raise NotImplementedError()
+            else:
+                return slice(*np.digitize(wlim, self.wave))
         else:
             return slice(None)
 
-    def convolve_gaussian(self,  dlambda=None, vdisp=None, wlim=None):
+    def convolve_gaussian(self, dlambda=None, vdisp=None, wlim=None):
         """
         Convolve with (a potentially wavelength dependent) Gaussian kernel)
         :param dlam: dispersion in units of Angstrom
@@ -457,8 +513,9 @@ class Spectrum(PfsObject):
             r[idx][s] = b
             return r
 
-        idx = self.get_wlim_slice(wlim)
-
+        # Determine kernel width and buffer convolution wavelength range
+        width = psf.get_width(self.wave)
+        idx = self.get_wlim_slice(wlim, buffer=width)
         wave = self.wave[idx]
 
         flux = [self.flux[idx]]

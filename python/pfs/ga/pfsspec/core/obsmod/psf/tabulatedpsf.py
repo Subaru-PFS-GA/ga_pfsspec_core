@@ -80,3 +80,6 @@ class TabulatedPsf(Psf):
 
     def get_optimal_size(self, wave, tol=1e-5):
         raise NotImplementedError()
+    
+    def get_width(self, wave, tol=1e-5):
+        raise NotImplementedError()

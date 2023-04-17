@@ -70,6 +70,14 @@ class TestPcaPsf(TestBase):
         psf = PcaPsf.from_psf(g, wave, dwave=dwave, s=np.s_[:10], normalize=True, truncate=4)
         w, dw, k, idx, shift = psf.eval_kernel(psf.wave, normalize=True)
 
+    def test_get_width(self):
+        wave = np.linspace(3000, 9000, 6001)
+        sigma = np.linspace(3, 5, 6001)
+        g = GaussPsf(wave=wave, sigma=sigma)
+        psf = PcaPsf.from_psf(g, wave, size=11, normalize=True, truncate=4)
+
+        w = psf.get_width(wave)
+
     def test_convolve(self):
         wave = np.linspace(3000, 9000, 6001)
         value1 = np.random.normal(size=wave.shape)

@@ -153,6 +153,10 @@ class PcaPsf(Psf):
 
     def get_optimal_size(self, wave, tol=1e-5):
         raise NotImplementedError()
+    
+    def get_width(self, wave, tol=1e-5):
+        # Ignore the supplied wave vector and work from the internal wave grid
+        return max(np.abs(self.dwave[0, 0]), np.abs(self.dwave[-1, -1]))
 
     def convolve(self, wave, values, errors=None, size=None, normalize=None, mode='valid'):
         if size is not None:

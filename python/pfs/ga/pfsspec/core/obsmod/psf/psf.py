@@ -124,7 +124,7 @@ class Psf(PfsObject):
 
         k = self.eval_kernel_at(wave[-1], wave - wave[-1], normalize=True)
         s2 = np.max(wave.size - np.where(k > tol)[1]) * 2 + 1
-        w2 = wave[-1] - wave[-s1 - 1]
+        w2 = wave[-1] - wave[-s2 - 1]
 
         return max(w1, w2)
 

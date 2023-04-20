@@ -25,6 +25,7 @@ class Spectrum(PfsObject):
     MASK_NOWAVE = 0x10000                   # Wavelength of pixel is not calibrated
     MASK_NOSKY = 0x20000                    # No sky model available
     MASK_SKYLINE = 0x30000                  # Strong sky line
+    MASK_EXTRAPOLATED = 0x40000             # Values are extrapolated
     MASK_ALL = 0xEFFFFFFF                   # All bits (signed int)
 
     def __init__(self, orig=None):
@@ -308,10 +309,10 @@ class Spectrum(PfsObject):
     def apply_resampler_impl(self, resampler):
         # TODO: use MASK_NOWAVE but also look for nan values in wave inside resampler
 
-        self.flux, self.flux_err = resampler.resample_value(self.wave, self.wave_edges, self.flux, self.flux_err)
-        self.flux_sky, _ = resampler.resample_value(self.wave, self.wave_edges, self.flux_sky)
-        self.cont, _ = resampler.resample_value(self.wave, self.wave_edges, self.cont)
-        self.cont_fit, _ = resampler.resample_value(self.wave, self.wave_edges, self.cont_fit)
+        self.flux, self.flux_err, mask = resampler.resample_value(self.wave, self.wave_edges, self.flux, self.flux_err)
+        self.flux_sky, _, _ = resampler.resample_value(self.wave, self.wave_edges, self.flux_sky)
+        self.cont, _, _ = resampler.resample_value(self.wave, self.wave_edges, self.cont)
+        self.cont_fit, _, _ = resampler.resample_value(self.wave, self.wave_edges, self.cont_fit)
 
         # TODO: flux_calibration
         #       flux_model
@@ -319,13 +320,17 @@ class Spectrum(PfsObject):
         self.mask = resampler.resample_mask(self.wave, self.wave_edges, self.mask)
         self.weight = resampler.resample_weight(self.wave, self.wave_edges, self.weight)
 
+        return mask
+
     def apply_resampler(self, resampler, target_wave, target_wave_edges):
         resampler.init(target_wave, target_wave_edges)
-        self.apply_resampler_impl(resampler)
+        mask = self.apply_resampler_impl(resampler)
         resampler.reset()
         
         self.wave = target_wave
         self.wave_edges = target_wave_edges
+
+        self.merge_mask(mask, Spectrum.MASK_EXTRAPOLATED)
 
         self.append_history(f'Resampled using a resampler of type `{type(resampler).__name__}`.')
 
@@ -480,8 +485,14 @@ class Spectrum(PfsObject):
                 wlim = (wlim[0] - buffer, wlim[1] + buffer)
 
             if self.mask is not None:
+                # NOTE: Here we assume that wave masks can only appear at the beginning
+                #       and end of the grid, otherwise this won't work properly
+
                 mask = self.mask_as_bool(bits=Spectrum.MASK_NOWAVE)
-                raise NotImplementedError()
+                idx = np.digitize(wlim, self.wave[mask])
+                
+                # Slice must refer to original wave grid
+                return slice(*np.arange(self.wave.size + 1, dtype=int)[idx])
             else:
                 return slice(*np.digitize(wlim, self.wave))
         else:

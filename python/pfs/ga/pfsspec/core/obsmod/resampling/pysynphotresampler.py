@@ -47,4 +47,4 @@ class PysynphotResampler(Resampler):
         # TODO: try to figure out how to handle error from pysynphot
         ip_error = None
 
-        return ip_value, ip_error
+        return ip_value, ip_error, None

@@ -14,7 +14,7 @@ class TestPipeline(TestBase):
         p.wave_log = True
         
         s = Spectrum()
-        s.wave, s.wave_edges = p.get_wave_const()
+        s.wave, s.wave_edges = p.get_wave_grid()
         s.flux = np.random.uniform(0.8, 1.2, size=s.wave.shape)
         
         return s
@@ -25,12 +25,12 @@ class TestPipeline(TestBase):
     def test_get_wave(self):
         pass
 
-    def test_get_wave_const(self):
+    def test_get_wave_grid(self):
         # Only one of lin and log can be True
         p = Pipeline()
         p.wave_lin = p.wave_log = True
         try:
-            p.get_wave_const()
+            p.get_wave_grid()
             self.fail()
         except:
             pass
@@ -39,7 +39,7 @@ class TestPipeline(TestBase):
         p = Pipeline()
         p.wave_lin = True
         try:
-            p.get_wave_const()
+            p.get_wave_grid()
             self.fail()
         except:
             pass
@@ -48,7 +48,7 @@ class TestPipeline(TestBase):
         p = Pipeline()
         p.wave_bins = 2000
         try:
-            p.get_wave_const()
+            p.get_wave_grid()
             self.fail()
         except:
             pass
@@ -59,7 +59,7 @@ class TestPipeline(TestBase):
         p.wave_lin = True
         p.wave_log = False
 
-        centers, edges = p.get_wave_const()
+        centers, edges = p.get_wave_grid()
         self.assertEqual((3000,), centers.shape)
         self.assertEqual((2, 3000), edges.shape)
 

@@ -29,14 +29,22 @@ class FluxConservingResampler(Resampler):
 
         if value is None:
             ip_value = None
+            ip_mask = None
         else:
+            # Mask out nan values in input because those would compromise the results
+            # TODO: combine this mask with the mask passed to the function
+            mask = ~np.isnan(value)
+            mask_edges = np.empty_like(wave_edges, dtype=bool)
+            mask_edges[0] = True
+            mask_edges[1:] = mask
+            
             # (Numerically) integrate the flux density as a function of wave at the upper
             # edges of the wavelength bins
-            cs = np.empty(wave_edges.shape, dtype=value.dtype)
+            cs = np.empty_like(wave_edges[mask_edges], dtype=value.dtype)
             cs[0] = 0.0
-            cs[1:] = np.cumsum(value * np.diff(wave_edges))
-            ip = interp1d(wave_edges, cs, bounds_error=False, fill_value=(0, cs[-1]), kind=self.kind)
-            
+            cs[1:] = np.cumsum(value[mask] * np.diff(wave_edges)[mask])
+            ip = interp1d(wave_edges[mask_edges], cs, bounds_error=False, fill_value=(np.nan, np.nan), kind=self.kind)
+                        
             # Interpolate the integral and take the numerical differential
             if target_wave_edges.ndim == 1:
                 ip_value = np.diff(ip(target_wave_edges)) / np.diff(target_wave_edges)
@@ -44,6 +52,9 @@ class FluxConservingResampler(Resampler):
                 ip_value = (ip(target_wave_edges[1]) - ip(target_wave_edges[0])) / (target_wave_edges[1] - target_wave_edges[0])
             else:
                 raise NotImplementedError()
+            
+            # TODO: generate a mask if resampling outside original coverage!
+            ip_mask = ~np.isnan(ip_value)
             
         # TODO: some time can be saved by only building the interpolator between the min and max of target_wave
 
@@ -57,4 +68,4 @@ class FluxConservingResampler(Resampler):
             ip = interp1d(wave, error, kind='nearest', assume_sorted=True)
             ip_error = ip(target_wave)
 
-        return ip_value, ip_error
+        return ip_value, ip_error, ip_mask

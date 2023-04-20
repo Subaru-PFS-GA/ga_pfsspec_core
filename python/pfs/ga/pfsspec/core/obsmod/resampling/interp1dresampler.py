@@ -30,4 +30,4 @@ class Interp1dResampler(Resampler):
             ip = interp1d(wave, error, kind='nearest', assume_sorted=True)
             ip_error = ip(target_wave)
 
-        return ip_value, ip_error
+        return ip_value, ip_error, None

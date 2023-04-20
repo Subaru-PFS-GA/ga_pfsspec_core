@@ -39,4 +39,4 @@ class SpecutilsResampler(Resampler):
 
         ip_error = None
 
-        return ip_value, ip_error
+        return ip_value, ip_error, None

@@ -31,7 +31,7 @@ class TestFluxConservingResampler(TestBase):
 
         res = FluxConservingResampler()
         res.init(nwave, nwave_edges)
-        nvalue, nsigma = res.resample_value(wave, wave_edges, value, sigma)
+        nvalue, nsigma, _ = res.resample_value(wave, wave_edges, value, sigma)
         res.reset()
 
         self.assertEqual(nvalue.shape, nwave.shape)

@@ -85,13 +85,15 @@ class Pipeline(PfsObject):
         self.wave_lin = self.get_arg('wave_lin', self.wave_lin, args)
         self.wave_log = self.get_arg('wave_log', self.wave_log, args)
 
+        # Resampling is on, calculate the grid
+        if self.wave is not None:
+            self.wave, self.wave_edges, _ = self.get_wave_grid()
+
         resampler = self.get_arg('wave_resampler', None, args)
         if resampler == 'interp':
             self.wave_resampler = Interp1dResampler()
-        elif resampler == 'rebin':
+        elif resampler == 'rebin' or resampler is None:
             self.wave_resampler = FluxConservingResampler()
-        elif resampler is None:
-            pass
         else:
             raise NotImplementedError()
         
@@ -111,14 +113,34 @@ class Pipeline(PfsObject):
         return not self.restframe and self.redshift is None
 
     def get_wave(self, spec: Spectrum = None, **kwargs):
-        if isinstance(self.wave, np.ndarray):
-            return self.wave, self.wave_edges, None
-        elif spec is None:
-            return self.get_wave_const()
-        else:
-            return self.get_wave_spec(spec, **kwargs)
+        """
+        Return the output wavelength grid. If resampling, the final grid is returned.
+        """
 
-    def get_wave_const(self):
+        if isinstance(self.wave, np.ndarray):
+            # self.wave is set to an array, resampling at the end of the pipeline
+            return self.wave, self.wave_edges, None
+        elif spec is not None:
+            # a spectrum is passed in, take wave grid from it
+            return self.get_wave_spec(spec, **kwargs)
+        else:
+            raise Exception('Wavelength grid cannot be determined. Define binning on the command line or use a pipeline which defines a detector.')
+        
+    def get_wave_count(self, spec=None, **kwargs):
+        """
+        Return the length of the output wavelength grid. If resampling, the length of the
+        final grid is returned.
+        """
+
+        if isinstance(self.wave, np.ndarray):
+            return self.wave.shape[0]
+        elif spec is not None:
+            centers, _ = self.get_wave_spec(spec, **kwargs)
+            return centers.shape[0]
+        else:
+            raise Exception('Wavelength grid cannot be determined. Define binning on the command line or use a pipeline which defines a detector.')
+
+    def get_wave_grid(self):
         if self.wave_lin and self.wave_log:
             raise ValueError("Only one of --wave-lin and --wave-log must be specified.")
         
@@ -132,16 +154,12 @@ class Pipeline(PfsObject):
             # Linear binning with a constant grid
             edges = np.linspace(self.wave[0], self.wave[1], self.wave_bins + 1)
             centers = 0.5 * (edges[1:] + edges[:-1])
-            self.wave = centers
-            self.wave_edges = np.stack([edges[:-1], edges[1:]])
-            return self.wave, self.wave_edges, None
+            return centers, np.stack([edges[:-1], edges[1:]]), None
         elif self.wave_log:
             # Logarithmic binning with a constant grid
             edges = np.linspace(np.log10(self.wave[0]), np.log10(self.wave[1]), self.wave_bins + 1)
             centers = 0.5 * (edges[1:] + edges[:-1])
-            self.wave = 10 ** centers
-            self.wave_edges = 10 ** np.stack([edges[:-1], edges[1:]])
-            return self.wave, self.wave_edges, None
+            return 10 ** centers, 10 ** np.stack([edges[:-1], edges[1:]]), None
         else:
             raise ValueError("No wavelength limits are specified.")
     
@@ -156,14 +174,6 @@ class Pipeline(PfsObject):
 
         # TODO: implement logic to restframe/redshift grid and then truncate to limit
         raise NotImplementedError()
-
-    def get_wave_count(self, spec=None, **kwargs):
-        if spec is None:
-            centers, _ = self.get_wave_const()
-            return centers.shape[0]
-        else:
-            centers, _ = self.get_wave_spec(spec, **kwargs)
-            return centers.shape[0]
 
     def run(self, spec, **kwargs):
         self.run_step_restframe(spec, **kwargs)

@@ -95,6 +95,13 @@ class SpectrumDataset(ArrayDataset):
     def get_spectrum(self, idx=None, chunk_size=None, chunk_id=None, trim=True):
         spec = self.create_spectrum()
 
+        spec.append_history(f'Spectrum object of `{type(spec).__name__}` created.')
+
+        if chunk_size is None:
+            spec.id = idx
+        else:
+            spec.id = idx + chunk_id * chunk_size
+
         if self.constant_wave:
             spec.wave, spec.wave_edges, wave_mask = self.wave, self.wave_edges, None
         else:
@@ -122,6 +129,26 @@ class SpectrumDataset(ArrayDataset):
         for p in params:
             if hasattr(spec, p):
                 setattr(spec, p, params[p])
+
+        spec.append_history(f'Wavelength range limited by dataset coverage to {spec.wave[0], spec.wave[-1]}.')
+        
+        if spec.wave is not None:
+            spec.append_history(f'Wave vector assigned from dataset.')
+        
+        if spec.wave_edges is not None:
+            spec.append_history(f'Wave_edges vector assigned from dataset.')
+
+        if spec.flux is not None:
+            spec.append_history(f'Flux vector loaded from dataset.')
+        else:
+            spec.append_history(f'No flux vector found in the dataset.')
+
+        if spec.flux_err is not None:
+            spec.append_history(f'Flux variance vector loaded from dataset.')
+        else:
+            spec.append_history(f'No flux variance vector found in the dataset.')
+
+        spec.append_history(f'Spectrum loaded from dataset with ID {spec.id}, actual model parameters {spec.get_params()}.')
 
         return spec
 

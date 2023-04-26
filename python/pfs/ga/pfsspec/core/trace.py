@@ -1,18 +1,24 @@
 import os
 import numpy as np
-import matplotlib as mpl
-from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
 
-class TracePlots():
+class Trace():
     PLOT_LEVEL_NONE = 0
     PLOT_LEVEL_INFO = 1
     PLOT_LEVEL_DEBUG = 2
+    PLOT_LEVEL_TRACE = 3
 
-    def __init__(self, outdir='.', plot_level=PLOT_LEVEL_NONE):
+    LOG_LEVEL_NONE = 0
+    LOG_LEVEL_INFO = 1
+    LOG_LEVEL_DEBUG = 2
+
+    def __init__(self, outdir='.', plot_inline=False, plot_level=PLOT_LEVEL_NONE, log_level=LOG_LEVEL_NONE):
         # TODO: add inline (notebook) and file option
 
         self.outdir = outdir
+        self.plot_inline = plot_inline
         self.plot_level = plot_level
+        self.log_level = log_level
 
         self.figure_size = (3.4, 2.5)
         self.figure_subplotsize = (3.4, 2.0)
@@ -27,7 +33,7 @@ class TracePlots():
                 self.figure_size[0] + (ncols - 1) * self.figure_subplotsize[0],
                 self.figure_size[1] + (nrows - 1) * self.figure_subplotsize[1]
             )
-            f = Figure(figsize=figsize, dpi=self.figure_dpi)
+            f = plt.figure(figsize=figsize, dpi=self.figure_dpi)
             gs = f.add_gridspec(nrows=nrows, ncols=ncols)
             ax = np.empty((ncols, nrows), dtype=object)
             for r in range(nrows):
@@ -45,6 +51,10 @@ class TracePlots():
                 ax.legend()
             f.tight_layout()
 
+    def show_figures(self):
+        for k, (f, ax) in self.figures.items():
+            f.show()
+
     def save_figures(self):
         for k, (f, ax) in self.figures.items():
             fn = os.path.join(self.outdir, k + '.png')
@@ -52,4 +62,9 @@ class TracePlots():
             f.savefig(fn)
 
     def flush_figures(self):
+        self.format_figures()
+        if self.plot_inline:
+            self.show_figures()
+        else:
+            self.save_figures()
         self.figures = {}

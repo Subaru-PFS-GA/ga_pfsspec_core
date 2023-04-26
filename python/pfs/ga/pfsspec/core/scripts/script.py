@@ -15,7 +15,7 @@ import pfs.ga.pfsspec   # NOTE: required by module discovery
 from ..util import ArgumentParser
 import pfs.ga.pfsspec.core.util.shutil as shutil
 import pfs.ga.pfsspec.core.util as util
-from pfs.ga.pfsspec.core.plotting import TracePlots
+from pfs.ga.pfsspec.core import Trace
 from pfs.ga.pfsspec.core.util.notebookrunner import NotebookRunner
 
 class Script():
@@ -34,7 +34,8 @@ class Script():
         self.args = None
         self.debug = False
         self.trace = False
-        self.trace_plot_level = TracePlots.PLOT_LEVEL_NONE
+        self.trace_plot_level = Trace.PLOT_LEVEL_NONE
+        self.trace_log_level = Trace.LOG_LEVEL_NONE
         self.log_level = None
         self.log_dir = None
         self.log_copy = False
@@ -139,6 +140,8 @@ class Script():
         parser.add_argument('--debug', action='store_true', help='Run in debug mode.\n')
         parser.add_argument('--trace', action='store_true', help='Run in trace mode..\n')
         parser.add_argument('--trace-plot-level', type=int, help='Trace plot level.\n')
+        parser.add_argument('--trace-log-level', type=int, help='Trace log level.\n')
+        parser.add_argument('--profile', action='store_true', help='Run in profiler mode..\n')
         parser.add_argument('--threads', type=int, help='Number of processing threads.\n')
         parser.add_argument('--log-level', type=str, default=None, help='Logging level\n')
         parser.add_argument('--log-dir', type=str, default=None, help='Log directory\n')
@@ -154,6 +157,7 @@ class Script():
             self.debug = self.get_arg('debug', self.debug)
             self.trace = self.get_arg('trace', self.trace)
             self.trace_plot_level = self.get_arg('trace_plot_level', self.trace_plot_level)
+            self.trace_log_level = self.get_arg('trace_log_level', self.trace_log_level)
             self.threads = self.get_arg('threads', self.threads)
             self.log_level = self.get_arg('log_level', self.log_level)
             self.log_dir = self.get_arg('log_dir', self.log_dir)

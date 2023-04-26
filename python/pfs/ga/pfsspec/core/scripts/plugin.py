@@ -15,6 +15,7 @@ class Plugin(PfsObject):
             self.threads = None
             self.debug = False
             self.trace = None
+            self.profile = False
             self.top = None
             self.resume = False
             self.verbose = False
@@ -25,6 +26,7 @@ class Plugin(PfsObject):
             self.threads = orig.threads
             self.debug = orig.debug
             self.trace = orig.trace
+            self.profile = orig.profile
             self.top = orig.top
             self.resume = orig.resume
             self.verbose = orig.verbose
@@ -58,9 +60,12 @@ class Plugin(PfsObject):
         if script is not None:
             self.debug = script.debug
             if script.trace:
-                self.trace = self.create_trace(outdir=script.outdir, plot_level=script.trace_plot_level)
+                self.trace = self.create_trace(outdir=script.outdir,
+                                               plot_level=script.trace_plot_level, log_level=script.trace_log_level)
         else:
             self.debug = self.get_arg('debug', self.debug, args)
+
+        self.profile = self.get_arg('profile', self.profile, args)
 
     def create_trace(self, outdir=None, plot=None):
         return None

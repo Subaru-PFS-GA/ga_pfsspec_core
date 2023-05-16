@@ -16,6 +16,7 @@ class Trace():
         # TODO: add inline (notebook) and file option
 
         self.outdir = outdir
+        self.create_outdir = True
         self.plot_inline = plot_inline
         self.plot_level = plot_level
         self.log_level = log_level
@@ -24,6 +25,11 @@ class Trace():
         self.figure_subplotsize = (3.4, 2.0)
         self.figure_dpi = 240
         self.figures = {}
+
+    def make_outdir(self, fn):
+        dir = os.path.dirname(fn)
+        if self.create_outdir and not os.path.isdir(dir):
+            os.makedirs(dir, exist_ok=True)
 
     def get_figure(self, key, nrows=1, ncols=1):
         if key is not None and key in self.figures:
@@ -58,7 +64,7 @@ class Trace():
     def save_figures(self):
         for k, (f, ax) in self.figures.items():
             fn = os.path.join(self.outdir, k + '.png')
-            os.makedirs(os.path.dirname(fn), exist_ok=True)
+            self.make_outdir(fn)
             f.savefig(fn)
 
     def flush_figures(self):

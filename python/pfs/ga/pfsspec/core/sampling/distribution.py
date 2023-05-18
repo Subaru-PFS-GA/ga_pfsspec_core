@@ -40,3 +40,9 @@ class Distribution():
     
     def sample(self, size=None, random_state=None):
         raise NotImplementedError()
+    
+    def pdf(self, x):
+        raise NotImplementedError()
+    
+    def log_pdf(self, x):
+        return np.log(self.pdf(x))

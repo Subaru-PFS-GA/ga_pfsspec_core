@@ -50,7 +50,9 @@ class Parameter():
         # that are different, we sample from uniform by default.
         if self.min is not None and self.max is not None and self.min == self.max:
             self.dist = 'const'
-            pass
+        elif self.min is not None and self.max is not None and not is_arg(f'{self.name}_dist', args):
+            self.dist = 'uniform'
+            self.dist_args = []
         elif is_arg(f'{self.name}_dist', args):
             aa = get_arg(f'{self.name}_dist', self.dist, args)
             if not isinstance(aa, list):
@@ -66,8 +68,6 @@ class Parameter():
         # either not sampled (case 1) or sampled from the specified distribution (case 3)
         if self.dist is None and (self.min is None or self.max is None):
             d = None
-        elif self.dist is None and self.min is not None and self.max is not None and self.min != self.max:
-            d = UniformDistribution(self.min, self.max, random_state=random_state)
         else:
             d = Distribution.from_args(self.dist, self.dist_args, random_state=random_state)
             

@@ -61,11 +61,18 @@ class Parameter():
             self.dist = aa[0]
             self.dist_args = aa[1:]
 
+    def has_value(self):
+        return self.value is not None
+    
+    def has_min_max(self):
+        return self.min is not None and self.max is not None
+
+    def has_dist(self):
+        return self.dist is not None and self.dist != 'const'
+            
     def get_dist(self, random_state=None):
         d = None
 
-        # If min and max are specified we assume uniform sampling, otherwise the parameter is
-        # either not sampled (case 1) or sampled from the specified distribution (case 3)
         if self.dist is None and (self.min is None or self.max is None):
             d = None
         else:
@@ -78,3 +85,31 @@ class Parameter():
                 d.max = self.max
 
         return d
+    
+    def generate_initial_value(self, step_size_factor=0.1):
+        """
+        Generate a good initial value based on the limits and the specified
+        distribution.
+        """
+
+        if self.has_value():
+            # This is a fixed parameter
+            x_0 = self.value
+            bounds = [self.value, self.value]
+            steps = np.nan
+            fixed = True
+        elif self.has_min_max():
+            x_0 = 0.5 * (self.min + self.max)
+            bounds = [self.min, self.max]
+            steps = (self.max - self.min) * step_size_factor
+            fixed = False
+        elif self.has_dist():
+            # This is a fitted (sampler) parameter. Sample initial value
+            # from the distribution
+            d = self.get_dist()
+            x_0, bounds, steps = d.generate_initial_value(step_size_factor=step_size_factor)
+            fixed = False
+        else:
+            raise Exception(f'Cannot generate initial value for parameter `{self.name}`.')
+        
+        return x_0, bounds, steps, fixed

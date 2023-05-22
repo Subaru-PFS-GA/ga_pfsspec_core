@@ -24,6 +24,9 @@ class Distribution():
     def init_from_args(self, args):
         raise NotImplementedError()
     
+    def has_min_max(self):
+        return self.min is not None and self.max is not None
+    
     def get_min_max(self, min, max):
         min = min if min is not None else self.min
         max = max if max is not None else self.max
@@ -46,3 +49,16 @@ class Distribution():
     
     def log_pdf(self, x):
         return np.log(self.pdf(x))
+    
+    def generate_initial_value(self, step_size_factor=0.1):
+        if self.has_min_max():
+            x_0 = 0.5 * (self.min + self.max)
+            bounds = [self.min, self.max]       # Both are set
+            steps = (self.max - self.min) * step_size_factor
+        else:
+            s = self.sample(size=10)
+            x_0 = s.mean()
+            steps = s.std() * step_size_factor
+            bounds = [self.min, self.max]       # Either can be None but not both
+            
+        return x_0, bounds, steps

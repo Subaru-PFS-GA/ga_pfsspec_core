@@ -201,7 +201,10 @@ class Spectrum(PfsObject):
         elif isinstance(mask, np.ndarray) and mask.dtype == bool:
             return mask
         elif isinstance(mask, np.ndarray) and mask.dtype != bool:
-            return (np.bitwise_and(mask, bits) == 0)
+            if bits is not None:
+                return (np.bitwise_and(mask, bits) == 0)
+            else:
+                return mask == 0
         else:
             return mask
         

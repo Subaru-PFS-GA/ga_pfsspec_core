@@ -244,24 +244,34 @@ class ArrayGrid(Grid):
         Returns:
             [type]: [description]
         """
-        idx1 = list(self.get_nearest_index(**kwargs))
-        idx2 = list((0, ) * len(idx1))
 
-        for i, p, axis in self.enumerate_axes():
-            if axis.values.shape[0] == 1:
-                # If the grid has a single value along an axis (not squeezed)
-                idx1[i], idx2[i] = idx1[i], idx1[i]
-            elif kwargs[p] < axis.values[idx1[i]]:
-                idx1[i], idx2[i] = idx1[i] - 1, idx1[i]
+        idx1 = ()
+        idx2 = ()
+
+        for i, p, ax in self.enumerate_axes():
+            if p not in kwargs:
+                idx1 += (slice(None),)
+                idx2 += (slice(None))
             else:
-                idx1[i], idx2[i] = idx1[i], idx1[i] + 1
+                if kwargs[p] < ax.values[0] or ax.values[-1] < kwargs[p]:
+                    # value is outside the grid
+                    return None
+                
+                # right = True  -> bins[i - 1] < x <= bins[i]
+                # right = False -> bins[i - 1] <= x < bins[i]
+                i2 = np.digitize(kwargs[p], ax.values, right=True)
 
-            # Verify if indexes are inside bounds
-            if idx1[i] < 0 or axis.values.shape[0] <= idx1[i] or \
-               idx2[i] < 0 or axis.values.shape[0] <= idx2[i]:
-                return None
+                # TODO: needs tolerance?
+                if ax.values[i2] == kwargs[p]:
+                    # i1 is right on the grid we don't interpolate
+                    i1 = i2
+                else:
+                    i1 = i2 - 1
+                
+                idx1 += (i1,)
+                idx2 += (i2,)
 
-        return tuple(idx1), tuple(idx2)
+        return idx1, idx2
 
     def get_shell_indexes(self, size, idx=None, exclude_center=True, **kwargs):
         """
@@ -543,6 +553,7 @@ class ArrayGrid(Grid):
                 return None
 
         # Parameter values to interpolate between
+        # TODO: Handle the case when ax == ab
         p = list(kwargs.keys())[0]
         x = kwargs[p]
         xa = self.axes[p].values[idx1[0]]
@@ -589,7 +600,7 @@ class ArrayGrid(Grid):
         # The shape of ii and kk is (D, 2**D)
         # TODO: what to do with squeezed indices?
         ii = np.array(list(itertools.product(*([[0, 1],] * D))))
-        kk = np.array(list(itertools.product(*[[idx1[i], idx2[i]] for i in range(len(idx1)) if idx1[i] != idx2[i]])))
+        kk = np.array(list(itertools.product(*[[idx1[i], idx2[i]] for i in range(len(idx1))])))
         
         # Retrieve the value arrays for each of the surrounding grid points
         v = None
@@ -655,7 +666,10 @@ class ArrayGrid(Grid):
             x0 = xx[d, 0]
             x1 = xx[d, 1]
             
-            v = v[0] + (v[1] - v[0]) / (x1 - x0) * (x[d] - x0)
+            if (x1 != x0):
+                v = v[0] + (v[1] - v[0]) / (x1 - x0) * (x[d] - x0)
+            else:
+                v = v[0]
 
         return v, kwargs
 

@@ -22,7 +22,7 @@ class NormalDistribution(ScipyDistribution):
             raise NotImplementedError()
         else:
             a, b = norm.cdf([min, max], loc=loc, scale=scale)
-            return norm.ppf(random_state.uniform(a, b, size=size))
+            return norm.ppf(random_state.uniform(a, b, size=size), loc=loc, scale=scale)
 
     def pdf_impl(self, x, loc=None, scale=None, min=None, max=None):
         if min is None and max is None:

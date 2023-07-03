@@ -139,8 +139,19 @@ class SmartParallel():
     def __enter__(self):
         if self.parallel:
             self.logger.debug("Starting parallel execution on {} CPUs.".format(self.cpus))
+
+            # Match logging preferences of the parent process
+            log_stdout = False
+            log_stderr = False
+            for h in self.logger.handlers:
+                log_stdout |= isinstance(h, logging.StreamHandler) and h.stream.name == '<stdout>'
+                log_stderr |= isinstance(h, logging.StreamHandler) and h.stream.name == '<stderr>'
+
+
             self.manager = Manager()            
-            self.pool = Pool(processes=self.cpus)
+            self.pool = Pool(processes=self.cpus,
+                             initializer=SmartParallel.pool_initializer,
+                             initargs=(self.logger.level, log_stdout, log_stderr))
         else:
             self.logger.debug("Starting serial execution.")
         return self
@@ -162,6 +173,22 @@ class SmartParallel():
 
     def __del__(self):
         pass
+
+    @staticmethod
+    def pool_initializer(log_level, log_stdout, log_stderr):
+        pass
+        # logger = logging.getLogger()
+        # logger.setLevel(log_level)
+        # if log_stdout:
+        #     handler = logging.StreamHandler(sys.stdout)
+        #     handler.setLevel(log_level)
+        #     #handler.setFormatter(formatter)
+        #     logger.addHandler(handler)
+        # if log_stderr:
+        #     handler = logging.StreamHandler(sys.stderr)
+        #     handler.setLevel(log_level)
+        #     #handler.setFormatter(formatter)
+        #     logger.addHandler(handler)
 
     @staticmethod
     def pool_worker(worker_id, random_seed, initializer, worker, queue_in, queue_out, *args, obj=None, **kwargs):

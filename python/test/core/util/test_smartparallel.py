@@ -13,13 +13,20 @@ class TestSmartParallel(TestBase):
             pass
 
         def worker(self, i):
-            logging.info(f'Logging from worker with pid {os.getpid()} at iteration {i}.')
-            return i
+            if i == 30:
+                logging.info(f'Forcefully exiting worker with pid {os.getpid()} at iteration {i}.')
+                sys.exit(-1)
+            else:
+                logging.info(f'Logging from worker with pid {os.getpid()} at iteration {i}.')
+                return i
+            
+        def error(self, ex, i):
+            return -1
 
         def map(self):
             res = []
             with SmartParallel(self.initializer, verbose=True, parallel=True, threads=4) as pool:
-                for i in pool.map(self.worker, range(100)):
+                for i in pool.map(self.worker, self.error, range(100)):
                     res.append(i)
             return res
     
@@ -35,3 +42,4 @@ class TestSmartParallel(TestBase):
         h = TestSmartParallel.SmartParallelHelper()
         res = h.map()
         self.assertEqual(100, len(res))
+        self.assertTrue(-1 in res)

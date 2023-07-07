@@ -61,6 +61,9 @@ class DatasetBuilder(Plugin):
 
     def process_item(self, i):
         raise NotImplementedError()
+    
+    def process_item_error(self, ex, i):
+        raise NotImplementedError()
 
     def store_item(self, i, spec):
         raise NotImplementedError()
@@ -124,7 +127,7 @@ class DatasetBuilder(Plugin):
             for rng in chunk_ranges:
                 if len(rng) > 0:
                     with SmartParallel(initializer=self.init_process, verbose=False, parallel=self.parallel, threads=self.threads) as p:
-                        for s in p.map(self.process_item, rng):
+                        for s in p.map(self.process_item, self.process_item_error, rng):
                             self.store_item(s.id, s)
                             t.update(1)
                     self.dataset.flush_cache_all(None, None)

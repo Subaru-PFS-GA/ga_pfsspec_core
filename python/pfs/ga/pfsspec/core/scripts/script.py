@@ -10,6 +10,7 @@ import multiprocessing
 from multiprocessing import set_start_method
 import socket
 
+import pfs.ga.pfsspec.core.util.logging
 import pfs.ga.pfsspec   # NOTE: required by module discovery
 # TODO: python 3.8 has this built-in, replace import
 from ..util import ArgumentParser

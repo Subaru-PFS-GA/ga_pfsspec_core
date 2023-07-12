@@ -588,10 +588,10 @@ class ArrayGrid(Grid):
             # TODO: do we want the post process function in the cache key?
             cache_key = cache_key_prefix + (name, idx1, idx2, s, raw, post_process)
             if self.value_cache.is_cached(cache_key):
-                logging.debug(f'Nearby values between {idx1} and {idx2} are found in cache.')
+                logging.trace(f'Nearby values between {idx1} and {idx2} are found in cache.')
                 return self.value_cache.get(cache_key)
             
-        logging.debug(f'Loading nearby grid values between {idx1} and {idx2}.')
+        logging.trace(f'Loading nearby grid values between {idx1} and {idx2}.')
 
         # Dimensions
         D = len(idx1)
@@ -623,7 +623,7 @@ class ArrayGrid(Grid):
 
         if self.value_cache is not None:
             self.value_cache.push(cache_key, v)
-            logging.debug(f'Nearby values between {idx1} and {idx2} are written to the cache.')
+            logging.trace(f'Nearby values between {idx1} and {idx2} are written to the cache.')
 
         return v
 
@@ -640,7 +640,7 @@ class ArrayGrid(Grid):
         # Only keep dimensions where interpolation is necessary, i.e. skip
         # where axis has a single value only
 
-        self.logger.debug('Finding values to interpolate to {} using linear Nd.'
+        self.logger.trace('Finding values to interpolate to {} using linear Nd.'
                           .format({ k: kwargs[k] for _, k, v in self.enumerate_axes(squeeze=True) }))
 
         d = len(idx1)
@@ -659,7 +659,7 @@ class ArrayGrid(Grid):
         if v is None:
             return None
         
-        self.logger.debug('Interpolating values to {} using linead Nd.'.format(kwargs))
+        self.logger.trace('Interpolating values to {} using linead Nd.'.format(kwargs))
         
         # Perform the 1d interpolations along each axis
         for d in range(d):
@@ -679,7 +679,7 @@ class ArrayGrid(Grid):
         # TODO: implement multi-value version
         # TODO: implement caching
 
-        self.logger.debug('Finding values to interpolate to {} using cubic splines along {}.'.format(kwargs, free_param))
+        self.logger.trace('Finding values to interpolate to {} using cubic splines along {}.'.format(kwargs, free_param))
 
         # Find the index of the free parameter
         axis_list = list( p for i, p, ax in self.enumerate_axes())

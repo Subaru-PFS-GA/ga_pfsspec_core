@@ -9,6 +9,8 @@ from .multivariatenormaldistribution import MultivariateNormalDistribution
 from .lognormaldistribution import LogNormalDistribution
 from .betadistribution import BetaDistribution
 
+from .mcmc import MCMC
+
 DISTRIBUTIONS = {
     'composite': CompositeDistribution,
     'uniform': UniformDistribution,

@@ -6,7 +6,7 @@ try:
     from specutils import Spectrum1D
     from specutils.manipulation import FluxConservingResampler
 except ModuleNotFoundError as ex:
-    logging.warn(ex.msg)
+    logging.warning(ex.msg)
     Spectrum1D = None
     FluxConservingResampler = None
 

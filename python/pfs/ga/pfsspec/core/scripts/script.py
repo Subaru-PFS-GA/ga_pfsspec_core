@@ -5,6 +5,7 @@ import pkgutil, importlib
 import json
 import yaml
 import logging
+import warnings
 import numpy as np
 import multiprocessing
 from multiprocessing import set_start_method
@@ -405,7 +406,11 @@ class Script():
             self.setup_logging()
 
         if self.debug:
+            # Switch numpy to schizophrenic mode
             np.seterr(divide='raise', over='raise', invalid='raise')
+            
+            # Turn this on in debug mode to raise exceptions when warnings are printed.
+            # warnings.filterwarnings('error')
 
     def run(self):
         raise NotImplementedError()

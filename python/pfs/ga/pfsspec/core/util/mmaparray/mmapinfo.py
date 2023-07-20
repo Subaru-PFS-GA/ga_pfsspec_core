@@ -25,7 +25,7 @@ class mmapinfo():
         shape = dataset.shape
 
         if offset is None:
-            logging.warn('Dataset from HDF5 cannot be memmapped, offset is None meaning the array might not be contigous.')
+            logging.warning('Dataset from HDF5 cannot be memmapped, offset is None meaning the array might not be contigous.')
             return None
         else:
             return mmapinfo(filename, offset=offset, size=size, dtype=dtype, shape=shape, slice=slice)

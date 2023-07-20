@@ -21,15 +21,15 @@ class TestArrayDataset(TestBase):
         def init_values(self, row_count=None):
             super(TestArrayDataset.SpectrumTestDataset, self).init_values(row_count=row_count)
 
-            self.init_value('flux', dtype=np.float)
-            self.init_value('error', dtype=np.float)
+            self.init_value('flux', dtype=float)
+            self.init_value('error', dtype=float)
             self.init_value('mask', dtype=np.int)
 
         def allocate_values(self, row_count):
             super(TestArrayDataset.SpectrumTestDataset, self).allocate_values(row_count=row_count)
 
-            self.allocate_value('flux', self.value_shape, dtype=np.float)
-            self.allocate_value('error', self.value_shape, dtype=np.float)
+            self.allocate_value('flux', self.value_shape, dtype=float)
+            self.allocate_value('error', self.value_shape, dtype=float)
             self.allocate_value('mask', self.value_shape, dtype=np.int)
 
     def create_dataset(self, size=100, value_shape=5000):
@@ -188,7 +188,7 @@ class TestArrayDataset(TestBase):
         self.assertEqual((10000, 4), ds.params.shape)
         self.assertIsNone(ds.values['flux'])
         self.assertEqual((5000,), ds.value_shapes['flux'])
-        self.assertEqual(np.float, ds.value_dtypes['flux'])
+        self.assertEqual(float, ds.value_dtypes['flux'])
         self.assertEqual(np.int, ds.value_dtypes['mask'])
 
     #endregion
@@ -283,7 +283,7 @@ class TestArrayDataset(TestBase):
 
         v = ds.get_value('flux', idx=slice(0, 10, None))
         self.assertEqual((10, 5000), v.shape)
-        self.assertEqual(np.float, v.dtype)
+        self.assertEqual(float, v.dtype)
 
         v = ds.get_value('mask', idx=np.arange(20, 30, dtype=np.int))
         self.assertEqual((10, 5000), v.shape)
@@ -299,11 +299,11 @@ class TestArrayDataset(TestBase):
 
         v = ds.get_value('flux', idx=slice(0, 10, None))
         self.assertEqual((10, 5000), v.shape)
-        self.assertEqual(np.float, v.dtype)
+        self.assertEqual(float, v.dtype)
 
         v = ds.get_value('error', idx=np.arange(30, 20, -1, dtype=np.int))
         self.assertEqual((10, 5000), v.shape)
-        self.assertEqual(np.float, v.dtype)
+        self.assertEqual(float, v.dtype)
 
         v = ds.get_value('mask', idx=np.arange(20, 30, dtype=np.int))
         self.assertEqual((10, 5000), v.shape)
@@ -324,27 +324,27 @@ class TestArrayDataset(TestBase):
         # Read with cold cache
         v = ds.get_value('flux', idx=slice(0, 10, None), chunk_size=1000, chunk_id=0)
         self.assertEqual((10, 5000), v.shape)
-        self.assertEqual(np.float, v.dtype)
+        self.assertEqual(float, v.dtype)
         self.assertIsNotNone(ds.values['flux'])
         self.assertIsNone(ds.values['error'])
 
         # Read with cold cache, reverse order indexing
         v = ds.get_value('error', idx=np.arange(30, 20, -1, dtype=np.int), chunk_size=1000, chunk_id=0)
         self.assertEqual((10, 5000), v.shape)
-        self.assertEqual(np.float, v.dtype)
+        self.assertEqual(float, v.dtype)
         self.assertIsNotNone(ds.values['flux'])
         self.assertIsNotNone(ds.values['error'])
         
         # Read with hot cache
         v = ds.get_value('error', idx=slice(0, 10, None), chunk_size=1000, chunk_id=0)
         self.assertEqual((10, 5000), v.shape)
-        self.assertEqual(np.float, v.dtype)
+        self.assertEqual(float, v.dtype)
 
         # Read partial chunk
         v = ds.get_value('error', idx=slice(0, 10, None), chunk_size=3000, chunk_id=3)
         self.assertEqual((10, 5000), v.shape)
         self.assertEqual((1000, 5000), ds.values['error'].shape)
-        self.assertEqual(np.float, v.dtype)
+        self.assertEqual(float, v.dtype)
 
     def test_set_value_preload(self):
         # Write to memory
@@ -440,14 +440,14 @@ class TestArrayDataset(TestBase):
         v = ds.get_value('flux', idx=np.arange(30, 20, -1, dtype=np.int), chunk_size=1000, chunk_id=0)
         v = ds.get_value('error', idx=np.arange(30, 20, -1, dtype=np.int), chunk_size=1000, chunk_id=0)
         self.assertEqual((10, 5000), v.shape)
-        self.assertEqual(np.float, v.dtype)
+        self.assertEqual(float, v.dtype)
         self.assertIsNotNone(ds.values['flux'])
         self.assertIsNotNone(ds.values['error'])
 
         # Read from different chunk, this forces a cache reset
         v = ds.get_value('error', idx=slice(0, 10, None), chunk_size=1000, chunk_id=1)
         self.assertEqual((10, 5000), v.shape)
-        self.assertEqual(np.float, v.dtype)
+        self.assertEqual(float, v.dtype)
         self.assertIsNone(ds.values['flux'])
         self.assertIsNotNone(ds.values['error'])
 

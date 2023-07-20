@@ -72,7 +72,7 @@ class RbfGrid(Grid):
                 self.values[name] = None
                 self.logger.info('Initializing data file for RBF "{}" of size {}...'.format(name, valueshape))
                 if not self.has_item(name):
-                    self.allocate_item(name, valueshape, dtype=np.float)
+                    self.allocate_item(name, valueshape, dtype=float)
                 self.logger.info('Skipped memory initialization for RBF "{}". Will read random slices from storage.'.format(name))
 
     def allocate_value(self, name, shape=None):
@@ -156,7 +156,7 @@ class RbfGrid(Grid):
         idx = Grid.rectify_index(idx)
         
         if not extrapolate and self.check_extrapolation(idx):
-            logging.warn("Requested point of RBF grid would result in extrapolation")
+            logging.warning("Requested point of RBF grid would result in extrapolation")
             return None
         
         value = self.values[name](*idx)

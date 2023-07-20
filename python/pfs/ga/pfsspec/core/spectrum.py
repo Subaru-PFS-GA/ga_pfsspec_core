@@ -10,7 +10,7 @@ try:
     import pysynphot.spectrum
     import pysynphot.reddening
 except ModuleNotFoundError as ex:
-    logging.warn(ex.msg)
+    logging.warning(ex.msg)
     pysynphot = None
 
 from pfs.ga.pfsspec.core.util.copy import *

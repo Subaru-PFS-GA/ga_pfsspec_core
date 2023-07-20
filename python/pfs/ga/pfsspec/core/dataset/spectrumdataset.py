@@ -32,11 +32,11 @@ class SpectrumDataset(ArrayDataset):
         super().init_values(row_count=row_count)
 
         if not self.constant_wave:
-            self.init_value('wave', dtype=np.float)
-            self.init_value('wave_edges', dtype=np.float)
-        self.init_value('flux', dtype=np.float)
-        self.init_value('error', dtype=np.float)
-        self.init_value('mask', dtype=np.int)
+            self.init_value('wave', dtype=float)
+            self.init_value('wave_edges', dtype=float)
+        self.init_value('flux', dtype=float)
+        self.init_value('error', dtype=float)
+        self.init_value('mask', dtype=int)
 
     def allocate_values(self, spectrum_count=None, wave_count=None):
         super().allocate_values(row_count=spectrum_count)
@@ -48,10 +48,10 @@ class SpectrumDataset(ArrayDataset):
             wave_count = self.wave.shape[-1]
 
         if not self.constant_wave:
-            self.allocate_value('wave', shape=(wave_count,), dtype=np.float)
-            self.allocate_value('wave_edges', shape=(2, wave_count,), dtype=np.float)
-        self.allocate_value('flux', shape=(wave_count,), dtype=np.float)
-        self.allocate_value('error', shape=(wave_count,), dtype=np.float)
+            self.allocate_value('wave', shape=(wave_count,), dtype=float)
+            self.allocate_value('wave_edges', shape=(2, wave_count,), dtype=float)
+        self.allocate_value('flux', shape=(wave_count,), dtype=float)
+        self.allocate_value('error', shape=(wave_count,), dtype=float)
         self.allocate_value('mask', shape=(wave_count,), dtype=np.int)
 
     def load_items(self, s=None):

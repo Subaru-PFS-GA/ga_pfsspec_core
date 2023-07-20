@@ -154,7 +154,7 @@ class ArrayGrid(Grid):
                 self.value_indexes[name] = None
                 self.logger.info('Initializing data file for grid "{}" of size {}...'.format(name, value_shape))
                 if not self.has_item(self.get_value_path(name)):
-                    self.allocate_item(self.get_value_path(name), value_shape, dtype=np.float)
+                    self.allocate_item(self.get_value_path(name), value_shape, dtype=float)
                     self.allocate_item(self.get_index_path(name), grid_shape, dtype=np.bool)
                 self.logger.info('Skipped memory initialization for grid "{}". Will read random slices from storage.'.format(name))
 
@@ -482,7 +482,7 @@ class ArrayGrid(Grid):
                 else:
                     shape = self.get_value_shape(name)
                     self.logger.debug('Allocating grid "{}" with size {}...'.format(name, shape))
-                    self.allocate_item(self.get_value_path(name), shape, np.float)
+                    self.allocate_item(self.get_value_path(name), shape, float)
                     self.logger.debug('Allocated grid "{}" with size {}. Will write directly to storage.'.format(name, shape))
 
     def load_values(self, s=None):

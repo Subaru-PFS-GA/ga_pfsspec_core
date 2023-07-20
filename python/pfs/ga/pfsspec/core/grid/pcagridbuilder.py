@@ -149,7 +149,7 @@ class PcaGridBuilder(GridBuilder):
             WX = 1 / np.sqrt(np.sum(self.W[mask])) * np.sqrt(self.W[mask][:, np.newaxis]) * self.X[mask]
 
             if self.svd_method == 'skip':
-                logging.warn('Skipping SVD computation.')
+                logging.warning('Skipping SVD computation.')
                 M, N = self.X[mask].shape
                 K = min(M, N)
                 self.S = np.zeros((K,))
@@ -185,7 +185,7 @@ class PcaGridBuilder(GridBuilder):
                 self.S = svd.singular_values_            # shape: (truncate,)
                 self.V = svd.components_.transpose()     # shape: (dim, truncate)
             elif self.svd_method == 'skip':
-                logging.warn('Skipping SVD computation.')
+                logging.warning('Skipping SVD computation.')
                 self.S = np.zeros(C.shape[0])
                 self.V = np.zeros(C.shape)
             else:

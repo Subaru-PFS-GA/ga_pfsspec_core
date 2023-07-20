@@ -5,6 +5,7 @@ from .distribution import Distribution
 from .compositedistribution import CompositeDistribution
 from .uniformdistribution import UniformDistribution
 from .normaldistribution import NormalDistribution
+from .multivariatenormaldistribution import MultivariateNormalDistribution
 from .lognormaldistribution import LogNormalDistribution
 from .betadistribution import BetaDistribution
 

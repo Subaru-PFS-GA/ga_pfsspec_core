@@ -27,6 +27,8 @@ class MCMC():
         # when x_0 is not already two dimensional. Make a copy so x can be updated!
         # original shape if x_0: (dim) or (dim, walkers)
         # broadcast to: (dim, walkers)
+        if x_0.ndim == 1:
+            x_0 = x_0[:, None]
         x = np.broadcast_to(x_0, (np.shape(x_0)[0], walkers)).transpose().copy()
 
         if self.gibbs_blocks is not None:

@@ -63,4 +63,5 @@ class LogNormalDistribution(ScipyDistribution):
             raise NotImplementedError()
         else:
             a, b = lognorm.cdf(shape, [min, max], **kw)
-            return lognorm.pdf(x, shape, **kw) / (b - a)
+            p = lognorm.pdf(x, shape, **kw) / (b - a)
+            return self.mask_pdf(x, p, min, max)

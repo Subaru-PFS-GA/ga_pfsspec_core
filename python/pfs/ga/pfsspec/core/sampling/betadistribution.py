@@ -71,4 +71,5 @@ class BetaDistribution(ScipyDistribution):
             # TODO: maybe modify it to rescale results between min and max?
 
             a, b = beta.cdf(a, b, min, **kw), beta.cdf(a, b, max, **kw)
-            return beta.pdf(x, a, b, **kw) / (b - a)
+            p = beta.pdf(x, a, b, **kw) / (b - a)
+            return self.mask_pdf(x, p, min, max)

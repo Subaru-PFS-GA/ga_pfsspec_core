@@ -21,4 +21,6 @@ class UniformDistribution(Distribution):
     
     def pdf(self, x, min=None, max=None):
         min, max = self.get_min_max(min, max)
-        return np.broadcast_to(1.0 / (max - min), x.shape)
+        p = np.broadcast_to(1.0 / (max - min), x.shape)
+        return self.mask_pdf(x, p, min, max)
+    

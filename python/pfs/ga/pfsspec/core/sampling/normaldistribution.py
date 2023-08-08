@@ -1,3 +1,4 @@
+import numpy as np
 from scipy.stats import norm
 
 from .scipydistribution import ScipyDistribution
@@ -33,4 +34,5 @@ class NormalDistribution(ScipyDistribution):
             raise NotImplementedError()
         else:
             a, b = norm.cdf([min, max], loc=loc, scale=scale)
-            return norm.pdf(x, loc=loc, scale=scale) / (b - a)
+            p = norm.pdf(x, loc=loc, scale=scale) / (b - a)
+            return self.mask_pdf(x, p, min, max)

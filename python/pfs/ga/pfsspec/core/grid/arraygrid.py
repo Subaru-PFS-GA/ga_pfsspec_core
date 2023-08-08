@@ -64,9 +64,10 @@ class ArrayGrid(Grid):
 
 #region Support slicing via command-line arguments
 
-    def init_from_args(self, args):
+    def init_from_args(self, args, slice_from_args=True):
         super(ArrayGrid, self).init_from_args(args)
-        self.slice = self.get_slice_from_args(args)
+        if slice_from_args:
+            self.slice = self.get_slice_from_args(args)
 
     def get_slice_from_args(self, args):
         # If a limit is specified on any of the parameters on the command-line,

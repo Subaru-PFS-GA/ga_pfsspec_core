@@ -440,9 +440,12 @@ class Spectrum(PfsObject):
         self.append_history(f'Applied noise model of type `{type(noise_model).__name__}`.')
 
     def calculate_snr(self, snr):
+        # TODO: add more options to specify the mask
         self.snr = snr.get_snr(self.flux, self.flux_err, self.mask_as_bool())
 
         self.append_history(f'S/N calculated to be {self.snr} using method `{type(snr).__name__}`')
+
+        return self.snr
         
     def redden(self, extval=None):
         extval = extval or self.ext

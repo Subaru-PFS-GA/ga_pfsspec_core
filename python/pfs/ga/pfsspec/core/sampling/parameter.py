@@ -33,8 +33,10 @@ class Parameter():
 
     def init_from_args(self, args):
         # Parse minimum, maximum and/or value for the parameter
-        if is_arg(self.name, args):
-            values = args[self.name]
+        name = self.name.replace('-', '_')
+
+        if is_arg(name, args):
+            values = args[name]
             if not isinstance(values, Iterable):
                 values = [ values ]
 
@@ -46,26 +48,26 @@ class Parameter():
                 self.min = values[0]
                 self.max = values[1]
             else:
-                raise ValueError(f'Invalid number of arguments for parameter `{self.name}`.')
+                raise ValueError(f'Invalid number of arguments for parameter `{name}`.')
             
         # Parse the distribution settings of the parameter. If no
         # distribution is specified but we have a min and max value
         # that are different, we sample from uniform by default.
         if self.min is not None and self.max is not None and self.min == self.max:
             self.dist = 'const'
-        elif self.min is not None and self.max is not None and not is_arg(f'{self.name}_dist', args):
+        elif self.min is not None and self.max is not None and not is_arg(f'{name}_dist', args):
             self.dist = 'uniform'
             self.dist_args = []
-        elif is_arg(f'{self.name}_dist', args):
-            aa = get_arg(f'{self.name}_dist', self.dist, args)
+        elif is_arg(f'{name}_dist', args):
+            aa = get_arg(f'{name}_dist', self.dist, args)
             if not isinstance(aa, list):
                 aa = [ aa ]
 
             self.dist = aa[0]
             self.dist_args = aa[1:]
 
-        if is_arg(f'{self.name}_step', args):
-            self.step = get_arg(f'{self.name}_step', self.step, args)
+        if is_arg(f'{name}_step', args):
+            self.step = get_arg(f'{name}_step', self.step, args)
 
     def has_value(self):
         return self.value is not None

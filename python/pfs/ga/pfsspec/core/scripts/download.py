@@ -21,7 +21,6 @@ class Download(Script):
         super(Download, self).add_args(parser, config)
 
         parser.add_argument("--out", type=str, required=True, help="Output directory\n")
-        parser.add_argument('--resume', action='store_true', help='Resume existing but aborted download.\n')
 
     def parse_args(self):
         super(Download, self).parse_args()
@@ -31,11 +30,8 @@ class Download(Script):
     def create_downloader(self):
         config = self.parser_configurations[self.args[self.CONFIG_CLASS]][self.args[self.CONFIG_SUBCLASS]]
         self.downloader = config[self.CONFIG_TYPE]()
-        self.downloader.parallel = self.threads != 1
-        self.downloader.threads = self.threads
-        self.downloader.resume = self.resume
         self.downloader.outdir = self.outdir
-        self.downloader.init_from_args(config, self.args)
+        self.downloader.init_from_args(self, config, self.args)
 
     def prepare(self):
         super(Download, self).prepare()

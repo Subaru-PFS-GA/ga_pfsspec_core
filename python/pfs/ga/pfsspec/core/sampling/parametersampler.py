@@ -9,10 +9,12 @@ class ParameterSampler(PfsObject):
 
         if not isinstance(orig, ParameterSampler):
             self.parameters = {}
+            self.match_params = None            # Match parameters from this dataframe
             self.sample_count = 0               # Number of samples to generate
                                                 # TODO: move this elsewhere?
         else:
             self.parameters = orig.parameters
+            self.match_params = orig.match_params
             self.sample_count = orig.sample_count
 
     def enumerate_parameters(self):
@@ -70,6 +72,20 @@ class ParameterSampler(PfsObject):
                 params[k] = self.draw_random_param(par)
 
         return params
+    
+    def get_matched_params(self, i):
+        # When ˙match_params` is set to a DataFrame, we need to look up the ith
+        # record and return the row as a dictionary
+
+        # TODO: this is now using pandas, consider making it more generic
+
+        params = self.match_params[self.match_params['id'] == i].to_dict('records')[0]
+        return params
 
     def sample_params(self, i):
-        return self.draw_random_params(), None
+        if self.match_params is not None:
+            params = self.get_matched_params(i)
+        else:
+            params = self.draw_random_params()
+
+        return params

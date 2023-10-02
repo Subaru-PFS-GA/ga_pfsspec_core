@@ -21,8 +21,6 @@ class GridSampler(ParameterSampler):
             self.auxiliary_axes = {}            # Additional axes that are not part of the grid but needs to be sampled or scanned systematically
             self.auxiliary_index = None
 
-            self.match_params = None            # Match parameters from this dataset
-
             self.sample_mode = None             # Grid sampling mode (grid, random)
         else:
             self.grid = orig.grid
@@ -30,8 +28,6 @@ class GridSampler(ParameterSampler):
 
             self.auxiliary_axes = orig.auxiliary_axes
             self.auxiliary_index = orig.auxiliary_index
-
-            self.match_params = orig.match_params
 
             self.sample_mode = orig.sample_mode
 
@@ -110,12 +106,6 @@ class GridSampler(ParameterSampler):
         for i, p, axis in self.enumerate_auxiliary_axes():
             params[p] = self.draw_random_param(axis)
 
-        return params
-
-    def get_matched_params(self, i):
-        # When ˙match_params` is set to a DataFrame, we need to look up the ith
-        # record and return the row as a dictionary
-        params = self.match_params[self.match_params['id'] == i].to_dict('records')[0]
         return params
 
     def get_gridpoint_params(self, i):

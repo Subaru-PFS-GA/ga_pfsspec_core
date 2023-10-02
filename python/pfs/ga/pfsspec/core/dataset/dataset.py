@@ -185,7 +185,7 @@ class Dataset(PfsObject):
         """
         
         if idx is None:
-            idx = np.arange(0, values.shape[0], dtype=np.int)
+            idx = np.arange(0, values.shape[0], dtype=int)
         
         # Update the rows of the DataFrame
         for i, name in enumerate(names):

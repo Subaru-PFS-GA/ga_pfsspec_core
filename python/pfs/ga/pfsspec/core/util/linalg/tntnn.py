@@ -160,9 +160,9 @@ class TntNN():
         # ===============================================================
         # Initialize sets as index arrays.
         # ===============================================================
-        free_set = np.arange(n, dtype=np.int)
-        binding_set = np.zeros((0,), dtype=np.int)
-        insertion_set = np.zeros((0,), dtype=np.int)
+        free_set = np.arange(n, dtype=int)
+        binding_set = np.zeros((0,), dtype=int)
+        insertion_set = np.zeros((0,), dtype=int)
 
         # ===============================================================
         # This sets up the unconstrained, core LS solver
@@ -185,7 +185,7 @@ class TntNN():
             best_free_set = free_set.copy()
             best_binding_set = binding_set.copy()
             best_insertions = insertions
-            max_insertions = np.int(np.floor(self.exp_c * best_insertions))
+            max_insertions = int(np.floor(self.exp_c * best_insertions))
             
             # ===============================================================
             # Compute the gradient of the "Normal Equations".
@@ -235,7 +235,7 @@ class TntNN():
                 # ==============================================================
                 # Adjust the number of insertions.
                 # ==============================================================
-                insertions = np.int(np.floor(self.red_c * insertions))
+                insertions = int(np.floor(self.red_c * insertions))
                 if insertions == 0:
                     insertions = 1
                 if insertions > max_insertions:
@@ -285,7 +285,7 @@ class TntNN():
                 x = best_x
                 free_set = best_free_set.copy()
                 binding_set = best_binding_set.copy()
-                max_insertions = np.int(np.floor(exp_c * best_insertions))
+                max_insertions = int(np.floor(exp_c * best_insertions))
                 
                 # ===============================================================
                 # Are we done ?
@@ -375,7 +375,7 @@ class TntNN():
         dels = 0
         loops = 0
         lsq_loops = 0
-        del_hist = np.zeros((0,), dtype=np.int)
+        del_hist = np.zeros((0,), dtype=int)
         while True:
             loops += 1
             

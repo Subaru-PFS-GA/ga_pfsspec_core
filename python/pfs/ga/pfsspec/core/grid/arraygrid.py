@@ -144,7 +144,7 @@ class ArrayGrid(Grid):
             if self.preload_arrays:
                 self.logger.info('Initializing memory for grid "{}" of size {}...'.format(name, value_shape))
                 self.values[name] = np.full(value_shape, np.nan)
-                self.value_indexes[name] = np.full(grid_shape, False, dtype=np.bool)
+                self.value_indexes[name] = np.full(grid_shape, False, dtype=bool)
                 self.logger.info('Initialized memory for grid "{}" of size {}.'.format(name, value_shape))
             elif self.mmap_arrays:
                 # TODO: allocate HDF5 dataset then mmap it
@@ -154,8 +154,8 @@ class ArrayGrid(Grid):
                 self.value_indexes[name] = None
                 self.logger.info('Initializing data file for grid "{}" of size {}...'.format(name, value_shape))
                 if not self.has_item(self.get_value_path(name)):
-                    self.allocate_item(self.get_value_path(name), value_shape, dtype=np.float)
-                    self.allocate_item(self.get_index_path(name), grid_shape, dtype=np.bool)
+                    self.allocate_item(self.get_value_path(name), value_shape, dtype=float)
+                    self.allocate_item(self.get_index_path(name), grid_shape, dtype=bool)
                 self.logger.info('Skipped memory initialization for grid "{}". Will read random slices from storage.'.format(name))
 
     def allocate_value(self, name, shape=None):
@@ -472,7 +472,7 @@ class ArrayGrid(Grid):
                 else:
                     shape = self.get_value_shape(name)
                     self.logger.debug('Allocating grid "{}" with size {}...'.format(name, shape))
-                    self.allocate_item(self.get_value_path(name), shape, np.float)
+                    self.allocate_item(self.get_value_path(name), shape, float)
                     self.logger.debug('Allocated grid "{}" with size {}. Will write directly to storage.'.format(name, shape))
 
     def load_values(self, s=None):

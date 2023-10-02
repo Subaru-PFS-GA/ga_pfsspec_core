@@ -138,7 +138,7 @@ class ArrayDataset(Dataset):
         if self.config is not None:
             self.config.allocate_values(self, row_count)
 
-    def init_value(self, name, shape=None, dtype=np.float, **kwargs):
+    def init_value(self, name, shape=None, dtype=float, **kwargs):
         """
         Initializes a value array. When shape is not None, the array is
         allocated in memory or on the disk, depending on the storage model

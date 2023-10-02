@@ -263,7 +263,7 @@ class PfsObject():
 
         raise NotImplementedError()
 
-    def allocate_item(self, name, shape, dtype=np.float):
+    def allocate_item(self, name, shape, dtype=float):
         """
         Allocates the storage space for a data item. Preallocation is supported
         in HDF5 only.
@@ -627,7 +627,7 @@ class PfsObject():
                     data = default
 
             return data
-        elif type == np.float or type == np.int:
+        elif type == float or type == int:
             # Try attributes first, then dataset, otherwise return None
             with h5py.File(self.filename, 'r') as f:
                 g, name = self.get_hdf5_group(f, path, create=False)
@@ -638,7 +638,7 @@ class PfsObject():
                     return data
                 else:
                     return default
-        elif type == np.bool or type == bool:
+        elif type == bool:
             # Try attributes first, then dataset, otherwise return None
             with h5py.File(self.filename, 'r') as f:
                 g, name = self.get_hdf5_group(f, path, create=False)
@@ -749,18 +749,18 @@ class PfsObject():
 
     @staticmethod
     def get_dtype_default_value(dtype):
-        if dtype == np.int:
+        if dtype == int:
             return 0
-        elif dtype == np.float:
+        elif dtype == float:
             return 0.0
         else:
             raise NotImplementedError()
 
     @staticmethod
     def get_dtype_invalid_value(dtype):
-        if dtype == np.int:
+        if dtype == int:
             return -1
-        elif dtype == np.float:
+        elif dtype == float:
             return np.nan
         else:
             raise NotImplementedError()

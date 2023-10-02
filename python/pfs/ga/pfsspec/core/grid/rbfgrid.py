@@ -156,7 +156,7 @@ class RbfGrid(Grid):
         idx = Grid.rectify_index(idx)
         
         if not extrapolate and self.check_extrapolation(idx):
-            logging.warn("Requested point of RBF grid would result in extrapolation")
+            logging.warning("Requested point of RBF grid would result in extrapolation")
             return None
         
         value = self.values[name](*idx)

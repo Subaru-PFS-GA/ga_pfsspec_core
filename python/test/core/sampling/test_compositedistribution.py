@@ -5,7 +5,7 @@ from test.pfs.ga.pfsspec.core import TestBase
 from pfs.ga.pfsspec.core.sampling import CompositeDistribution
 from pfs.ga.pfsspec.core.sampling import UniformDistribution, NormalDistribution
 
-class MeanSnrTest(TestBase):
+class CompositeDistributionTest(TestBase):
 
     def test_init_from_args(self):
         d = CompositeDistribution()

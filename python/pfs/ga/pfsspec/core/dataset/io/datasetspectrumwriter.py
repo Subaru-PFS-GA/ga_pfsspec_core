@@ -26,6 +26,9 @@ class DatasetSpectrumWriter(SpectrumWriter):
 
         file = self.get_filename(spec)
         self.write(file, spec)
+    
+    def process_item_error(self, ex, i):
+        raise NotImplementedError()
 
     def write_all(self):
         rng = range(self.dataset.get_count())
@@ -35,7 +38,7 @@ class DatasetSpectrumWriter(SpectrumWriter):
 
         k = 0
         with SmartParallel(verbose=True, parallel=True) as p:
-            for r in p.map(self.process_item, rng):
+            for r in p.map(self.process_item, self.process_item_error, rng):
                 k += 1
 
         self.logger.info('{} files written.'.format(k))

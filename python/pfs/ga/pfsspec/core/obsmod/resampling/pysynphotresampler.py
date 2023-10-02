@@ -6,7 +6,7 @@ from astropy import units as u
 try:
     import pysynphot
 except ModuleNotFoundError as ex:
-    logging.warn(ex.msg)
+    logging.warning(ex.msg)
     pysynphot = None
 
 from .resampler import Resampler

@@ -3,17 +3,17 @@ import numpy as np
 from .fluxcorrectionmodel import FluxCorrectionModel
 
 class PolynomialFluxCorrection(FluxCorrectionModel):
-    def __init__(self, orig=None):
+    def __init__(self, orig=None, function=None, degree=None, wlim=None):
         super().__init__(orig=orig)
 
         if not isinstance(orig, PolynomialFluxCorrection):
-            self.function = 'chebyshev'
-            self.degree = 5
-            self.wlim = (3000.0, 12000.0)       # Wavelength normalization interval
+            self.function = function if function is not None else 'chebyshev'
+            self.degree = degree if degree is not None else 5
+            self.wlim = wlim if wlim is not None else (3000.0, 12000.0)       # Wavelength normalization interval
         else:
-            self.function = orig.function
-            self.degree = orig.degree
-            self.wlim = orig.wlim
+            self.function = function if function is not None else orig.function
+            self.degree = degree if degree is not None else orig.degree
+            self.wlim = wlim if wlim is not None else orig.wlim
 
     def get_param_count(self):
         """

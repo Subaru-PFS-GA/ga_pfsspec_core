@@ -12,10 +12,10 @@ class Snr():
         else:
             self.binning = binning if binning is not None else orig.binning
 
-    def get_snr(self, values, sigmas=None, masks=None):
-        # Allow passing lists of values just in case the SNR is to be
-        # calculated for multiple arms
+    def get_snr_impl(self, value, sigma, mask):
+        raise NotImplementedError()
 
+    def get_snr(self, values, sigmas=None, masks=None):
         if isinstance(values, np.ndarray):
             values = [ values ]
 
@@ -25,7 +25,7 @@ class Snr():
         if isinstance(masks, np.ndarray):
             masks = [ masks ]
 
-        if sigmas is None:
+        if values is None or sigmas is None:
             return np.nan
         else:
             v = np.concatenate(values)
@@ -36,10 +36,5 @@ class Snr():
             else:                
                 mask = (s > 0.0)
 
-            mask = mask & ~(np.isnan(v) | np.isnan(s))
+            return self.get_snr_impl(v, s, mask) * np.sqrt(self.binning)
 
-            snr = self.get_snr_impl(v, s, mask)
-            return snr
-        
-    def get_snr_impl(self, value, sigma, mask):
-        raise NotImplementedError()

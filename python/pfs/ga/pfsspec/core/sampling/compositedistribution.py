@@ -45,3 +45,6 @@ class CompositeDistribution(Distribution):
         s = np.choose(t, [d.sample(size=size, random_state=random_state) for d in self.dists])
 
         return s
+    
+    def pdf(self, x):
+        raise NotImplementedError()

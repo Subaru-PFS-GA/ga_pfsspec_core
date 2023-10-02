@@ -555,7 +555,7 @@ class PfsObject():
                             return mmaparray(mi)
                         else:
                             # If skip_mmap is True, it's OK to load the array into memory
-                            logging.warn(f'Cannot mmap HDF5 dataset {path} of file `{self.filename}`. Is it chunked?')
+                            logging.warning(f'Cannot mmap HDF5 dataset {path} of file `{self.filename}`. Is it chunked?')
                             if not skip_mmap:
                                 return None
                     else:

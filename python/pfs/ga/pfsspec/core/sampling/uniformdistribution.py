@@ -1,3 +1,5 @@
+import numpy as np
+
 from .distribution import Distribution
 
 class UniformDistribution(Distribution):
@@ -16,3 +18,9 @@ class UniformDistribution(Distribution):
         random_state = self.get_random_state(random_state)
         min, max = self.get_min_max(min, max)
         return random_state.uniform(min, max, size=size)
+    
+    def pdf(self, x, min=None, max=None):
+        min, max = self.get_min_max(min, max)
+        p = np.broadcast_to(1.0 / (max - min), x.shape)
+        return self.mask_pdf(x, p, min, max)
+    

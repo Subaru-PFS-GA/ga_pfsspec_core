@@ -58,7 +58,7 @@ class GridReader(Importer):
         g = GridEnumerator(grid, s=slice, top=self.top, resume=resume)
         t = tqdm(total=len(g))
         with SmartParallel(verbose=False, parallel=self.parallel, threads=self.threads) as p:
-            for res in p.map(self.process_item, g):
+            for res in p.map(self.process_item, self.process_item_error, g):
                 self.store_item(res)
                 t.update(1)
 
@@ -79,7 +79,7 @@ class GridReader(Importer):
         k = 0
         t = tqdm(total=len(files))
         with SmartParallel(verbose=True, parallel=self.parallel, threads=self.threads) as p:
-            for res in p.map(self.process_file, files):
+            for res in p.map(self.process_file, self.process_file_error, files):
                 self.store_item(res)
                 t.update(1)
                 k += 1
@@ -88,8 +88,14 @@ class GridReader(Importer):
 
     def process_item(self, i):
         raise NotImplementedError()
+    
+    def process_item_error(self, ex, i):
+        raise NotImplementedError()
 
     def process_file(self, file):
+        raise NotImplementedError()
+    
+    def process_file_error(self, ex, file):
         raise NotImplementedError()
 
     def store_item(self, res):

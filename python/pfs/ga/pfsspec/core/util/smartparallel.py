@@ -1,93 +1,11 @@
-# from: https://stackoverflow.com/questions/3288595/multiprocessing-how-to-use-pool-map-on-a-function-defined-in-a-class
-
-"""
-The ``processes`` module provides some convenience functions
-for using parallel processes in python.
-
-Adapted from http://stackoverflow.com/a/16071616/287297
-
-Example usage:
-
-    print prll_map(lambda i: i * 2, [1, 2, 3, 4, 6, 7, 8], 32, verbose=True)
-
-Comments:
-
-"It spawns a predefined amount of workers and only iterates through the input list
- if there exists an idle worker. I also enabled the "daemon" mode for the workers so
- that KeyboardInterupt works as expected."
-
-Pitfalls: all the stdouts are sent back to the parent stdout, intertwined.
-
-Alternatively, use this fork of multiprocessing:
-https://github.com/uqfoundation/multiprocess
-"""
-
-# Modules #
 import os, sys
-from concurrent.futures import ProcessPoolExecutor
-from multiprocessing import Pool
 import logging
 import traceback
 import multiprocessing
-from multiprocessing import Manager, Pool, Queue
+from multiprocessing import Manager
+from .pool import Pool
 import numpy as np
 from tqdm import tqdm
-
-def apply_function(x, init_func, worker_func, queue_in, queue_out):
-    logger = multiprocessing.log_to_stderr()
-    #logger.setLevel(logging.DEBUG)
-    np.random.seed()
-    if init_func is not None:
-        init_func(x)
-    while not queue_in.empty():
-        num, obj = queue_in.get()
-        queue_out.put((num, worker_func(obj)))
-
-def prll_map(init_func, worker_func, items, cpus=None, verbose=False):
-    # Number of processes to use #
-    if cpus is None: cpus = min(multiprocessing.cpu_count(), 32)
-    # Create queues #
-    q_in  = multiprocessing.Queue()
-    q_out = multiprocessing.Queue()
-    # Process list #
-    new_proc  = lambda t, a: multiprocessing.Process(target=t, args=a)
-    processes = [new_proc(apply_function, (x, init_func, worker_func, q_in, q_out)) for x in range(cpus)]
-    # Put all the items (objects) in the queue #
-    sent = [q_in.put((i, x)) for i, x in enumerate(items)]
-    # Start them all #
-    for proc in processes:
-        proc.daemon = True
-        proc.start()
-
-    # Display progress bar or not
-    if verbose:
-        return q_out, tqdm(range(len(sent)))
-    else:
-        return q_out, range(len(sent))
-
-    #if verbose:
-    #    results = [q_out.get() for x in tqdm(range(len(sent)))]
-    #else:
-    #    results = [q_out.get() for x in range(len(sent))]
-
-    # Wait for them to finish #
-    #for proc in processes: proc.join()
-
-    # Return results #
-    #return [x for i, x in sorted(results)]
-
-def srl_map(init_func, worker_func, items, verbose=False):
-    if init_func is not None:
-        init_func(0)
-
-    results = []
-    if verbose:
-        for i in tqdm(items):
-            results.append(worker_func(i))
-    else:
-        for i in items:
-            results.append(worker_func(i))
-    return results
 
 class SmartParallelError(Exception):
     def __init__(self, type, exception, traceback):
@@ -129,8 +47,6 @@ class SmartParallel():
         self.logger = logging.getLogger()
         self.manager = None
         self.pool = None
-        self.pool_results = None
-        self.queue_in = None
         self.queue_out = None
         self.initializer = initializer
         self.verbose = verbose
@@ -139,8 +55,21 @@ class SmartParallel():
     def __enter__(self):
         if self.parallel:
             self.logger.debug("Starting parallel execution on {} CPUs.".format(self.cpus))
+
+            # Match logging preferences of the parent process
+            log_stdout = False
+            log_stderr = False
+            for h in self.logger.handlers:
+                log_stdout |= isinstance(h, logging.StreamHandler) and h.stream.name == '<stdout>'
+                log_stderr |= isinstance(h, logging.StreamHandler) and h.stream.name == '<stderr>'
+
+            # TODO: generate random seed for each worker
+
             self.manager = Manager()            
-            self.pool = Pool(processes=self.cpus)
+            self.pool = Pool(processes=self.cpus,
+                             preinitializer=SmartParallel.pool_preinitializer,
+                             initializer=SmartParallel.pool_initializer,
+                             initargs=(self.logger.level, log_stdout, log_stderr))
         else:
             self.logger.debug("Starting serial execution.")
         return self
@@ -148,10 +77,6 @@ class SmartParallel():
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.parallel:
             self.logger.debug("Joining worker processes.")
-            if self.pool_results is not None:
-                for r in self.pool_results:
-                    r.get()
-                self.pool_results = None
             self.pool.close()
             self.pool.join()
             self.manager.shutdown()
@@ -164,51 +89,68 @@ class SmartParallel():
         pass
 
     @staticmethod
-    def pool_worker(worker_id, random_seed, initializer, worker, queue_in, queue_out, *args, obj=None, **kwargs):
+    def pool_preinitializer():
+        random_seed = np.random.randint(0, np.iinfo(np.int_).max) % 0xFFFFFFFF
+        return (random_seed,)
+
+    @staticmethod
+    def pool_initializer(random_seed, log_level, log_stdout, log_stderr):
+        # logger = logging.getLogger()
+        # logger.setLevel(log_level)
+        # if log_stdout:
+        #     handler = logging.StreamHandler(sys.stdout)
+        #     handler.setLevel(log_level)
+        #     #handler.setFormatter(formatter)
+        #     logger.addHandler(handler)
+        # if log_stderr:
+        #     handler = logging.StreamHandler(sys.stderr)
+        #     handler.setLevel(log_level)
+        #     #handler.setFormatter(formatter)
+        #     logger.addHandler(handler)
+
+        if random_seed is not None:
+            np.random.seed(random_seed)
+            logging.debug("Re-seeded random state on pid {} with seed {}".format(os.getpid(), random_seed))
+
+    @staticmethod
+    def pool_worker(i, queue_out, worker, error, *args, obj=None, **kwargs):
         # This executes in the worker process
-
-        if initializer is not None:
-            # Make sure random generator is reseeded on the new thread (sub-process)
-            if random_seed is not None:
-                np.random.seed(random_seed)
-                logging.debug("Re-seeded random state on pid {} with seed {}".format(os.getpid(), random_seed))
-            
-            initializer(worker_id)
-        while True:
-            i = queue_in.get()
-            if isinstance(i, StopIteration):
-                return
+        try:
+            if obj is not None:
+                o = worker(obj, i, *args, **kwargs)
             else:
-                try:
-                    if obj is not None:
-                        o = worker(obj, i, *args, **kwargs)
-                    else:
-                        o = worker(i, *args, **kwargs)
-                    queue_out.put(o)
-                except Exception as e:
-                    queue_out.put(SmartParallelError(*sys.exc_info()[:2], traceback.format_exception(*sys.exc_info())))
+                o = worker(i, *args, **kwargs)
+            queue_out.put(o)
+        except Exception as e:
+            queue_out.put(SmartParallelError(*sys.exc_info()[:2], traceback.format_exception(*sys.exc_info())))
 
-    def map(self, worker, items, *args, obj=None, **kwargs):
+    @staticmethod
+    def pool_error_callback(ex):
+        i, queue_out, worker, error = ex.args[0:4]
+        args = ex.args[4:]
+        kwargs = ex.kwds
+        obj = kwargs.pop("obj", None)
+        try:
+            if obj is not None:
+                o = error(obj, i, *args, **kwargs)
+            else:
+                o = error(ex, i, *args, **kwargs)
+            queue_out.put(o)
+        except Exception as e:
+            queue_out.put(SmartParallelError(*sys.exc_info()[:2], traceback.format_exception(*sys.exc_info())))
+
+    def map(self, worker, error, items, *args, obj=None, **kwargs):
         # This executes in the main process
         
         if self.parallel:
-            self.queue_in = self.manager.Queue()
             self.queue_out = self.manager.Queue(1024)
 
-            for i in items:
-                self.queue_in.put(i)
-
-            for i in range(self.cpus):
-                self.queue_in.put(StopIteration())
-
-            args = (self.initializer, worker, self.queue_in, self.queue_out) + args
+            args = (self.queue_out, worker, error) + args
             kwargs = {**kwargs, 'obj': obj}
-            self.pool_results = []
-            for i in range(self.cpus):
-                # Start pool worker processes, pass in worker id and a random seed
-                random_seed = np.random.randint(0, np.iinfo(np.int_).max) % 0xFFFFFFFF
-                ar = self.pool.apply_async(SmartParallel.pool_worker, args=(i, random_seed) + args, kwds=kwargs)
-                self.pool_results.append(ar)
+
+            for i in items:
+                self.pool.apply_async(SmartParallel.pool_worker, args=(i,) + args, kwds=kwargs,
+                                      error_callback=SmartParallel.pool_error_callback)
 
             m = IterableQueue(self.queue_out, len(items))
         else:

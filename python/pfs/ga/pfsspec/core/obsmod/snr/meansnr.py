@@ -16,4 +16,4 @@ class MeanSnr(Snr):
             pass
 
     def get_snr_impl(self, value, sigma, mask):
-        return np.mean(value[mask] / sigma[mask]) * np.sqrt(self.binning)
+        return np.mean(value[mask] / sigma[mask])

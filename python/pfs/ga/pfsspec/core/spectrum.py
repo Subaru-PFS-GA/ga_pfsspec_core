@@ -10,7 +10,7 @@ try:
     import pysynphot.spectrum
     import pysynphot.reddening
 except ModuleNotFoundError as ex:
-    logging.warn(ex.msg)
+    logging.warning(ex.msg)
     pysynphot = None
 
 from pfs.ga.pfsspec.core.util.copy import *
@@ -201,7 +201,10 @@ class Spectrum(PfsObject):
         elif isinstance(mask, np.ndarray) and mask.dtype == bool:
             return mask
         elif isinstance(mask, np.ndarray) and mask.dtype != bool:
-            return (np.bitwise_and(mask, bits) == 0)
+            if bits is not None:
+                return (np.bitwise_and(mask, bits) == 0)
+            else:
+                return mask == 0
         else:
             return mask
         
@@ -437,9 +440,12 @@ class Spectrum(PfsObject):
         self.append_history(f'Applied noise model of type `{type(noise_model).__name__}`.')
 
     def calculate_snr(self, snr):
+        # TODO: add more options to specify the mask
         self.snr = snr.get_snr(self.flux, self.flux_err, self.mask_as_bool())
 
         self.append_history(f'S/N calculated to be {self.snr} using method `{type(snr).__name__}`')
+
+        return self.snr
         
     def redden(self, extval=None):
         extval = extval or self.ext

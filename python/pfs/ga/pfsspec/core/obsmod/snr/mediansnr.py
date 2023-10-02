@@ -16,4 +16,4 @@ class MedianSnr(Snr):
             pass
 
     def get_snr_impl(self, value, sigma, mask):
-        return np.median(value[mask] / sigma[mask]) * np.sqrt(self.binning)
+        return np.median(value[mask] / sigma[mask])

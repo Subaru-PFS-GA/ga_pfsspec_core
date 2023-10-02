@@ -24,3 +24,10 @@ class ScipyDistribution(Distribution):
 
     def sample_impl(self, loc, scale, min, max, size, random_state, **kw):
         raise NotImplementedError()
+
+    def pdf(self, x, loc=None, scale=None, min=None, max=None, **kwargs):
+        min, max = self.get_min_max(min, max)
+        loc = loc if loc is not None else self.loc
+        scale = scale if scale is not None else self.scale
+
+        return self.pdf_impl(x, loc=loc, scale=scale, min=min, max=max, **kwargs)

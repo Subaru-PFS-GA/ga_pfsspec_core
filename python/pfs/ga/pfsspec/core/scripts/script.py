@@ -5,11 +5,13 @@ import pkgutil, importlib
 import json
 import yaml
 import logging
+import warnings
 import numpy as np
 import multiprocessing
 from multiprocessing import set_start_method
 import socket
 
+import pfs.ga.pfsspec.core.util.logging
 import pfs.ga.pfsspec   # NOTE: required by module discovery
 # TODO: python 3.8 has this built-in, replace import
 from ..util import ArgumentParser
@@ -404,7 +406,11 @@ class Script():
             self.setup_logging()
 
         if self.debug:
+            # Switch numpy to schizophrenic mode
             np.seterr(divide='raise', over='raise', invalid='raise')
+            
+            # Turn this on in debug mode to raise exceptions when warnings are printed.
+            # warnings.filterwarnings('error')
 
     def run(self):
         raise NotImplementedError()

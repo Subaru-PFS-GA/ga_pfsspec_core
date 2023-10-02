@@ -3,10 +3,10 @@ from collections import namedtuple
 import numpy as np
 import types
 
+CacheItem = namedtuple('CacheItem', ['timestamp', 'value'])
+
 class ReadOnlyCache():
     # Implements a key-value read-only cache
-
-    CacheItem = namedtuple('CacheItem', ['timestamp', 'value'])
     
     def __init__(self, max_size=100, max_age=None, orig=None):
 
@@ -50,7 +50,7 @@ class ReadOnlyCache():
     def push(self, key, value):
         key = self.sanitize_key(key)
         if key not in self.dict:
-            self.dict[key] = ReadOnlyCache.CacheItem(datetime.now(), value)
+            self.dict[key] = CacheItem(datetime.now(), value)
         else:
             raise Exception('Duplicate key in cache.')
 
@@ -76,7 +76,7 @@ class ReadOnlyCache():
         if key in self.dict:
             value = self.dict[key].value
             del self.dict[key]
-            self.dict[key] = ReadOnlyCache.CacheItem(datetime.now(), value)
+            self.dict[key] = CacheItem(datetime.now(), value)
         else:
             raise Exception('Key not in cache.')
         

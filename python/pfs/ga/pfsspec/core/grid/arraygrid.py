@@ -64,9 +64,10 @@ class ArrayGrid(Grid):
 
 #region Support slicing via command-line arguments
 
-    def init_from_args(self, args):
+    def init_from_args(self, args, slice_from_args=True):
         super(ArrayGrid, self).init_from_args(args)
-        self.slice = self.get_slice_from_args(args)
+        if slice_from_args:
+            self.slice = self.get_slice_from_args(args)
 
     def get_slice_from_args(self, args):
         # If a limit is specified on any of the parameters on the command-line,
@@ -244,24 +245,34 @@ class ArrayGrid(Grid):
         Returns:
             [type]: [description]
         """
-        idx1 = list(self.get_nearest_index(**kwargs))
-        idx2 = list((0, ) * len(idx1))
 
-        for i, p, axis in self.enumerate_axes():
-            if axis.values.shape[0] == 1:
-                # If the grid has a single value along an axis (not squeezed)
-                idx1[i], idx2[i] = idx1[i], idx1[i]
-            elif kwargs[p] < axis.values[idx1[i]]:
-                idx1[i], idx2[i] = idx1[i] - 1, idx1[i]
+        idx1 = ()
+        idx2 = ()
+
+        for i, p, ax in self.enumerate_axes():
+            if p not in kwargs:
+                idx1 += (slice(None),)
+                idx2 += (slice(None))
             else:
-                idx1[i], idx2[i] = idx1[i], idx1[i] + 1
+                if kwargs[p] < ax.values[0] or ax.values[-1] < kwargs[p]:
+                    # value is outside the grid
+                    return None
+                
+                # right = True  -> bins[i - 1] < x <= bins[i]
+                # right = False -> bins[i - 1] <= x < bins[i]
+                i2 = np.digitize(kwargs[p], ax.values, right=True)
 
-            # Verify if indexes are inside bounds
-            if idx1[i] < 0 or axis.values.shape[0] <= idx1[i] or \
-               idx2[i] < 0 or axis.values.shape[0] <= idx2[i]:
-                return None
+                # TODO: needs tolerance?
+                if ax.values[i2] == kwargs[p]:
+                    # i1 is right on the grid we don't interpolate
+                    i1 = i2
+                else:
+                    i1 = i2 - 1
+                
+                idx1 += (i1,)
+                idx2 += (i2,)
 
-        return tuple(idx1), tuple(idx2)
+        return idx1, idx2
 
     def get_shell_indexes(self, size, idx=None, exclude_center=True, **kwargs):
         """
@@ -543,6 +554,7 @@ class ArrayGrid(Grid):
                 return None
 
         # Parameter values to interpolate between
+        # TODO: Handle the case when ax == ab
         p = list(kwargs.keys())[0]
         x = kwargs[p]
         xa = self.axes[p].values[idx1[0]]
@@ -577,10 +589,10 @@ class ArrayGrid(Grid):
             # TODO: do we want the post process function in the cache key?
             cache_key = cache_key_prefix + (name, idx1, idx2, s, raw, post_process)
             if self.value_cache.is_cached(cache_key):
-                logging.debug(f'Nearby values between {idx1} and {idx2} are found in cache.')
+                logging.trace(f'Nearby values between {idx1} and {idx2} are found in cache.')
                 return self.value_cache.get(cache_key)
             
-        logging.debug(f'Loading nearby grid values between {idx1} and {idx2}.')
+        logging.trace(f'Loading nearby grid values between {idx1} and {idx2}.')
 
         # Dimensions
         D = len(idx1)
@@ -589,7 +601,7 @@ class ArrayGrid(Grid):
         # The shape of ii and kk is (D, 2**D)
         # TODO: what to do with squeezed indices?
         ii = np.array(list(itertools.product(*([[0, 1],] * D))))
-        kk = np.array(list(itertools.product(*[[idx1[i], idx2[i]] for i in range(len(idx1)) if idx1[i] != idx2[i]])))
+        kk = np.array(list(itertools.product(*[[idx1[i], idx2[i]] for i in range(len(idx1))])))
         
         # Retrieve the value arrays for each of the surrounding grid points
         v = None
@@ -612,7 +624,7 @@ class ArrayGrid(Grid):
 
         if self.value_cache is not None:
             self.value_cache.push(cache_key, v)
-            logging.debug(f'Nearby values between {idx1} and {idx2} are written to the cache.')
+            logging.trace(f'Nearby values between {idx1} and {idx2} are written to the cache.')
 
         return v
 
@@ -629,7 +641,7 @@ class ArrayGrid(Grid):
         # Only keep dimensions where interpolation is necessary, i.e. skip
         # where axis has a single value only
 
-        self.logger.debug('Finding values to interpolate to {} using linear Nd.'
+        self.logger.trace('Finding values to interpolate to {} using linear Nd.'
                           .format({ k: kwargs[k] for _, k, v in self.enumerate_axes(squeeze=True) }))
 
         d = len(idx1)
@@ -648,14 +660,17 @@ class ArrayGrid(Grid):
         if v is None:
             return None
         
-        self.logger.debug('Interpolating values to {} using linead Nd.'.format(kwargs))
+        self.logger.trace('Interpolating values to {} using linead Nd.'.format(kwargs))
         
         # Perform the 1d interpolations along each axis
         for d in range(d):
             x0 = xx[d, 0]
             x1 = xx[d, 1]
             
-            v = v[0] + (v[1] - v[0]) / (x1 - x0) * (x[d] - x0)
+            if (x1 != x0):
+                v = v[0] + (v[1] - v[0]) / (x1 - x0) * (x[d] - x0)
+            else:
+                v = v[0]
 
         return v, kwargs
 
@@ -665,7 +680,7 @@ class ArrayGrid(Grid):
         # TODO: implement multi-value version
         # TODO: implement caching
 
-        self.logger.debug('Finding values to interpolate to {} using cubic splines along {}.'.format(kwargs, free_param))
+        self.logger.trace('Finding values to interpolate to {} using cubic splines along {}.'.format(kwargs, free_param))
 
         # Find the index of the free parameter
         axis_list = list( p for i, p, ax in self.enumerate_axes())

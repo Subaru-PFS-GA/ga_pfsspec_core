@@ -1,3 +1,4 @@
+from .csvspectrumreader import CSVSpectrumReader
 from .downloader import Downloader
 from .exporter import Exporter
 from .importer import Importer

@@ -26,6 +26,12 @@ class Trace():
         self.figure_dpi = 240
         self.figures = {}
 
+    def add_args(self, config, parser):
+        pass
+
+    def init_from_args(self, script, config, args):
+        pass
+
     def make_outdir(self, fn):
         dir = os.path.dirname(fn)
         if self.create_outdir and not os.path.isdir(dir):

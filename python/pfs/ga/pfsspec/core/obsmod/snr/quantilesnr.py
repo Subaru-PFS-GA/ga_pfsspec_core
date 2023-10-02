@@ -43,5 +43,8 @@ class QuantileSnr(Snr):
             
             snr = np.quantile(v[mask] / s[mask], self.q) * np.sqrt(self.binning)
             return snr
+        
+    def get_snr_impl(self, value, sigma, mask):
+        return np.quantile(value[mask] / sigma[mask], self.q) * np.sqrt(self.binning)
 
     

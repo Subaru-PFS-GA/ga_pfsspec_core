@@ -25,6 +25,9 @@ class StoehrSnr(Snr):
             self.shift = shift if shift is not None else orig.q
 
     def get_snr(self, value, sigma=None):
+        raise NotImplementedError()
+        # TODO: update to handle lists of values/sigmas and mask
+
         s1 = np.median(value)
         s2 = np.abs(2 * value[self.shift:-self.shift] - value[:-2 * self.shift] - value[2 * self.shift:])
         n1 = 1.482602 / np.sqrt(6.0) * np.median(s2)

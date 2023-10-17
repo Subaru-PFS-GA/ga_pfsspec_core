@@ -9,8 +9,8 @@ class QuantileSnr(Snr):
     to measure the SNR in the continuum part of stellar spectra. 
     """
 
-    def __init__(self, q=None, binning=1.0, orig=None):
-        super().__init__(binning=binning, orig=orig)
+    def __init__(self, q=None, binning=1.0, squared=None, orig=None):
+        super().__init__(binning=binning, squared=squared, orig=orig)
 
         if not isinstance(orig, QuantileSnr):
             self.q = q if q is not None else 0.95
@@ -18,6 +18,6 @@ class QuantileSnr(Snr):
             self.q = q if q is not None else orig.q
 
     def get_snr_impl(self, value, sigma, mask):
-        return np.quantile(value[mask] / sigma[mask], self.q)
+        return np.quantile(value[mask] / sigma[mask], self.q) * np.sqrt(self.binning)
 
     

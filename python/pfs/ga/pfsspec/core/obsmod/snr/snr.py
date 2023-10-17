@@ -6,11 +6,13 @@ class Snr():
     calculation algorithm.
     """
 
-    def __init__(self, binning=None, orig=None):
+    def __init__(self, binning=None, squared=None, orig=None):
         if not isinstance(orig, Snr):
             self.binning = binning if binning is not None else 1.0
+            self.squared = squared if squared is not None else False
         else:
             self.binning = binning if binning is not None else orig.binning
+            self.squared = squared if squared is not None else orig.squared
 
     def get_snr_impl(self, value, sigma, mask):
         raise NotImplementedError()
@@ -36,5 +38,5 @@ class Snr():
             else:                
                 mask = (s > 0.0)
 
-            return self.get_snr_impl(v, s, mask) * np.sqrt(self.binning)
+            return self.get_snr_impl(v, s, mask)
 

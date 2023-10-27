@@ -10,8 +10,8 @@ class Importer(Plugin):
     def add_args(self, parser, config):
         super().add_args(parser, config)
 
-    def init_from_args(self, config, args):
-        super().init_from_args(config, args)
+    def init_from_args(self, script, config, args):
+        super().init_from_args(script, config, args)
 
     def execute_notebooks(self, script):
         pass

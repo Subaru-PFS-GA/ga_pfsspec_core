@@ -17,6 +17,14 @@ class Physics():
     @staticmethod
     def angstrom_to_nm(wave):
         return 1e-1 * wave
+    
+    @staticmethod
+    def jy_to_abmag(flux):
+        return -2.5 * np.log10(flux) + 8.90
+    
+    @staticmethod
+    def abmag_to_jy(mag):
+        return 1e23 * 10 ** (-0.4 * (mag + 48.6))
 
     @staticmethod
     def fnu_to_flam(wave, fnu):

@@ -43,6 +43,9 @@ class RbfGrid(Grid):
     @property
     def pca_grid(self):
         return None
+    
+    def init_from_args(self, args, slice_from_args=True):
+        super().init_from_args(args)
 
     def ensure_lazy_load(self):
         # This works with HDF5 format only!
@@ -50,6 +53,7 @@ class RbfGrid(Grid):
             raise NotImplementedError()
 
     def get_value_path(self, name):
+        # This could be extended to be backward compatible with older versions of the rbf grid
         return '/'.join([Grid.PREFIX_GRID, Grid.PREFIX_ARRAYS, name, self.POSTFIX_RBF])
 
     def init_value(self, name, shape=None, **kwargs):
@@ -160,13 +164,16 @@ class RbfGrid(Grid):
             return None
         
         value = self.values[name](*idx)
+        
+        if value is not None:
+            if post_process is not None:
+                value = post_process(value)
 
-        if post_process is not None:
-            # TODO: we cannot post-process, nor cache templates yet,
-            #       implement it
-            raise NotImplementedError()
+            value = value[s or ()]
 
-        return value[s or ()]
+        # NOTE: RBF cannot cache values
+
+        return value
 
     def get_error_at(self, name, idx):
         """Return the error associated to the value `name`."""
@@ -276,6 +283,8 @@ class RbfGrid(Grid):
             else:
                 setattr(obj, p, float(axis.values[0]))
 
-    def interpolate_value_rbf(self, name, **kwargs):
-        return self.get_value(name, s=None, **kwargs)
+    def interpolate_value_rbf(self, name, s=None, post_process=None, cache_key_prefix=(), extrapolate=False, **kwargs):
+        idx = self.get_index(**kwargs)
+        value = self.get_value_at(name, idx, s=s, post_process=post_process, cache_key_prefix=cache_key_prefix, extrapolate=extrapolate)
+        return value, kwargs
     

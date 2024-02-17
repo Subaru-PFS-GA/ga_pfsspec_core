@@ -34,7 +34,7 @@ class Rbf(Script):
     def create_rbf(self):
         config = self.parser_configurations[self.args[self.CONFIG_CLASS]][self.args[self.CONFIG_SUBCLASS]]
         self.rbf = self.create_plugin(config)
-        self.rbf.init_from_args(config, self.args)
+        self.rbf.init_from_args(self, config, self.args)
 
     def open_data(self, args):
         self.rbf.open_data(args, args['in'], self.outdir, args['params'])

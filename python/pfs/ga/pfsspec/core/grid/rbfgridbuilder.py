@@ -46,8 +46,8 @@ class RbfGridBuilder(GridBuilder):
         parser.add_argument('--smoothing', type=float, help='RBF smoothing coeff.\n')
         parser.add_argument('--method', type=str, default=None, choices=['sparse', 'solve', 'nnls', 'skip'])
 
-    def init_from_args(self, config, args):
-        super(RbfGridBuilder, self).init_from_args(config, args)
+    def init_from_args(self, script, config, args):
+        super().init_from_args(script, config, args)
 
         self.padding = self.get_arg('padding', self.padding, args)
         self.fill = self.get_arg('fill', self.fill, args)

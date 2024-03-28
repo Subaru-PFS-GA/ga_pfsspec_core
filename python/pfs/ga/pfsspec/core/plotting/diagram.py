@@ -35,18 +35,17 @@ class Diagram():
 
     title = property(__get_title, __set_title)
 
-    def update_limits(self, i, data, q=(0.0, 1.0)):
+    def update_limits(self, i, limits):
         """
         When generating multiple subplots, keep track of data min and max (or quantiles).
         This is used as a smarter version of sharex and sharey
         """
 
         for j, stat in enumerate((min, max)):
-            m = np.quantile(data[~np.isnan(data)], q[j])
             if self.__diagram_axes[i].limits[j] is None:
-                self.__diagram_axes[i].limits[j] = m
+                self.__diagram_axes[i].limits[j] = limits[j]
             else:
-                self.__diagram_axes[i].limits[j] = stat(m, self.__diagram_axes[i].limits[j])
+                self.__diagram_axes[i].limits[j] = stat(limits[j], self.__diagram_axes[i].limits[j])
 
     def apply(self, xlim=None, ylim=None, **kwargs):
         xlim = xlim if xlim is not None else self.__diagram_axes[0].limits
@@ -58,11 +57,13 @@ class Diagram():
         self._ax.set_xlabel(self.__diagram_axes[0].label, **styles.axis_label_font())
         if self.__diagram_axes[0].invert and not self._ax.xaxis_inverted():
             self._ax.invert_xaxis()
+        self._ax.xaxis.offsetText.set(**styles.axis_label_font())
 
         self._ax.set_ylim(ylim)
         self._ax.set_ylabel(self.__diagram_axes[1].label, **styles.axis_label_font())
         if self.__diagram_axes[1].invert and not self._ax.yaxis_inverted():
             self._ax.invert_yaxis()
+        self._ax.yaxis.offsetText.set(**styles.axis_label_font())
 
         self._ax.set_title(self.__title, **styles.plot_title_font())
         

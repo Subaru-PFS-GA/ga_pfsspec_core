@@ -75,9 +75,18 @@ class SpectrumPlot(Diagram):
                 cont = spectrum.cont_in_unit(self.axes[1].unit)
                 self.plot(self._ax, wave, np.where(m, cont, np.nan), **s)
 
+        # Set limits
+        m &= ~np.isnan(flux) & ~np.isnan(wave)
+        if np.sum(m) > 0:
+            wmin, wmax = np.quantile(wave, (0.0, 1.0))
+            wmin -= (wmax - wmin) * 0.05
+            wmax += (wmax - wmin) * 0.05
+
+            fmax = np.quantile(flux[m], 0.95) * 1.1
+
             # Update min and max
-            self.update_limits(0, wave)
-            self.update_limits(1, flux, (0.0, 0.95))
+            self.update_limits(0, (wmin, wmax))
+            self.update_limits(1, (0, fmax))
 
         self.apply()
 

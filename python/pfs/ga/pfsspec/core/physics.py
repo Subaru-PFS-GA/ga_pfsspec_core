@@ -16,46 +16,77 @@ class Physics():
 
     @staticmethod
     def angstrom_to_nm(wave):
-        return 1e-1 * wave
+        if wave is not None:
+            return 1e-1 * wave
+        else:
+            return None
+        
+    @staticmethod
+    def nm_to_angstrom(wave):
+        if wave is not None:
+            return 1e1 * wave
+        else:
+            return None
     
     @staticmethod
     def jy_to_abmag(flux):
-        return -2.5 * np.log10(flux) + 8.90
+        if flux is not None:
+            return -2.5 * np.log10(flux) + 8.90
+        else:
+            return None
     
     @staticmethod
     def abmag_to_jy(mag):
-        return 1e23 * 10 ** (-0.4 * (mag + 48.6))
+        if mag is not None:
+            return 1e23 * 10 ** (-0.4 * (mag + 48.6))
+        else:
+            return None
 
     @staticmethod
     def fnu_to_flam(wave, fnu):
         # ergs/cm**2/s/Hz to erg/s/cm^2/A
-        flam = fnu / (3.336e-19 * wave**2)
-        return flam
+        if wave is not None and fnu is not None:
+            flam = fnu / (3.336e-19 * wave**2)
+            return flam
+        else:
+            return None
 
     @staticmethod
     def flam_to_fnu(wave, flam):
         # erg/s/cm^2/A to ergs/cm**2/s/Hz
-        fnu = flam * 3.336e-19 * wave**2
-        return fnu
+        if wave is not None and flam is not None:
+            fnu = flam * 3.336e-19 * wave**2
+            return fnu
+        else:
+            return None
 
     @staticmethod
     def fnu_to_abmag(fnu):
         # erg/s/cm^2/Hz to mag_AB
-        mags = -2.5 * np.log10(fnu) - 48.60
-        return mags
+        if fnu is not None:
+            mags = -2.5 * np.log10(fnu) - 48.60
+            return mags
+        else:
+            return None
 
     @staticmethod
     def abmag_to_fnu(abmag):
         # mag_AB to erg/s/cm^2/Hz
-        fnu = 10**(-0.4 * (abmag + 48.60))
-        return fnu
+        if abmag is not None:
+            fnu = 10**(-0.4 * (abmag + 48.60))
+            return fnu
+        else:
+            return None
 
     @staticmethod
     def flam_to_abmag(wave, flam):
         # erg/s/cm^2/A to mag_AB
-        fnu = Physics.flam_to_fnu(wave, flam)
-        mags = Physics.fnu_to_abmag(fnu)
-        return mags
+        if wave is not None and flam is not None:
+            fnu = Physics.flam_to_fnu(wave, flam)
+            mags = Physics.fnu_to_abmag(fnu)
+            return mags
+        else:
+            return None
 
     @staticmethod
     def air_to_vac(wave):
@@ -106,3 +137,17 @@ class Physics():
     @staticmethod
     def z_to_vel(vel):
         return Physics.c * vel * 1e-3       # km/s
+    
+    @staticmethod
+    def stellar_radius(log_L, log_T_eff):
+        """
+        Calculate the radius of a star from its luminosity and effective temperature
+        from the Stefan-Boltzmann law
+        """
+
+        sb = 5.67e-5                            # grams s^-3 kelvin^-4
+        lsun = 3.8e33                           # erg/s 
+        l = lsun * (10 ** log_L)                # luminosity from isochrone is in log(L/lsun)
+        t = 10 ** log_T_eff                     # T_eff from isochrone is in log(teff)
+        radius = np.sqrt(l / (4 * np.pi * sb * t**4))
+        return radius

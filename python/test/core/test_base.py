@@ -13,7 +13,14 @@ class TestBase(TestCase):
         plt.figure(figsize=(10, 6))
 
     def get_filename(self, ext):
-        filename = type(self).__name__[4:] + '_' + self._testMethodName[5:] + ext
+        name = type(self).__name__
+        if name.lower().startswith('test'):
+            filename = name[4:]
+        elif name.lower().endswith('test'):
+            filename = name[:-4]
+        else:
+            raise NotImplementedError()
+        filename += '_' + self._testMethodName[5:] + ext
         return filename
 
     def get_test_filename(self, filename=None, ext=None):

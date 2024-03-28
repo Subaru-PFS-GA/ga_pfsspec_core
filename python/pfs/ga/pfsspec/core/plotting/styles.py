@@ -26,6 +26,30 @@ def solid_line(**kwargs):
 
     return args
 
+def thin_line(**kwargs):
+    args = kwargs.copy()
+
+    __update_style(args, ('linewidth', 'lw'), 0.2)
+
+    return args
+
+def extra_thin_line(**kwargs):
+    args = kwargs.copy()
+
+    __update_style(args, ('linewidth', 'lw'), 0.1)
+
+    return args
+
+def color_line(color, **kwargs):
+    args = kwargs.copy()
+
+    __update_style(args, 'color', color)
+
+    return args
+
+def lightgray_line(**kwargs):
+    return color_line('lightgray', **kwargs)
+
 def open_circle(**kwargs):
     args = kwargs.copy()
 
@@ -71,5 +95,26 @@ def histogram_imshow(**kwargs):
 
     __update_style(args, 'aspect', 'auto')
     __update_style(args, 'origin', 'lower')
+
+    return args
+
+def axis_label_font(**kwargs):
+    args = kwargs.copy()
+
+    __update_style(args, 'fontsize', 8)
+
+    return args
+
+def tick_label_font(**kwargs):
+    args = kwargs.copy()
+
+    __update_style(args, 'labelsize', 8)
+
+    return args
+
+def plot_title_font(**kwargs):
+    args = kwargs.copy()
+
+    __update_style(args, 'fontsize', 8)
 
     return args

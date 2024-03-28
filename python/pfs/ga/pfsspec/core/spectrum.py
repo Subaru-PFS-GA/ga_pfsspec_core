@@ -26,7 +26,29 @@ class Spectrum(PfsObject):
     MASK_NOSKY = 0x20000                    # No sky model available
     MASK_SKYLINE = 0x30000                  # Strong sky line
     MASK_EXTRAPOLATED = 0x40000             # Values are extrapolated
-    MASK_ALL = 0xEFFFFFFF                   # All bits (signed int)
+    MASK_ANY = 0xEFFFFFFF                   # All bits (signed int)
+
+
+    # PFS masks:
+
+    # BAD: the pixel is a known bad pixel
+    # SAT: the pixel was saturated
+    # INTRP: the pixel has been interpolated
+    # CR: the pixel is believed to be affected by a cosmic ray
+    # EDGE: the pixel is close to the edge of the image (from LSST; not relevant for PFS)
+    # DETECTED: the pixel has a positive value over threshold (from LSST; not relevant for PFS)
+    # DETECTED_NEGATIVE: the pixel has a negative value over threshold (from LSST; not relevant for PFS)
+    # SUSPECT: the pixel is suspected to be non-linear
+    # NO_DATA: there are no good value for this value
+    # UNMASKEDNAN: the pixel contained a NAN
+    # BAD_FLAT: the pixel is bad in the flat
+    # FIBERTRACE: the pixel is part of a fiber trace
+    # BAD_SKY: the pixel is bad in the sky model
+    # BAD_FLUXCAL: the pixel is bad in the flux calibration
+    # OVERLAP: the pixel is part of a wavelength overlap (dichroic)
+
+
+
 
     def __init__(self, orig=None):
         super().__init__(orig=orig)
@@ -34,10 +56,11 @@ class Spectrum(PfsObject):
         if not isinstance(orig, Spectrum):
             self.index = None
             self.id = 0
+
             self.redshift = 0.0
             self.redshift_err = 0.0
 
-            # TODO: these should go elsewhere, they apply to observed spectra only
+            # TODO: these should go elsewhere, they apply to simulated spectra only
             self.exp_count = None
             self.exp_time = None
             self.seeing = None
@@ -51,6 +74,7 @@ class Spectrum(PfsObject):
             self.mag = None
             ###
 
+            self.spectrograph = None
             self.fiberid = None
 
             self.wave = None
@@ -181,7 +205,7 @@ class Spectrum(PfsObject):
     def merge_mask(self, mask, bits=MASK_DEFAULT):
         self.mask = self.get_mask_merged(self.wave, self.mask, mask, bits2=bits)
 
-    def mask_as_bool(self, bits=MASK_ALL):
+    def mask_as_bool(self, bits=MASK_ANY):
         return self.get_mask_as_bool(self.wave, self.mask, bits=bits)
     
     def mask_as_int(self):
@@ -191,7 +215,10 @@ class Spectrum(PfsObject):
         return ~np.isnan(self.wave)
 
     @staticmethod
-    def get_mask_as_bool(wave, mask, bits=MASK_ALL):
+    def get_mask_as_bool(wave, mask, bits=MASK_ANY):
+        """
+        Return array which is True if the pixel is not maskeds.
+        """
         if mask is None:
             return None
         elif isinstance(mask, slice):
@@ -209,7 +236,7 @@ class Spectrum(PfsObject):
             return mask
         
     @staticmethod
-    def get_mask_as_int(wave, mask, bits=MASK_ALL):
+    def get_mask_as_int(wave, mask, bits=MASK_ANY):
         """
         Convert any type of mask into an integer mask.
         If the mask is already integer, keep it as is. If it's a boolean
@@ -650,3 +677,41 @@ class Spectrum(PfsObject):
     def print_info(self):
         for p in self.get_param_names():
             print(p, getattr(self, p))
+
+    def wave_in_unit(self, unit):
+        if self.wave is None:
+            return None
+        elif unit == 'AA':
+            return self.wave, self.wave_edges
+        elif unit == 'nm':
+            return Physics.angstrom_to_nm(self.wave), Physics.angstrom_to_nm(self.wave_edges)
+        else:
+            raise NotImplementedError()
+        
+    def __flux_in_unit(self, flux, unit):
+        def conv(factor, vector):
+            return factor * vector if vector is not None else None
+
+        if flux is None:
+            return None
+        elif unit == 'erg s-1 cm-2 A-1':
+            return flux
+        elif unit in ['nJy', 'Jy', 'erg s-1 cm-2 Hz-1']:
+            flux = Physics.flam_to_fnu(self.wave, flux)
+            if unit == 'nJy':
+                return conv(1e32, flux)
+            elif unit == 'Jy':
+                return conv(1e23, flux)
+            elif unit == 'erg s-1 cm-2 Hz-1':
+                return flux
+        else:
+            return NotImplementedError()
+        
+    def flux_in_unit(self, unit):
+        return self.__flux_in_unit(self.flux, unit), self.__flux_in_unit(self.flux_err, unit)
+        
+    def cont_in_unit(self, unit):
+        return self.__flux_in_unit(self.cont, unit)
+
+    def get_id_string(self):
+        return f'{self.id}'

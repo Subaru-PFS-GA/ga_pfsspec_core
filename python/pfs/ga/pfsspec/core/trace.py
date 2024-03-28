@@ -1,6 +1,8 @@
 import os
 import numpy as np
-import matplotlib.pyplot as plt
+
+from pfs.ga.pfsspec.core.util.args import *
+from pfs.ga.pfsspec.core.plotting import DiagramPage
 
 class Trace():
     PLOT_LEVEL_NONE = 0
@@ -12,7 +14,11 @@ class Trace():
     LOG_LEVEL_INFO = 1
     LOG_LEVEL_DEBUG = 2
 
-    def __init__(self, outdir='.', plot_inline=False, plot_level=PLOT_LEVEL_NONE, log_level=LOG_LEVEL_NONE):
+    def __init__(self, outdir='.', 
+                 plot_inline=False,
+                 plot_level=PLOT_LEVEL_NONE,
+                 log_level=LOG_LEVEL_NONE):
+        
         # TODO: add inline (notebook) and file option
 
         self.outdir = outdir
@@ -21,57 +27,42 @@ class Trace():
         self.plot_level = plot_level
         self.log_level = log_level
 
-        self.figure_size = (3.4, 2.5)
-        self.figure_subplotsize = (3.4, 2.0)
-        self.figure_dpi = 240
-        self.figures = {}
+        self.diagram_pages = {}
+        self.figure_formats = [ '.png' ]
 
     def add_args(self, config, parser):
         pass
 
     def init_from_args(self, script, config, args):
-        pass
+        self.plot_level = get_arg('plot_level', self.plot_level, args)
 
     def make_outdir(self, fn):
         dir = os.path.dirname(fn)
         if self.create_outdir and not os.path.isdir(dir):
             os.makedirs(dir, exist_ok=True)
 
-    def get_figure(self, key, nrows=1, ncols=1):
-        if key is not None and key in self.figures:
-            return self.figures[key]
+    def get_diagram_page(self, key, npages=1,  nrows=1, ncols=1, diagram_size=None):
+        if key is not None and key in self.diagram_pages:
+            return self.diagram_pages[key]
         else:
-            figsize = (
-                self.figure_size[0] + (ncols - 1) * self.figure_subplotsize[0],
-                self.figure_size[1] + (nrows - 1) * self.figure_subplotsize[1]
-            )
-            f = plt.figure(figsize=figsize, dpi=self.figure_dpi)
-            gs = f.add_gridspec(nrows=nrows, ncols=ncols)
-            ax = np.empty((ncols, nrows), dtype=object)
-            for r in range(nrows):
-                for c in range(ncols):
-                    ax[c, r] = f.add_subplot(gs[r, c])
-            ax = ax.squeeze()
-            if ax.size == 1:
-                ax = ax.item()
-            self.figures[key] = (f, ax)
-            return f, ax
+            f = DiagramPage(npages, nrows, ncols, diagram_size=diagram_size)
+            self.diagram_pages[key] = f
+            return f
         
     def format_figures(self):
-        for k, (f, axs) in self.figures.items():
-            for ax in np.atleast_1d(axs).ravel():
-                ax.legend()
-            f.tight_layout()
+        for k, fig in self.diagram_pages.items():
+            fig.format()
 
     def show_figures(self):
-        for k, (f, ax) in self.figures.items():
-            f.show()
+        for k, fig in self.diagram_pages.items():
+            fig.show()
 
     def save_figures(self):
-        for k, (f, ax) in self.figures.items():
-            fn = os.path.join(self.outdir, k + '.png')
-            self.make_outdir(fn)
-            f.savefig(fn)
+        for k, fig in self.diagram_pages.items():
+            for format in self.figure_formats:
+                fn = os.path.join(self.outdir, k + format)
+                self.make_outdir(fn)
+                fig.save(fn)
 
     def flush_figures(self):
         self.format_figures()
@@ -79,4 +70,4 @@ class Trace():
             self.show_figures()
         else:
             self.save_figures()
-        self.figures = {}
+        self.diagram_pages = {}

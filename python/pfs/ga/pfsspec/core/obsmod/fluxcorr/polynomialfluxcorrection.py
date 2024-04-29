@@ -1,8 +1,14 @@
 import numpy as np
 
-from .fluxcorrectionmodel import FluxCorrectionModel
+from .linearfluxcorrection import LinearFluxCorrection
 
-class PolynomialFluxCorrection(FluxCorrectionModel):
+class PolynomialFluxCorrection(LinearFluxCorrection):
+    """
+    Implements a polynomial flux correction basis. The flux correction is
+    multiplicative. The basis does not contain the constant function because
+    the amplitude is treated separately when applying flux correction in rvfit.
+    """
+
     def __init__(self, orig=None, function=None, degree=None, wlim=None):
         super().__init__(orig=orig)
 
@@ -36,9 +42,9 @@ class PolynomialFluxCorrection(FluxCorrectionModel):
             normwave = (wave - self.wlim[0]) / (self.wlim[1] - self.wlim[0]) * 2 - 1
             polys = np.empty((wave.shape[0], self.degree))
 
-            coeffs = np.eye(self.degree)
+            coeffs = np.eye(self.degree + 1)
             for i in range(self.degree):
-                polys[:, i] = t(coeffs[i])(normwave)
+                polys[:, i] = t(coeffs[i + 1])(normwave)
 
             return polys
 

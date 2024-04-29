@@ -1,2 +1,3 @@
-from .fluxcorrectionmodel import FluxCorrectionModel
+from .fluxcorrection import FluxCorrection
+from .linearfluxcorrection import LinearFluxCorrection
 from .polynomialfluxcorrection import PolynomialFluxCorrection

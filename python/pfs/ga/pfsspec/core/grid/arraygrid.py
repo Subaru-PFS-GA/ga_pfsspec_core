@@ -554,15 +554,19 @@ class ArrayGrid(Grid):
                 return None
 
         # Parameter values to interpolate between
-        # TODO: Handle the case when ax == ab
         p = list(kwargs.keys())[0]
         x = kwargs[p]
         xa = self.axes[p].values[idx1[0]]
         xb = self.axes[p].values[idx2[0]]
-        a = self.get_value_at(name, idx1, s=s, post_process=post_process, cache_key_prefix=cache_key_prefix)
-        b = self.get_value_at(name, idx2, s=s, post_process=post_process, cache_key_prefix=cache_key_prefix)
-        m = (b - a) / (xb - xa)
-        value = a + (x - xa) * m
+
+        if xa == xb:
+            value = self.get_value_at(name, idx1, s=s, post_process=post_process, cache_key_prefix=cache_key_prefix)
+        else:
+            a = self.get_value_at(name, idx1, s=s, post_process=post_process, cache_key_prefix=cache_key_prefix)
+            b = self.get_value_at(name, idx2, s=s, post_process=post_process, cache_key_prefix=cache_key_prefix)
+            m = (b - a) / (xb - xa)
+            value = a + (x - xa) * m
+
         return value, kwargs
 
     def get_nearby_value(self, name, **kwargs):

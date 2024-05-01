@@ -462,7 +462,8 @@ class Spectrum(PfsObject):
         Generate the noise based on a noise model and add to the flux.
         """
 
-        self.flux = noise_model.apply_noise(self.wave, self.flux, self.flux_err, mag=self.mag, noise_level=noise_level, random_state=random_state)
+        noise = noise_model.generate_noise(self.wave, self.flux, self.flux_err, mag=self.mag, noise_level=noise_level, random_state=random_state)
+        self.flux = noise_model.apply_noise(self.wave, self.flux, noise)
 
         self.append_history(f'Applied noise model of type `{type(noise_model).__name__}`.')
 

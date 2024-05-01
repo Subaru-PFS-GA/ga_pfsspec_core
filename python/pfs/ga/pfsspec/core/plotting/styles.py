@@ -47,6 +47,9 @@ def color_line(color, **kwargs):
 
     return args
 
+def red_line(**kwargs):
+    return color_line('red', **kwargs)
+
 def lightgray_line(**kwargs):
     return color_line('lightgray', **kwargs)
 

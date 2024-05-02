@@ -5,12 +5,17 @@ import matplotlib.pyplot as plt
 from ..util import *
 from ..util.copy import *
 from . import styles
+from .diagramaxis import DiagramAxis
 
 class Diagram():
     def __init__(self, ax: plt.Axes = None,
                  title=None,
                  diagram_axes=None, orig=None):
+
         if not isinstance(orig, Diagram):
+            if diagram_axes is None:
+                diagram_axes = [DiagramAxis(), DiagramAxis()]
+            
             self.__diagram_axes = diagram_axes
 
             self.__title = title
@@ -99,6 +104,35 @@ class Diagram():
             args += (fmt,)
         
         l = ax.plot(*args, **styles.sanitize_style(**style))
+        self.apply()
+
+        return l
+    
+    def errorbar(self, ax: plt.Axes, x, y, xerr=None, yerr=None, fmt=None, mask=None, s=None, **kwargs):
+        style = styles.thin_line(**kwargs)
+
+        s = s if s is not None else np.s_[:]
+        mask = mask if mask is not None else np.s_[:]
+
+        def mask_vector(vector):
+            if vector is None:
+                return None
+        
+            if hasattr(vector, '__getitem__'):
+                vector = vector[mask]
+            
+            if hasattr(vector, '__getitem__'):
+                vector = vector[s]
+            
+            return vector
+
+        # NOTE: xerr and yerr are swapped wrt. x and y!
+        args = (mask_vector(x), mask_vector(y), mask_vector(yerr), mask_vector(xerr))
+        
+        if fmt is not None:
+            args += (fmt,)
+
+        l = ax.errorbar(*args, **styles.sanitize_style(**style))
         self.apply()
 
         return l

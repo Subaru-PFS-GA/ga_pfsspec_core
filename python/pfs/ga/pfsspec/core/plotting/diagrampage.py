@@ -93,8 +93,8 @@ class DiagramPage():
             return dict(
                  left=left, right=right, top=top, bottom=bottom, wspace=wspace, hspace=hspace
             )
-        
-    def add_diagram(self, key, d):
+    
+    def __parse_key(self, key):
         if len(key) == 2:
             page = 0
         elif len(key) == 3:
@@ -103,14 +103,24 @@ class DiagramPage():
         else:
             raise ValueError('Key must have 2 or 3 elements.')
 
+        return page, key
+    
+    def add_axes(self, key):
+        page, key = self.__parse_key(key)
+
         if (page, key) in self.__ax:
             ax = self.__ax[(page, key)]
         else:
             ax = self.__f[page].add_subplot(self.__gs[page][key])
             self.__ax[(page, key)] = ax
 
-        d._ax = ax
-        self.__diagrams.append(d)
+        return ax
+        
+    def add_diagram(self, key, diagram):       
+        ax = self.add_axes(key)
+
+        diagram._ax = ax
+        self.__diagrams.append(diagram)
 
         return ax
 
@@ -161,7 +171,7 @@ class DiagramPage():
                         pdf.savefig(self.__f[i])
             else:
                 for i in range(self.__npages):
-                    if self.__npages == 0:
+                    if self.__npages == 1:
                         fn = file
                     else:
                         fn = file.format(i, page=i)

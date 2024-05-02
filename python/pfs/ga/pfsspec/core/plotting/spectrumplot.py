@@ -57,7 +57,17 @@ class SpectrumPlot(Diagram):
 
         return wmin, wmax, fmax
     
+    def _get_wave_mask(self, spectrum, wlim):
+        if wlim is not None:
+            wnm, _ = spectrum.wave_in_unit('nm')
+            wave_mask = (wnm >= wlim[0]) & (wnm <= wlim[1])
+        else:
+            wave_mask = np.full_like(spectrum.wave, True, dtype=bool)
+
+        return wave_mask
+    
     def _plot_spectrum(self, wave, flux, flux_err, cont, mask, style,
+                       s=None,
                        plot_mask=None, plot_flux_err=None, plot_cont=None,
                        plot_residual=False):
         
@@ -65,34 +75,56 @@ class SpectrumPlot(Diagram):
         plot_flux_err = plot_flux_err if plot_flux_err is not None else self.plot_flux_err
         plot_cont = plot_cont if plot_cont is not None else self.plot_cont
 
+        def apply_slice(vector):
+            if s is not None:
+                return vector[s] if vector is not None else None
+            else:
+                return vector
+            
+        if np.size(apply_slice(wave)) == 0:
+            return None
+
         # First iteration: plot in gray if plotting mask is requested
         # Second iteration: plot unmasked in color
         for i in range(2):
             if i == 0 and plot_mask and mask is not None:
-                s = styles.lightgray_line(**style)
+                ss = styles.lightgray_line(**style)
                 m = None
             elif i == 0:
                 continue
             else:
-                s = style
+                ss = style
                 if plot_mask and mask is not None:
                     # Mask is true when pixel has zero flags set
                     m = mask
 
             m = mask if mask is not None else np.full_like(wave, True, dtype=bool)
 
-            l = self.plot(self._ax, wave, np.where(m, flux, np.nan), **s)
+            l = self.plot(self._ax,
+                        apply_slice(wave),
+                        apply_slice(np.where(m, flux, np.nan)),
+                        **ss)
 
             # TODO: define styles as use same color as fluxs
             if plot_flux_err and flux_err is not None:
-                self.plot(self._ax, wave, np.where(m, flux_err, np.nan), **s)
+                self.plot(self._ax,
+                        apply_slice(wave),
+                        apply_slice(np.where(m, flux_err, np.nan)),
+                        **ss)
 
             if plot_cont and cont is not None:
-                self.plot(self._ax, wave, np.where(m, cont, np.nan), **s)
+                self.plot(self._ax,
+                        apply_slice(wave),
+                        apply_slice(np.where(m, cont, np.nan)),
+                        **ss)
 
         # Set limits
         if np.sum(m) > 0:
-            wmin, wmax, fmax = self.get_limits(wave, flux, mask=m, plot_residual=plot_residual)
+            wmin, wmax, fmax = self.get_limits(
+                apply_slice(wave),
+                apply_slice(flux),
+                mask=apply_slice(m),
+                plot_residual=plot_residual)
 
             # Update min and max
             self.update_limits(0, (wmin, wmax))
@@ -107,7 +139,8 @@ class SpectrumPlot(Diagram):
 
     def plot_spectrum(self, spectrum, 
                       plot_mask=None, plot_flux_err=None, plot_cont=None,
-                      mask_bits=Spectrum.MASK_ANY, 
+                      mask_bits=Spectrum.MASK_ANY,
+                      wlim=None,
                       **kwargs):
         
         style = styles.extra_thin_line(**styles.solid_line(**kwargs))
@@ -120,14 +153,20 @@ class SpectrumPlot(Diagram):
         else:
             cont = None
 
-        l = self._plot_spectrum(wave, flux, flux_err, cont, mask, style,
+        wave_mask = self._get_wave_mask(spectrum, wlim)
+        l = self._plot_spectrum(wave,
+                                flux,
+                                flux_err,
+                                cont,
+                                mask,
+                                style=style,
+                                s=wave_mask,
                                 plot_mask=plot_mask,
                                 plot_flux_err=plot_flux_err,
                                 plot_cont=plot_cont)
-
         return l
     
-    def plot_template(self, template, **kwargs):
+    def plot_template(self, template, wlim=None, **kwargs):
         # Plot a spectrum template
 
         style = styles.extra_thin_line(**styles.solid_line(**kwargs))
@@ -136,13 +175,14 @@ class SpectrumPlot(Diagram):
         wave, _ = template.wave_in_unit(self.axes[0].unit)
         flux, flux_err = template.flux_in_unit(self.axes[1].unit)
 
-        l = self._plot_spectrum(wave, flux, flux_err, None, None, style)
-
+        wave_mask = self._get_wave_mask(template, wlim)
+        l = self._plot_spectrum(wave, flux, flux_err, None, None, style, s=wave_mask)
         return l
     
     def plot_residual(self, spectrum, template,
                       plot_mask=None, plot_flux_err=None, plot_cont=None,
                       mask_bits=Spectrum.MASK_ANY, 
+                      wlim=None,
                       **kwargs):
         
         style = styles.extra_thin_line(**styles.solid_line(**kwargs))
@@ -154,11 +194,13 @@ class SpectrumPlot(Diagram):
 
         flux = flux - template_flux
 
-        l = self._plot_spectrum(wave, flux, None, None, mask, style,
+        wave_mask = self._get_wave_mask(spectrum, wlim)
+        l = self._plot_spectrum(wave, flux, None, None, mask,
+                                style,
+                                s=wave_mask,
                                 plot_mask=plot_mask,
                                 plot_flux_err=plot_flux_err,
                                 plot_cont=False,
                                 plot_residual=True)
-
         return l
 

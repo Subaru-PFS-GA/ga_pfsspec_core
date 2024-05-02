@@ -13,7 +13,9 @@ def __update_style(args, key, value):
 def dashed_line(**kwargs):
     args = kwargs.copy()
 
+    __update_style(args, 'marker', 'None')
     __update_style(args, ('linestyle', 'ls'), 'dashed')
+    __update_style(args, ('linewidth', 'lw'), 0.5)
 
     return args
 
@@ -49,6 +51,9 @@ def color_line(color, **kwargs):
 
 def red_line(**kwargs):
     return color_line('red', **kwargs)
+
+def blue_line(**kwargs):
+    return color_line('blue', **kwargs)
 
 def lightgray_line(**kwargs):
     return color_line('lightgray', **kwargs)

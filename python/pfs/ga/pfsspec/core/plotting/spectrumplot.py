@@ -69,7 +69,8 @@ class SpectrumPlot(Diagram):
     def _plot_spectrum(self, wave, flux, flux_err, cont, mask, style,
                        s=None,
                        plot_mask=None, plot_flux_err=None, plot_cont=None,
-                       plot_residual=False):
+                       plot_residual=False,
+                       auto_limits=False):
         
         plot_mask = plot_mask if plot_mask is not None else self.plot_mask,
         plot_flux_err = plot_flux_err if plot_flux_err is not None else self.plot_flux_err
@@ -119,7 +120,7 @@ class SpectrumPlot(Diagram):
                         **ss)
 
         # Set limits
-        if np.sum(m) > 0:
+        if auto_limits and np.sum(m) > 0:
             wmin, wmax, fmax = self.get_limits(
                 apply_slice(wave),
                 apply_slice(flux),
@@ -141,6 +142,7 @@ class SpectrumPlot(Diagram):
                       plot_mask=None, plot_flux_err=None, plot_cont=None,
                       mask_bits=Spectrum.MASK_ANY,
                       wlim=None,
+                      auto_limits=False,
                       **kwargs):
         
         style = styles.extra_thin_line(**styles.solid_line(**kwargs))
@@ -163,10 +165,11 @@ class SpectrumPlot(Diagram):
                                 s=wave_mask,
                                 plot_mask=plot_mask,
                                 plot_flux_err=plot_flux_err,
-                                plot_cont=plot_cont)
+                                plot_cont=plot_cont,
+                                auto_limits=auto_limits)
         return l
     
-    def plot_template(self, template, wlim=None, **kwargs):
+    def plot_template(self, template, wlim=None, auto_limits=False, **kwargs):
         # Plot a spectrum template
 
         style = styles.extra_thin_line(**styles.solid_line(**kwargs))
@@ -176,13 +179,14 @@ class SpectrumPlot(Diagram):
         flux, flux_err = template.flux_in_unit(self.axes[1].unit)
 
         wave_mask = self._get_wave_mask(template, wlim)
-        l = self._plot_spectrum(wave, flux, flux_err, None, None, style, s=wave_mask)
+        l = self._plot_spectrum(wave, flux, flux_err, None, None, style, s=wave_mask, auto_limits=auto_limits)
         return l
     
     def plot_residual(self, spectrum, template,
                       plot_mask=None, plot_flux_err=None, plot_cont=None,
                       mask_bits=Spectrum.MASK_ANY, 
                       wlim=None,
+                      auto_limits=False,
                       **kwargs):
         
         style = styles.extra_thin_line(**styles.solid_line(**kwargs))
@@ -201,6 +205,7 @@ class SpectrumPlot(Diagram):
                                 plot_mask=plot_mask,
                                 plot_flux_err=plot_flux_err,
                                 plot_cont=False,
-                                plot_residual=True)
+                                plot_residual=True,
+                                auto_limits=auto_limits)
         return l
 

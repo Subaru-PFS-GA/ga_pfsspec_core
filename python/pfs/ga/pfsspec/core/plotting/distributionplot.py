@@ -8,11 +8,8 @@ from .diagram import Diagram
 from .diagramaxis import DiagramAxis
 from . import styles
 
-class PriorPlot(Diagram):
-    def __init__(self, ax: plt.Axes = None, diagram_axes=None,
-                 title=None,
-                 orig=None):
-
+class DistributionPlot(Diagram):
+    def __init__(self, ax: plt.Axes = None, diagram_axes=None, title=None, orig=None):
         if diagram_axes is None:
             diagram_axes = [ DiagramAxis(label='x'), DiagramAxis(label='p(x)') ]
 
@@ -23,7 +20,7 @@ class PriorPlot(Diagram):
     def _validate(self):
         pass
 
-    def plot_prior(self, param_0, param_bounds, param_prior, param_step, normalize=False, **kwargs):
+    def get_limits(self, param_bounds=None, param_0=None, param_step=None):
         # Figure out the plotting range
         if param_bounds is not None:
             pmin = param_bounds[0]
@@ -44,6 +41,12 @@ class PriorPlot(Diagram):
             pmin = min(pmin, param_0)
             pmax = max(pmax, param_0)
 
+        return pmin, pmax
+
+    def plot_prior(self, param_prior, param_bounds=None, param_0=None, param_step=None, 
+                   normalize=True, auto_limits=False, **kwargs):
+        pmin, pmax = self.get_limits(param_bounds, param_0, param_step)
+
         # Evaluate and plot the distribution
         if param_prior is not None:
             x = np.linspace(pmin, pmax, 300)
@@ -61,15 +64,19 @@ class PriorPlot(Diagram):
             s = styles.thin_line(**kwargs)
             self._ax.plot(x, y, **s)
 
-        # Buffer the range
-        pmin -= (pmax - pmin) * 0.05
-        pmax += (pmax - pmin) * 0.05
-
         # Plot param_0
         if param_0 is not None:
             s = styles.red_line(**styles.thin_line(**kwargs))
             self._ax.axvline(param_0, **s)
 
-        self.update_limits(0, (pmin, pmax))
+        if auto_limits:
+            # Buffer the range
+            pmin -= (pmax - pmin) * 0.05
+            pmax += (pmax - pmin) * 0.05
+
+            self.update_limits(0, (pmin, pmax))
+
+            if normalize:
+                self.update_limits(1, (0, 1))
 
         self.apply()

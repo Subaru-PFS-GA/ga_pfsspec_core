@@ -38,9 +38,9 @@ class CornerPlotTest(TestBase):
         corr = np.array([[1.0, 0.5, 0.3], [0.5, 1.0, 0.2], [0.3, 0.2, 1.0]])
         cov = corr * np.einsum('i,j->ij', s, s)
         
-        cc.covariance(mu, cov, sigma=1)
-        cc.covariance(mu, cov, sigma=2, ls='--')
-        cc.covariance(mu, cov, sigma=3, ls=':')
+        cc.plot_covariance(mu, cov, sigma=1)
+        cc.plot_covariance(mu, cov, sigma=2, ls='--')
+        cc.plot_covariance(mu, cov, sigma=3, ls=':')
 
         cc.errorbar((0, 1.0), (1, 1.5), (2, 2.0), fmt='o')
 

@@ -4,7 +4,10 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 
 from ..util import ReadOnlyList
+from .diagram import styles
 from .diagram import Diagram
+from .diagramaxis import DiagramAxis
+from .distributionplot import DistributionPlot
 
 class CornerPlot():
     def __init__(self, 
@@ -41,19 +44,16 @@ class CornerPlot():
         for i, iaxis in enumerate(self.__diagram_axes):
             for j, jaxis in enumerate(self.__diagram_axes):
                 if i == j:
-                    # TODO: histogram, prior along the diagonal
-                    # d = Diagram(diagram_axes=[iaxis, jaxis])
-                    # self.__diagram_page.add_diagram((i, j), d)
-                    d = None
-                    ax = None
-                    pass
+                    # Histogram, prior along the diagonal
+                    d = DistributionPlot(diagram_axes=[iaxis, DiagramAxis((0, None), label='p(x)')])
                 elif i < j:
                     d = Diagram(diagram_axes=[iaxis, jaxis])
-                    ax = self.__diagram_page.add_diagram((j, i), d)
                 else:
                     continue
 
                 self.__diagrams[(i, j)] = d
+
+                ax = self.__diagram_page.add_diagram((j, i), d)
                 self.__ax[(i, j)] = ax
 
 
@@ -80,9 +80,12 @@ class CornerPlot():
     def plot(self):
         pass
 
-    def errorbar(self, *args, **kwargs):
+    def errorbar(self, *args, sigma=None, **kwargs):
         # args: list of (x), (x, xerr) or (x, xerr_low, x_err_high) tuples for each
         #       axis
+
+        if sigma is None:
+            sigma = [ 1 ]
 
         def get_values(x):
             if not isinstance(x, (list, tuple)):
@@ -104,7 +107,21 @@ class CornerPlot():
         
         for i, iaxis in enumerate(self.__diagram_axes):
             for j, jaxis in enumerate(self.__diagram_axes):
-                if i < j:
+                if i == j:
+                    ax = self.__ax[(i, i)]
+
+                    x, xerr = get_values(args[i])
+
+                    if x is not None:
+                        s = styles.red_line(**styles.thin_line(**kwargs))
+                        ax.axvline(x, **s)
+
+                        if xerr is not None:
+                            s = styles.dashed_line(**s)
+                            for sig in sigma:
+                                ax.axvline(x - sig * xerr, **s)
+                                ax.axvline(x + sig * xerr, **s)
+                elif i < j:
                     d = self.__diagrams[(i, j)]
                     ax = self.__ax[(i, j)]
 
@@ -112,6 +129,8 @@ class CornerPlot():
                     y, yerr = get_values(args[j])
 
                     d.errorbar(ax, x, y, xerr=xerr, yerr=yerr, **kwargs)
+
+        self.apply()
 
     def __proj_cov(self, mu, cov, indexes):
         # Project the covariance matrix to the coordinates of  the plots
@@ -132,7 +151,7 @@ class CornerPlot():
         ax.add_patch(ellipse)
         return ellipse
 
-    def covariance(self, mu, cov, sigma=None, **kwargs):
+    def plot_covariance(self, mu, cov, sigma=None, **kwargs):
         # Plot the projections of a covariance matrix
 
         if sigma is None:
@@ -150,6 +169,20 @@ class CornerPlot():
 
                     for s in sigma:
                         self.__plot_cov_ellipse(ax, pmu, s**2 * pcov, **kwargs)
+
+        self.apply()
+
+    def plot_priors(self, *args, normalize=True, **kwargs):
+        # Plot the priors along the diagonal
+
+        for i, iaxis in enumerate(self.__diagram_axes):
+            d = self.__diagrams[(i, i)]
+            ax = self.__ax[(i, i)]
+
+            param_prior, param_bounds, param_0, param_step = args[i]
+            d.plot_prior(param_prior, param_bounds, param_0, param_step, 
+                         normalize=normalize, auto_limits=False,
+                         **kwargs)
 
     def hist(self):
         pass

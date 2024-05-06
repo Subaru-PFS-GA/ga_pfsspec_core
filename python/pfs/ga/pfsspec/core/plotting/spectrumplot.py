@@ -85,21 +85,25 @@ class SpectrumPlot(Diagram):
         if np.size(apply_slice(wave)) == 0:
             return None
 
-        # First iteration: plot in gray if plotting mask is requested
-        # Second iteration: plot unmasked in color
+        # First iteration: plot everything in gray if plotting mask is requested
+        # Second iteration: plot unmasked pixels in color
         for i in range(2):
             if i == 0 and plot_mask and mask is not None:
                 ss = styles.lightgray_line(**style)
                 m = None
             elif i == 0:
                 continue
-            else:
+            elif i == 1:
                 ss = style
                 if plot_mask and mask is not None:
                     # Mask is true when pixel has zero flags set
                     m = mask
+                else:
+                    m = None
+            else:
+                raise NotImplementedError()
 
-            m = mask if mask is not None else np.full_like(wave, True, dtype=bool)
+            m = m if m is not None else np.full_like(wave, True, dtype=bool)
 
             l = self.plot(self._ax,
                         apply_slice(wave),

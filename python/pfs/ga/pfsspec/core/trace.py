@@ -41,11 +41,11 @@ class Trace():
         if self.create_outdir and not os.path.isdir(dir):
             os.makedirs(dir, exist_ok=True)
 
-    def get_diagram_page(self, key, npages=1,  nrows=1, ncols=1, diagram_size=None):
+    def get_diagram_page(self, key, npages=1,  nrows=1, ncols=1, page_size=None, diagram_size=None):
         if key is not None and key in self.diagram_pages:
             return self.diagram_pages[key]
         else:
-            f = DiagramPage(npages, nrows, ncols, diagram_size=diagram_size)
+            f = DiagramPage(npages, nrows, ncols, page_size=page_size, diagram_size=diagram_size)
             self.diagram_pages[key] = f
             return f
         

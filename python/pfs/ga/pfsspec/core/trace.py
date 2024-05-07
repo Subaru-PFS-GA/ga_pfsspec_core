@@ -14,14 +14,15 @@ class Trace():
     LOG_LEVEL_INFO = 1
     LOG_LEVEL_DEBUG = 2
 
-    def __init__(self, outdir='.', 
+    def __init__(self, figdir='.', logdir='.',
                  plot_inline=False,
                  plot_level=PLOT_LEVEL_NONE,
                  log_level=LOG_LEVEL_NONE):
         
         # TODO: add inline (notebook) and file option
 
-        self.outdir = outdir
+        self.figdir = figdir
+        self.logdir = logdir
         self.create_outdir = True
         self.plot_inline = plot_inline
         self.plot_level = plot_level
@@ -60,7 +61,7 @@ class Trace():
     def save_figures(self):
         for k, fig in self.diagram_pages.items():
             for format in self.figure_formats:
-                fn = os.path.join(self.outdir, k + format)
+                fn = os.path.join(self.figdir, k + format)
                 self.make_outdir(fn)
                 fig.save(fn)
 

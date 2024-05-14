@@ -339,10 +339,10 @@ class Spectrum(PfsObject):
     def apply_resampler_impl(self, resampler):
         # TODO: use MASK_NOWAVE but also look for nan values in wave inside resampler
 
-        self.flux, self.flux_err, mask = resampler.resample_value(self.wave, self.wave_edges, self.flux, self.flux_err)
-        self.flux_sky, _, _ = resampler.resample_value(self.wave, self.wave_edges, self.flux_sky)
-        self.cont, _, _ = resampler.resample_value(self.wave, self.wave_edges, self.cont)
-        self.cont_fit, _, _ = resampler.resample_value(self.wave, self.wave_edges, self.cont_fit)
+        self.flux, self.flux_err, mask = resampler.resample_flux(self.wave, self.wave_edges, self.flux, self.flux_err)
+        self.flux_sky, _, _ = resampler.resample_flux(self.wave, self.wave_edges, self.flux_sky)
+        self.cont, _, _ = resampler.resample_flux(self.wave, self.wave_edges, self.cont)
+        self.cont_fit, _, _ = resampler.resample_flux(self.wave, self.wave_edges, self.cont_fit)
 
         # TODO: flux_calibration
         #       flux_model

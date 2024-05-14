@@ -144,6 +144,7 @@ class SpectrumPlot(Diagram):
 
     def plot_spectrum(self, spectrum, 
                       plot_mask=None, plot_flux_err=None, plot_cont=None,
+                      flux_corr=None,
                       mask_bits=Spectrum.MASK_ANY,
                       wlim=None,
                       auto_limits=False,
@@ -154,6 +155,10 @@ class SpectrumPlot(Diagram):
         mask = spectrum.mask_as_bool(bits=mask_bits)
         wave, _ = spectrum.wave_in_unit(self.axes[0].unit)
         flux, flux_err = spectrum.flux_in_unit(self.axes[1].unit)
+        if flux_corr is not None:
+            flux = flux / flux_corr
+            if flux_err is not None:
+                flux_err = flux_err / flux_corr
         if spectrum.cont is not None:
             cont = spectrum.cont_in_unit(self.axes[1].unit)
         else:

@@ -31,7 +31,7 @@ class PysynphotResampler(Resampler):
 
         self.filt = None
 
-    def resample_value(self, wave, wave_edges, value, error=None, mask=None, target_wave=None, target_wave_edges=None, target_mask=None):
+    def resample_flux(self, wave, wave_edges, value, error=None, mask=None, target_wave=None, target_wave_edges=None, target_mask=None):
         # NOTE: SLOW!
 
         target_wave = target_wave if target_wave is not None else self.target_wave

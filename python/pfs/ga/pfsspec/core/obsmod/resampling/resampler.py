@@ -2,6 +2,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 
 from pfs.ga.pfsspec.core.util.copy import *
+from .binning import Binning
 
 class Resampler():
     def __init__(self, orig=None):
@@ -26,20 +27,13 @@ class Resampler():
         self.target_mask = None
 
     def find_wave_edges(self, wave):
-        # TODO: Do not automatically assume linear binning
+        return Binning.find_wave_edges(wave)
 
-        wave_edges = np.empty((wave.shape[0] + 1,), dtype=wave.dtype)
-        wave_edges[1:-1] = 0.5 * (wave[1:] + wave[:-1])
-        wave_edges[0] = wave[0] - 0.5 * (wave[1] - wave[0])
-        wave_edges[-1] = wave[-1] + 0.5 * (wave[-1] - wave[-2])
-
-        return wave_edges
-
-    def find_centers(self, wave_edges):
+    def find_wave_centers(self, wave_edges):
         # TODO: Do not automatically assume linear binning
         return 0.5 * (wave_edges[1:] + wave_edges[:-1])
 
-    def resample_value(self, wave, wave_edges, value, error=None, mask=None, target_wave=None, target_wave_edges=None, target_mask=None):
+    def resample_flux(self, wave, wave_edges, value, error=None, mask=None, target_wave=None, target_wave_edges=None, target_mask=None):
         raise NotImplementedError()
    
     def resample_mask(self, wave, wave_edges, mask, target_wave=None, target_wave_edges=None):

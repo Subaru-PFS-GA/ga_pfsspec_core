@@ -120,17 +120,6 @@ class Physics():
         return d * 3.08567758128e19
 
     @staticmethod
-    def get_radius(log_L, T_eff):
-        # Calculate the radius of a star with known luminosity and effective
-        # temperature using the Stefan-Boltzmann law
-        
-        L_sun = 3.839e33        # erg/s
-        sb = 5.6704e-5          # grams s^-3 kelvin^-4
-        L = L_sun * 10**log_L   # luminosity from isochrone is in log(L/lsun)
-        radius = np.sqrt(L / (4 * np.pi * sb * T_eff**4))
-        return radius           # radius in cm
-
-    @staticmethod
     def vel_to_z(vel):
         return vel * 1e3 / Physics.c
 
@@ -145,9 +134,9 @@ class Physics():
         from the Stefan-Boltzmann law
         """
 
-        sb = 5.67e-5                            # grams s^-3 kelvin^-4
-        lsun = 3.8e33                           # erg/s 
+        sb = 5.6704e-5                          # grams s^-3 kelvin^-4
+        lsun = 3.839e33                         # erg/s 
         l = lsun * (10 ** log_L)                # luminosity from isochrone is in log(L/lsun)
         t = 10 ** log_T_eff                     # T_eff from isochrone is in log(teff)
         radius = np.sqrt(l / (4 * np.pi * sb * t**4))
-        return radius
+        return radius                           # radius in cm

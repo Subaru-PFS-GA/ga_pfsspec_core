@@ -56,6 +56,7 @@ class Spectrum(PfsObject):
         if not isinstance(orig, Spectrum):
             self.index = None
             self.id = 0
+            self.name = None
 
             self.redshift = 0.0
             self.redshift_err = 0.0
@@ -88,6 +89,8 @@ class Spectrum(PfsObject):
             self.weight = None
             self.cont = None
             self.cont_fit = None
+
+            self.mask_bits = None               # Default mask bits for masking wrong pixels
 
             self.resolution = None
             self.is_wave_regular = None
@@ -129,6 +132,8 @@ class Spectrum(PfsObject):
             self.weight = safe_deep_copy(orig.weight)
             self.cont = safe_deep_copy(orig.cont)
             self.cont_fit = orig.cont_fit
+
+            self.mask_bits = orig.mask_bits
 
             self.resolution = orig.resolution
             self.is_wave_regular = orig.is_wave_regular
@@ -205,7 +210,11 @@ class Spectrum(PfsObject):
     def merge_mask(self, mask, bits=MASK_DEFAULT):
         self.mask = self.get_mask_merged(self.wave, self.mask, mask, bits2=bits)
 
-    def mask_as_bool(self, bits=MASK_ANY):
+    def mask_as_bool(self, bits=None):
+        """
+        Return array which is True if the pixel is not masked.
+        """
+        bits = bits if bits is not None else self.mask_bits
         return self.get_mask_as_bool(self.wave, self.mask, bits=bits)
     
     def mask_as_int(self):
@@ -215,10 +224,11 @@ class Spectrum(PfsObject):
         return ~np.isnan(self.wave)
 
     @staticmethod
-    def get_mask_as_bool(wave, mask, bits=MASK_ANY):
+    def get_mask_as_bool(wave, mask, bits=None):
         """
-        Return array which is True if the pixel is not maskeds.
+        Return array which is True if the pixel is not masked.
         """
+
         if mask is None:
             return None
         elif isinstance(mask, slice):
@@ -236,7 +246,7 @@ class Spectrum(PfsObject):
             return mask
         
     @staticmethod
-    def get_mask_as_int(wave, mask, bits=MASK_ANY):
+    def get_mask_as_int(wave, mask, bits=None):
         """
         Convert any type of mask into an integer mask.
         If the mask is already integer, keep it as is. If it's a boolean
@@ -244,6 +254,8 @@ class Spectrum(PfsObject):
         converting into an integer where 0 means valid. If it is a slice,
         do similarly as with boolean.
         """
+
+        bits = bits if bits is not None else Spectrum.MASK_ANY
 
         if mask is None:
             return None
@@ -302,9 +314,9 @@ class Spectrum(PfsObject):
         
     #endregion
         
-    def set_redshift(self, z):
+    def apply_redshift(self, z):
         """
-        Apply Doppler shift by chaning the wave grid only, but not the flux density.
+        Apply redshift shift by chaning the wave grid only, but not the flux density.
         """
 
         if self.redshift is not None and self.redshift != 0.0:
@@ -319,6 +331,26 @@ class Spectrum(PfsObject):
 
         self.append_history(f'Redshift changed from {0.0} to {self.redshift}.')
 
+    def apply_v_corr(self, v_corr=None, z=None):
+        """
+        Apply a velocity correction by chaning the wave grid only, but not the flux density.
+        """
+        if v_corr is not None and z is not None:
+            raise ValueError("Cannot specify both v_corr and z.")
+        elif v_corr is None and z is None:
+            raise ValueError("Either v_corr or z must be specified.")
+        elif v_corr is not None:
+            z = Physics.vel_to_z(v_corr)
+        else:
+            v_corr = Physics.z_to_vel(z)
+            pass
+
+        self.wave = (1 + z) * self.wave
+        if self.wave_edges is not None:
+            self.wave_edges = (1 + z) * self.wave_edges
+
+        self.append_history(f'Velocity correction of {v_corr:.3f} km/s applied.')
+        
     def set_restframe(self):
         """
         Correct for Doppler shift by chaning the wave grid only, but not the flux density.
@@ -467,11 +499,15 @@ class Spectrum(PfsObject):
 
         self.append_history(f'Applied noise model of type `{type(noise_model).__name__}`.')
 
-    def calculate_snr(self, snr):
-        # TODO: add more options to specify the mask
-        self.snr = snr.get_snr(self.flux, self.flux_err, self.mask_as_bool())
+    def calculate_snr(self, snr, mask_bits=None):
+        mask = self.mask_as_bool(bits=mask_bits)
 
-        self.append_history(f'S/N calculated to be {self.snr} using method `{type(snr).__name__}`')
+        if mask.sum() == 0:
+            self.snr = np.nan
+            self.append_history(f'S/N cannot be calculated using method `{type(snr).__name__}` because number of unmasked pixels is zero.')
+        else:
+            self.snr = snr.get_snr(self.flux, self.flux_err, mask)
+            self.append_history(f'S/N calculated to be {self.snr} using method `{type(snr).__name__}`')
 
         return self.snr
         
@@ -714,5 +750,5 @@ class Spectrum(PfsObject):
     def cont_in_unit(self, unit):
         return self.__flux_in_unit(self.cont, unit)
 
-    def get_id_string(self):
-        return f'{self.id}'
+    def get_name(self):
+        return f'{self.name}'

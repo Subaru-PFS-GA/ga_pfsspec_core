@@ -198,7 +198,7 @@ class Pipeline(PfsObject):
             z = None
 
         if z is not None and not np.isnan(z) and z != 0.0:
-            spec.set_redshift(z)
+            spec.apply_redshift(z)
 
     def run_step_resample(self, spec, **kwargs):
         if self.wave is not None:

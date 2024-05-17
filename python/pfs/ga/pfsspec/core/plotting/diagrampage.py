@@ -7,6 +7,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 class DiagramPage():
     def __init__(self,
                  *args,
+                 title=None,
                  page_size=None, margins=None, gutters=None,
                  diagram_size=None, dpi=None):
         
@@ -21,6 +22,8 @@ class DiagramPage():
         else:
             raise ValueError('Only 2 or 3 positional arguments are allowed')
         
+        self.__title = title
+
         self.__page_size = page_size if page_size is not None else (8, 11)                             # in
         self.__margins = margins if margins is not None else (1, 0.5, 1, 1)             # in
         self.__gutters = gutters if gutters is not None else (0.75, 1.0)
@@ -30,6 +33,14 @@ class DiagramPage():
         self.__f, self.__gs = self.__create_figures()
         self.__ax = {}
         self.__diagrams = []
+
+    def __get_title(self):
+        return self.__title
+    
+    def __set_title(self, value):
+        self.__title = value
+
+    title = property(__get_title, __set_title)
 
     def __get_pages(self):
         return self.__f
@@ -57,6 +68,9 @@ class DiagramPage():
             gs = GridSpec(nrows=self.__nrows, ncols=self.__ncols, figure=f, **layout)
             ff.append(f)
             gss.append(gs)
+
+            if self.__title is not None:
+                f.suptitle(self.__title)
 
         return ff, gss
 

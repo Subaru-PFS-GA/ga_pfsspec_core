@@ -14,22 +14,25 @@ class Trace():
     LOG_LEVEL_INFO = 1
     LOG_LEVEL_DEBUG = 2
 
-    def __init__(self, figdir='.', logdir='.',
+    def __init__(self, id=None,
+                 figdir='.', logdir='.',
                  plot_inline=False,
                  plot_level=PLOT_LEVEL_NONE,
                  log_level=LOG_LEVEL_NONE):
         
         # TODO: add inline (notebook) and file option
 
-        self.figdir = figdir
-        self.logdir = logdir
-        self.create_outdir = True
-        self.plot_inline = plot_inline
-        self.plot_level = plot_level
-        self.log_level = log_level
+        self.figdir = figdir                    # Directory where figures are saved
+        self.logdir = logdir                    # Directory where logs are saved
+        self.create_outdir = True               # Create output directories if they do not exist
+        self.plot_inline = plot_inline          # Show plots inline in the notebook
+        self.plot_level = plot_level            # Level of plot output
+        self.log_level = log_level              # Level of log output
 
-        self.diagram_pages = {}
+        self.diagram_pages = {}                 
         self.figure_formats = [ '.png' ]
+
+        self.id = id if id is not None else ''  # Unique identifier of the object being processed
 
     def add_args(self, config, parser):
         pass
@@ -42,11 +45,20 @@ class Trace():
         if self.create_outdir and not os.path.isdir(dir):
             os.makedirs(dir, exist_ok=True)
 
-    def get_diagram_page(self, key, npages=1,  nrows=1, ncols=1, page_size=None, diagram_size=None):
+    def get_diagram_page(self, key, npages=1, nrows=1, ncols=1, 
+                         title=None,
+                         page_size=None, diagram_size=None):
+        
+        # Substitute tokens
+        key = key.format(id=self.id)
+        title = title.format(id=self.id) if title is not None else None
+        
         if key is not None and key in self.diagram_pages:
             return self.diagram_pages[key]
         else:
-            f = DiagramPage(npages, nrows, ncols, page_size=page_size, diagram_size=diagram_size)
+            f = DiagramPage(npages, nrows, ncols,
+                            title=title,
+                            page_size=page_size, diagram_size=diagram_size)
             self.diagram_pages[key] = f
             return f
         

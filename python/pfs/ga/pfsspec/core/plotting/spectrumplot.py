@@ -145,7 +145,7 @@ class SpectrumPlot(Diagram):
     def plot_spectrum(self, spectrum, 
                       plot_mask=None, plot_flux_err=None, plot_cont=None,
                       flux_corr=None,
-                      mask_bits=Spectrum.MASK_ANY,
+                      mask_bits=None,
                       wlim=None,
                       auto_limits=False,
                       **kwargs):
@@ -193,7 +193,7 @@ class SpectrumPlot(Diagram):
     
     def plot_residual(self, spectrum, template,
                       plot_mask=None, plot_flux_err=None, plot_cont=None,
-                      mask_bits=Spectrum.MASK_ANY, 
+                      mask_bits=None, 
                       wlim=None,
                       auto_limits=False,
                       **kwargs):

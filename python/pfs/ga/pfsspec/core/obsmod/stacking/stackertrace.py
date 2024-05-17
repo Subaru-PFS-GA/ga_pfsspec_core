@@ -7,12 +7,15 @@ from pfs.ga.pfsspec.core.util.args import *
 
 class StackerTrace(Trace):
 
-    def __init__(self, figdir='.', logdir='.',
+    def __init__(self,
+                 id=None,
+                 figdir='.', logdir='.',
                  plot_inline=False, 
                  plot_level=Trace.PLOT_LEVEL_NONE, 
                  log_level=Trace.LOG_LEVEL_NONE):
         
-        super().__init__(figdir=figdir, logdir=logdir,
+        super().__init__(id=id,
+                         figdir=figdir, logdir=logdir,
                          plot_inline=plot_inline, 
                          plot_level=plot_level,
                          log_level=log_level)
@@ -20,7 +23,6 @@ class StackerTrace(Trace):
         ##
 
         self.reset()
-
 
     def reset(self):
         pass

@@ -113,6 +113,9 @@ class Stacker():
             flux, error, resampler_mask = self.resampler.resample_flux(wave, wave_edges, flux, error,
                                                 target_wave=target_wave[wave_mask],
                                                 target_wave_edges=target_wave_edges[wave_edges_mask])
+            
+            # TODO: this assumes that the mask bits are the same for every spectrum but this is not
+            #       necessarily the case
             mask = self.resampler.resample_mask(wave, wave_edges, spec.mask,
                                                 target_wave=target_wave[wave_mask],
                                                 target_wave_edges=target_wave_edges[wave_edges_mask])
@@ -156,7 +159,7 @@ class Stacker():
         else:
             return [ 0.0 for s in spectra ]
     
-    def __get_wave_min_max(self, spectra, redshifts):
+    def __get_wave_min_max(self, spectra: list, redshifts: list):
         # Determine minimum and maximum wavelengths
         wmin, wmax = None, None
         for s, z in zip(spectra, redshifts):

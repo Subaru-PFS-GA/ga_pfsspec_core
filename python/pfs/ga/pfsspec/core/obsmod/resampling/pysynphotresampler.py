@@ -2,13 +2,6 @@ import logging
 import numpy as np
 from scipy.interpolate import interp1d
 from astropy import units as u
-
-try:
-    import pysynphot
-except ModuleNotFoundError as ex:
-    logging.warning(ex.msg)
-    pysynphot = None
-
 from .resampler import Resampler
 
 class PysynphotResampler(Resampler):
@@ -33,6 +26,13 @@ class PysynphotResampler(Resampler):
 
     def resample_flux(self, wave, wave_edges, value, error=None, mask=None, target_wave=None, target_wave_edges=None, target_mask=None):
         # NOTE: SLOW!
+
+        if 'pysynphot' not in globals():
+            try:
+                import pysynphot
+            except ModuleNotFoundError as ex:
+                logging.warning(ex.msg)
+                pysynphot = None
 
         target_wave = target_wave if target_wave is not None else self.target_wave
 

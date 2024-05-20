@@ -4,15 +4,6 @@ import numbers
 import collections
 import matplotlib.pyplot as plt
 
-try:
-    import pysynphot
-    import pysynphot.binning
-    import pysynphot.spectrum
-    import pysynphot.reddening
-except ModuleNotFoundError as ex:
-    logging.warning(ex.msg)
-    pysynphot = None
-
 from pfs.ga.pfsspec.core.util.copy import *
 from pfs.ga.pfsspec.core.pfsobject import PfsObject
 from pfs.ga.pfsspec.core.obsmod.psf import *
@@ -512,6 +503,16 @@ class Spectrum(PfsObject):
         return self.snr
         
     def redden(self, extval=None):
+        if 'pysynphot' not in globals():
+            try:    
+                import pysynphot
+                import pysynphot.binning
+                import pysynphot.spectrum
+                import pysynphot.reddening
+            except ModuleNotFoundError as ex:
+                logging.warning(ex.msg)
+                pysynphot = None
+
         extval = extval or self.ext
         self.ext = extval
         
@@ -527,6 +528,17 @@ class Spectrum(PfsObject):
         self.redden(-extval)
 
     def synthflux(self, filter):
+        try:
+            if 'pysynphot' not in globals():
+                import pysynphot
+                import pysynphot.binning
+                import pysynphot.spectrum
+                import pysynphot.reddening
+        except ModuleNotFoundError as ex:
+            logging.warning(ex.msg)
+            pysynphot = None
+
+
         # TODO: Calculate error from error array?
 
         filt = pysynphot.spectrum.ArraySpectralElement(filter.wave, filter.thru, waveunits='angstrom')

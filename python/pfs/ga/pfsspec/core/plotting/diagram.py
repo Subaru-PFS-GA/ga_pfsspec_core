@@ -49,7 +49,7 @@ class Diagram():
         for j, stat in enumerate((min, max)):
             if self.__diagram_axes[i].limits[j] is None:
                 self.__diagram_axes[i].limits[j] = limits[j]
-            else:
+            elif limits[j] is not None:
                 self.__diagram_axes[i].limits[j] = stat(limits[j], self.__diagram_axes[i].limits[j])
 
     def apply(self, xlim=None, ylim=None, **kwargs):

@@ -82,6 +82,16 @@ class SpectrumPlot(Diagram):
             else:
                 return vector
             
+        def safe_plot(wave, flux, **kwargs):
+            # Only plot if there are unmasked pixels, otherwise plot limits
+            # would be set to weird values
+            x = apply_slice(wave)
+            y = apply_slice(np.where(m, flux, np.nan))
+            if np.any(~np.isnan(x) & ~np.isinf(x) & ~np.isnan(y) & ~np.isinf(y)):
+                return self.plot(self._ax, x, y, **kwargs)
+            else: 
+                return None
+            
         if np.size(apply_slice(wave)) == 0:
             return None
 
@@ -105,38 +115,34 @@ class SpectrumPlot(Diagram):
 
             m = m if m is not None else np.full_like(wave, True, dtype=bool)
 
-            l = self.plot(self._ax,
-                        apply_slice(wave),
-                        apply_slice(np.where(m, flux, np.nan)),
-                        **ss)
+            l = safe_plot(wave, flux, **ss)
 
             # TODO: define styles as use same color as fluxs
             if plot_flux_err and flux_err is not None:
-                self.plot(self._ax,
-                        apply_slice(wave),
-                        apply_slice(np.where(m, flux_err, np.nan)),
-                        **ss)
+                safe_plot(wave, flux_err, **ss)
 
             if plot_cont and cont is not None:
-                self.plot(self._ax,
-                        apply_slice(wave),
-                        apply_slice(np.where(m, cont, np.nan)),
-                        **ss)
+                safe_plot(wave, cont, **ss)
 
         # Set limits
-        if auto_limits and np.sum(m) > 0:
-            wmin, wmax, fmax = self.get_limits(
-                apply_slice(wave),
-                apply_slice(flux),
-                mask=apply_slice(m),
-                plot_residual=plot_residual)
-
-            # Update min and max
-            self.update_limits(0, (wmin, wmax))
-            if not plot_residual:
-                self.update_limits(1, (0, fmax))
+        if auto_limits:
+            if np.sum(m) == 0:
+                # The entire spectrum is masked
+                self.update_limits(0, (None, None))
+                self.update_limits(1, (None, None))
             else:
-                self.update_limits(1, (-fmax, fmax))
+                wmin, wmax, fmax = self.get_limits(
+                    apply_slice(wave),
+                    apply_slice(flux),
+                    mask=apply_slice(m),
+                    plot_residual=plot_residual)
+
+                # Update min and max
+                self.update_limits(0, (wmin, wmax))
+                if not plot_residual:
+                    self.update_limits(1, (0, fmax))
+                else:
+                    self.update_limits(1, (-fmax, fmax))
 
         self.apply()
 

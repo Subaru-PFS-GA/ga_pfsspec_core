@@ -145,12 +145,14 @@ class DiagramPage():
         limits = [ [ None, None ] for _ in range(2) ]
 
         for ax in axs:
-            for i, lim in  enumerate([ ax.get_xlim(), ax.get_ylim() ]):
-                for j, stat in enumerate([ min, max ]):
-                    if limits[i][j] is None:
-                        limits[i][j] = lim[j]
-                    elif lim[j] is not None:
-                        limits[i][j] = stat(limits[i][j], lim[j])
+            # Only take into account axes with data
+            if len(ax.lines) > 0 or len(ax.collections) > 0:
+                for i, lim in enumerate([ ax.get_xlim(), ax.get_ylim() ]):
+                    for j, stat in enumerate([ min, max ]):
+                        if limits[i][j] is None:
+                            limits[i][j] = lim[j]
+                        elif lim[j] is not None:
+                            limits[i][j] = stat(limits[i][j], lim[j])
             
         for ax in axs:
             ax.set_xlim(limits[0])

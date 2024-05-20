@@ -1,5 +1,7 @@
 import numpy as np
 
+PFSSPEC_LOGNAME = 'pfsspec'
+
 class Constants():
     DEFAULT_PLOT_WAVE_RANGE = (3750, 12650)
     DEFAULT_FILTER_VDISP = 5000

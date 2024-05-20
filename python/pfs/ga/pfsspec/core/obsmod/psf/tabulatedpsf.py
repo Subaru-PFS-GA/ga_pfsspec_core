@@ -5,6 +5,7 @@ import pandas as pd
 from scipy.interpolate import interp1d
 from sklearn.decomposition import TruncatedSVD
 
+from ...setup_logger import logger
 from .psf import Psf
 
 class TabulatedPsf(Psf):
@@ -48,10 +49,10 @@ class TabulatedPsf(Psf):
             raise ValueError("Wave grid doesn't match tabulated grid.")
 
         if dwave is not None:
-            logging.warning('Tabulated PSF does not support overriding dwave.')
+            logger.warning('Tabulated PSF does not support overriding dwave.')
 
         if size is not None:
-            logging.warning('Tabulated PSF does not support overriding kernel size.')
+            logger.warning('Tabulated PSF does not support overriding kernel size.')
 
         shift = self.kernel.shape[-1] // 2
 

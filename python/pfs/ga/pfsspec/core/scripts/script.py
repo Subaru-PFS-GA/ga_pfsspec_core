@@ -11,6 +11,7 @@ import multiprocessing
 from multiprocessing import set_start_method
 import socket
 
+from ..setup_logger import logger
 import pfs.ga.pfsspec.core.util.logging
 import pfs.ga.pfsspec   # NOTE: required by module discovery
 # TODO: python 3.8 has this built-in, replace import
@@ -62,7 +63,7 @@ class Script():
         initialize the parser modules.
         """
 
-        self.logger.debug('Looking for script configurations in all modules under the namespace `pfs.ga.pfsspec`.')
+        logger.debug('Looking for script configurations in all modules under the namespace `pfs.ga.pfsspec`.')
 
         merged_config = {}
 
@@ -73,7 +74,7 @@ class Script():
             except ModuleNotFoundError as ex:
                 # In case something else is missing we cannot continue
                 if ex.msg == f"No module named '{modulename}'":
-                    self.logger.debug(f'Module `{m.name}` has no namespace for script configurations.')
+                    logger.debug(f'Module `{m.name}` has no namespace for script configurations.')
                 else:
                     raise
                 module = None
@@ -81,11 +82,11 @@ class Script():
                 config = getattr(module, self.CONFIG_NAME)
                 merged_config.update(config)
 
-                self.logger.debug(f'Found script configuration in module `{m.name}` with name {self.CONFIG_NAME}.')
+                logger.debug(f'Found script configuration in module `{m.name}` with name {self.CONFIG_NAME}.')
                 
         self.parser_configurations = merged_config
 
-        self.logger.debug(f'Final script configuration contains {len(merged_config)} top-level entries: {" ".join(merged_config.keys())}')
+        logger.debug(f'Final script configuration contains {len(merged_config)} top-level entries: {" ".join(merged_config.keys())}')
 
     def create_parser(self):
         self.parser = ArgumentParser(load_config_func=Script.load_args_json)
@@ -96,30 +97,30 @@ class Script():
         # and subclass
         cps = parser.add_subparsers(dest=self.CONFIG_CLASS, required=True)
         for c in self.parser_configurations:
-            self.logger.debug(f'Registering sub-parser for class `{self.CONFIG_CLASS}` with value `{c}`')
+            logger.debug(f'Registering sub-parser for class `{self.CONFIG_CLASS}` with value `{c}`')
             cp = cps.add_parser(c)
             sps = cp.add_subparsers(dest=self.CONFIG_SUBCLASS, required=True)
             for s in self.parser_configurations[c]:
-                self.logger.debug(f'Registering sub-parser for sub-class `{self.CONFIG_SUBCLASS}` with value `{s}`')
+                logger.debug(f'Registering sub-parser for sub-class `{self.CONFIG_SUBCLASS}` with value `{s}`')
                 sp = sps.add_parser(s)
 
                 # Instantiate plugin and register further subparsers
                 config = self.parser_configurations[c][s]
                 plugin = self.create_plugin(config)
                 if plugin is not None:
-                    self.logger.debug(f'Instantiated script plugin of type `{plugin.__class__.__name__}`.')
+                    logger.debug(f'Instantiated script plugin of type `{plugin.__class__.__name__}`.')
                     subparsers = plugin.add_subparsers(config, sp)
                     if subparsers is not None:
-                        self.logger.debug(f'Registering sub-parser for script plugin `{plugin.__class__.__name__}`.')
+                        logger.debug(f'Registering sub-parser for script plugin `{plugin.__class__.__name__}`.')
                         for ss in subparsers:
                             self.add_args(ss, config)
                             plugin.add_args(ss, config)
                     else:
-                        self.logger.debug(f'No sub-parser found for script plugin `{plugin.__class__.__name__}`.')
+                        logger.debug(f'No sub-parser found for script plugin `{plugin.__class__.__name__}`.')
                         self.add_args(sp, config)
                         plugin.add_args(sp, config)
                 else:
-                    self.logger.debug(f'No script plugin could be created for class `{c}` sub-class `{s}`.')
+                    logger.debug(f'No script plugin could be created for class `{c}` sub-class `{s}`.')
 
     def create_plugin(self, config):
         t = config[self.CONFIG_TYPE]
@@ -291,17 +292,17 @@ class Script():
             return json.load(f)
 
     def create_output_dir(self, dir, resume=False):
-        self.logger.info('Output directory is {}'.format(dir))
+        logger.info('Output directory is {}'.format(dir))
         if resume:
             if os.path.exists(dir):
-                self.logger.info('Found output directory.')
+                logger.info('Found output directory.')
             else:
                 raise Exception("Output directory doesn't exist, can't continue.")
         elif os.path.exists(dir):
             if len(os.listdir(dir)) != 0:
                 raise Exception('Output directory is not empty: `{}`'.format(dir))
         else:
-            self.logger.info('Creating output directory {}'.format(dir))
+            logger.info('Creating output directory {}'.format(dir))
             os.makedirs(dir)
 
     def pushd(self, dir):
@@ -342,8 +343,8 @@ class Script():
         # TODO: is this where double logging of multiprocessing comes from?
         # multiprocessing.log_to_stderr(log_level)
 
-        self.logger = logging.getLogger('root')
-        self.logger.setLevel(log_level)
+        root = logging.getLogger('root')
+        root.setLevel(log_level)
 
         # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         formatter = logging.Formatter('%(levelname)s:%(name)s:%(asctime)s:%(message)s')
@@ -352,17 +353,17 @@ class Script():
             self.logging_console_handler = logging.StreamHandler(sys.stdout)
             self.logging_console_handler.setLevel(log_level)
             self.logging_console_handler.setFormatter(formatter)
-            self.logger.addHandler(self.logging_console_handler)
+            root.addHandler(self.logging_console_handler)
 
         if not pre_init:
             if logfile is not None and self.logging_file_handler is None:
                 self.logging_file_handler = logging.FileHandler(logfile)
                 self.logging_file_handler.setLevel(log_level)
                 self.logging_file_handler.setFormatter(formatter)
-                self.logger.addHandler(self.logging_file_handler)
+                root.addHandler(self.logging_file_handler)
 
         if pre_init:
-            self.logger.info('Running script on {}'.format(socket.gethostname()))
+            logger.info('Running script on {}'.format(socket.gethostname()))
 
     def suspend_logging(self):
         if self.logging_console_handler is not None:
@@ -423,17 +424,17 @@ class Script():
 
             # TODO: python 3.8 has shutil function for this
             outlogdir = os.path.join(self.outdir, 'logs')
-            logging.info('Copying log files to `{}`'.format(outlogdir))
+            logger.info('Copying log files to `{}`'.format(outlogdir))
             ignore = None
             shutil.copytree(self.log_dir, outlogdir, ignore=ignore, dirs_exist_ok=True)
         else:
-            logging.info('Skipped copying log files to output directory.')
+            logger.info('Skipped copying log files to output directory.')
 
     def execute_notebook(self, notebook_path, output_notebook_path=None, output_html=True, parameters={}, kernel='python3', outdir=None):
         # Note that jupyter kernels in the current env might be different from the ones
         # in the jupyterhub environment
 
-        self.logger.info('Executing notebook {}'.format(notebook_path))
+        logger.info('Executing notebook {}'.format(notebook_path))
 
         if outdir is None:
             outdir = self.outdir

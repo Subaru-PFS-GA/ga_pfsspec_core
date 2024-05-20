@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
+from ..setup_logger import logger
 from pfs.ga.pfsspec.core.scripts import Plugin
 from pfs.ga.pfsspec.core.util.smartparallel import SmartParallel
 from .dataset import Dataset
@@ -104,10 +105,10 @@ class DatasetBuilder(Plugin):
 
         if not self.resume:
             # TODO: "flux" is spectrum specific, consider generalizing
-            self.logger.info('Building a new dataset of size {}'.format(self.dataset.get_value_shape('flux')))
+            logger.info('Building a new dataset of size {}'.format(self.dataset.get_value_shape('flux')))
         else:
             # TODO: "flux" is spectrum specific, consider generalizing
-            self.logger.info('Resume building a dataset of size {}'.format(self.dataset.get_value_shape('flux')))
+            logger.info('Resume building a dataset of size {}'.format(self.dataset.get_value_shape('flux')))
             existing = set(self.dataset.params['id'])
             total_items = 0
             for chunk_id in range(count // self.chunk_size):

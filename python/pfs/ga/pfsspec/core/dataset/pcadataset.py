@@ -3,6 +3,7 @@ import numpy as np
 import scipy.stats
 import pandas as pd
 
+from ..setup_logger import logger
 from .dataset import Dataset
 
 class PcaDataset(Dataset):
@@ -38,9 +39,9 @@ class PcaDataset(Dataset):
         self.mask = np.full(self.flux.shape, False)
 
     def save_pca(self, filename, format=None):
-        self.logger.info("Saving PCA eigensystem to file {}...".format(filename))
+        logger.info("Saving PCA eigensystem to file {}...".format(filename))
         self.save(filename, format=format, save_items_func=self.save_pca_items)
-        self.logger.info("Saved PCA eigensystem.")
+        logger.info("Saved PCA eigensystem.")
 
     def save_pca_items(self):
         self.save_item('U', self.U)
@@ -48,9 +49,9 @@ class PcaDataset(Dataset):
         self.save_item('V', self.V)
 
     def load_pca(self, filename, s=None, format=None):
-        self.logger.info("Loading PCA eigensystem from file {}...".format(filename))
+        logger.info("Loading PCA eigensystem from file {}...".format(filename))
         self.load(filename, s=s, format=format, load_items_func=self.load_pca_items)
-        self.logger.info("Loaded PCA eigensystem.")
+        logger.info("Loaded PCA eigensystem.")
 
     def load_pca_items(self, s=None):
         self.U = self.load_item('U', np.ndarray)

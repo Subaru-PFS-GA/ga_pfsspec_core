@@ -1,11 +1,13 @@
 import numpy as np
 from scipy.interpolate import interp1d
 
+from pfs.ga.pfsspec.core import PfsObject
 from pfs.ga.pfsspec.core.util.copy import *
 from .binning import Binning
 
-class Resampler():
+class Resampler(PfsObject):
     def __init__(self, orig=None):
+        super().__init__(orig=orig)
         
         if not isinstance(orig, Resampler):
             self.target_wave = None

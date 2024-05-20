@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from pfs.ga.pfsspec.core.util.copy import *
 from pfs.ga.pfsspec.core.pfsobject import PfsObject
 from pfs.ga.pfsspec.core.obsmod.psf import *
+from .setup_logger import logger
 from .physics import Physics
 from .constants import Constants
 
@@ -510,7 +511,7 @@ class Spectrum(PfsObject):
                 import pysynphot.spectrum
                 import pysynphot.reddening
             except ModuleNotFoundError as ex:
-                logging.warning(ex.msg)
+                logger.warning(ex.msg)
                 pysynphot = None
 
         extval = extval or self.ext
@@ -535,7 +536,7 @@ class Spectrum(PfsObject):
                 import pysynphot.spectrum
                 import pysynphot.reddening
         except ModuleNotFoundError as ex:
-            logging.warning(ex.msg)
+            logger.warning(ex.msg)
             pysynphot = None
 
 
@@ -554,7 +555,7 @@ class Spectrum(PfsObject):
             obs = pysynphot.observation.Observation(spec, filt)
             return obs.effstim('Jy')
         except Exception as ex:
-            logging.debug(f'Synthetic flux in filter `{filter.name}` turned out to be negative.')
+            logger.warning(f'Synthetic flux in filter `{filter.name}` turned out to be negative.')
             return np.nan
 
     def synthmag(self, filter, norm=1.0):

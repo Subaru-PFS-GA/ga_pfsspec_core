@@ -7,6 +7,8 @@ from .pool import Pool
 import numpy as np
 from tqdm import tqdm
 
+from ..setup_logger import logger
+
 class SmartParallelError(Exception):
     def __init__(self, type, exception, traceback):
         self.type = type
@@ -15,7 +17,6 @@ class SmartParallelError(Exception):
 
 class IterableQueue():
     def __init__(self, queue, length):
-        self.logger = logging.getLogger()
         self.queue = queue
         self.length = length
 
@@ -43,8 +44,7 @@ class SmartParallel():
             self.cpus = int(os.environ['SLURM_CPUS_PER_TASK'])
         else:
             self.cpus = multiprocessing.cpu_count() // 2
-        
-        self.logger = logging.getLogger()
+    
         self.manager = None
         self.pool = None
         self.queue_out = None
@@ -54,12 +54,12 @@ class SmartParallel():
 
     def __enter__(self):
         if self.parallel:
-            self.logger.debug("Starting parallel execution on {} CPUs.".format(self.cpus))
+            logger.debug("Starting parallel execution on {} CPUs.".format(self.cpus))
 
             # Match logging preferences of the parent process
             log_stdout = False
             log_stderr = False
-            for h in self.logger.handlers:
+            for h in logger.handlers:
                 log_stdout |= isinstance(h, logging.StreamHandler) and h.stream.name == '<stdout>'
                 log_stderr |= isinstance(h, logging.StreamHandler) and h.stream.name == '<stderr>'
 
@@ -69,20 +69,20 @@ class SmartParallel():
             self.pool = Pool(processes=self.cpus,
                              preinitializer=SmartParallel.pool_preinitializer,
                              initializer=SmartParallel.pool_initializer,
-                             initargs=(self.logger.level, log_stdout, log_stderr))
+                             initargs=(logger.level, log_stdout, log_stderr))
         else:
-            self.logger.debug("Starting serial execution.")
+            logger.debug("Starting serial execution.")
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.parallel:
-            self.logger.debug("Joining worker processes.")
+            logger.debug("Joining worker processes.")
             self.pool.close()
             self.pool.join()
             self.manager.shutdown()
-            self.logger.debug("Finished parallel execution.")
+            logger.debug("Finished parallel execution.")
         else:
-            self.logger.debug("Finished serial execution.")
+            logger.debug("Finished serial execution.")
         return False
 
     def __del__(self):
@@ -110,7 +110,8 @@ class SmartParallel():
 
         if random_seed is not None:
             np.random.seed(random_seed)
-            logging.debug("Re-seeded random state on pid {} with seed {}".format(os.getpid(), random_seed))
+            logger = logging.getLogger(PFSSPEC_LOGNAME)
+            logger.debug("Re-seeded random state on pid {} with seed {}".format(os.getpid(), random_seed))
 
     @staticmethod
     def pool_worker(i, queue_out, worker, error, *args, obj=None, **kwargs):

@@ -4,6 +4,7 @@ import numpy as np
 from tqdm import tqdm
 import multiprocessing
 
+from ...setup_logger import logger
 from pfs.ga.pfsspec.core.grid import GridEnumerator
 from pfs.ga.pfsspec.core.util.smartparallel import SmartParallel
 from pfs.ga.pfsspec.core.io import Importer
@@ -49,9 +50,9 @@ class GridReader(Importer):
             self.grid.allocate_values()
 
         # Iterate over the grid points and call a function for each
-        self.logger.info("Reading grid {}.".format(type(self.grid).__name__))
+        logger.info("Reading grid {}.".format(type(self.grid).__name__))
         if self.top is not None:
-            self.logger.info("Reading grid will stop after {} items.".format(self.top))
+            logger.info("Reading grid will stop after {} items.".format(self.top))
 
         grid = self.get_array_grid()
         slice = grid.get_slice()
@@ -62,7 +63,7 @@ class GridReader(Importer):
                 self.store_item(res)
                 t.update(1)
 
-        self.logger.info("Grid loaded.")
+        logger.info("Grid loaded.")
 
     def read_files(self, files, resume=False):
         if resume:
@@ -71,9 +72,9 @@ class GridReader(Importer):
             raise NotImplementedError()
 
         # Iterate over a list of files and call a function for each
-        self.logger.info("Loading {}".format(type(self.grid).__name__))
+        logger.info("Loading {}".format(type(self.grid).__name__))
         if self.top is not None:
-            self.logger.info("Loading will stop after {} spectra".format(self.top))
+            logger.info("Loading will stop after {} spectra".format(self.top))
             files = files[:min(self.top, len(files))]
 
         k = 0
@@ -84,7 +85,7 @@ class GridReader(Importer):
                 t.update(1)
                 k += 1
 
-        self.logger.info('{} files loaded.'.format(k))
+        logger.info('{} files loaded.'.format(k))
 
     def process_item(self, i):
         raise NotImplementedError()

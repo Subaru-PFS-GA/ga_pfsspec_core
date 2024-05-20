@@ -1,6 +1,7 @@
 import os
 import numpy as np
 
+from ..setup_logger import logger
 import pfs.ga.pfsspec.core.util as util
 from pfs.ga.pfsspec.core import PfsObject
 
@@ -52,7 +53,7 @@ class Plugin(PfsObject):
         self.threads = self.get_arg('threads', self.threads, args)
         self.parallel = self.random_seed is None and (self.threads is None or self.threads > 1)
         if not self.parallel:
-            self.logger.info(f'Script plugin `{type(self).__name__}` running in sequential mode.')
+            logger.info(f'Script plugin `{type(self).__name__}` running in sequential mode.')
         
         self.top = self.get_arg('top', self.top, args)
         self.resume = self.get_arg('resume', self.resume, args)

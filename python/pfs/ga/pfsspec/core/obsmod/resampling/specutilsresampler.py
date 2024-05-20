@@ -2,11 +2,13 @@ import logging
 from scipy.interpolate import interp1d
 from astropy import units as u
 
+from ...setup_logger import logger
+
 try:
     from specutils import Spectrum1D
     from specutils.manipulation import FluxConservingResampler
 except ModuleNotFoundError as ex:
-    logging.warning(ex.msg)
+    logger.warning(ex.msg)
     Spectrum1D = None
     FluxConservingResampler = None
 

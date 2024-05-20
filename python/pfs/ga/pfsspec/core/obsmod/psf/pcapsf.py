@@ -4,6 +4,7 @@ import pandas as pd
 from scipy.interpolate import interp1d
 from sklearn.decomposition import TruncatedSVD
 
+from ...setup_logger import logger
 from .psf import Psf
 
 class PcaPsf(Psf):
@@ -219,11 +220,11 @@ class PcaPsf(Psf):
 
     def warn(self, id):
         if id == 'DWAVE' and not PcaPsf.__SUPPRESS_WARNING_DWAVE:
-            logging.warning('PCA PSF does not support overriding dwave.')
+            logger.warning('PCA PSF does not support overriding dwave.')
             PcaPsf.__SUPPRESS_WARNING_DWAVE = True
         elif id == 'NORM' and not PcaPsf.__SUPPRESS_WARNING_NORM:
-            logging.warning('PCA PSF does not support renormalizing the precomputed kernel.')
+            logger.warning('PCA PSF does not support renormalizing the precomputed kernel.')
             PcaPsf.__SUPPRESS_WARNING_NORM = True
         elif id == 'SIZE' and not PcaPsf.__SUPPRESS_WARNING_SIZE:
-            logging.warning('PCA PSF does not support overriding kernel size.')
+            logger.warning('PCA PSF does not support overriding kernel size.')
             PcaPsf.__SUPPRESS_WARNING_SIZE = True

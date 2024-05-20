@@ -8,6 +8,7 @@ import json
 import numpy as np
 import pandas as pd
 
+from ..setup_logger import logger
 from pfs.ga.pfsspec.core import Constants
 from pfs.ga.pfsspec.core.dataset import Dataset
 from pfs.ga.pfsspec.core.scripts import Script
@@ -59,7 +60,7 @@ class Merge(Script):
         self.init_merger()
         self.merger.merge()
 
-        self.logger.info('Results are written to {}'.format(self.args['out']))
+        logger.info('Results are written to {}'.format(self.args['out']))
 
     def execute_notebooks(self):
         super(Merge, self).execute_notebooks()

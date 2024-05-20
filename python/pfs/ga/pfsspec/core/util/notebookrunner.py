@@ -1,6 +1,5 @@
 import os
 import sys
-import logging
 from shutil import copyfile
 from nbparameterise import extract_parameters, parameter_values, replace_definitions
 import nbformat
@@ -8,6 +7,7 @@ from nbconvert.preprocessors import ClearOutputPreprocessor, ClearMetadataPrepro
 from nbconvert.preprocessors import ExecutePreprocessor, CellExecutionError
 from nbconvert import HTMLExporter
 
+from ..setup_logger import logger
 from pfs.ga.pfsspec.core import PfsObject
 
 class NotebookRunner(PfsObject):
@@ -61,7 +61,7 @@ class NotebookRunner(PfsObject):
         try:
             self.nb, resources = epp.preprocess(self.nb, resources)
         except Exception as ex:
-            self.logger.error('An error has occured while execution notebook {}'.format(self.input_notebook))
+            logger.error('An error has occured while execution notebook {}'.format(self.input_notebook))
             # Error is not propagated to allow saving notebook
 
     def save_notebook(self):

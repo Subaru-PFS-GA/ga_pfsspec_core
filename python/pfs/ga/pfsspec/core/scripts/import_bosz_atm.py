@@ -2,6 +2,7 @@ import os
 import glob
 import logging
 
+from ..setup_logger import logger
 from pfs.ga.pfsspec.scripts.import_ import Import
 from pfs.ga.pfsspec.stellarmod.boszspectrumreader import BoszSpectrumReader
 from pfs.ga.pfsspec.stellarmod.boszatmreader import BoszAtmReader
@@ -30,7 +31,7 @@ class ImportBoszAtm(Import):
             grid.preload_arrays = self.args['preload_arrays']
 
         if os.path.isdir(self.args['path']):
-            self.logger.info('Running in grid mode')
+            logger.info('Running in grid mode')
 
             # Load the first spectrum to get wavelength grid
             # fn = BoszSpectrumReader.get_filename(Fe_H=0.0, T_eff=5000.0, log_g=1.0, O_M=0.0, C_M=0.0, R=res)
@@ -38,9 +39,9 @@ class ImportBoszAtm(Import):
             # spec = r.read(fn)
             raise NotImplementedError()
         else:
-            self.logger.info('Running in file list mode')
+            logger.info('Running in file list mode')
             files = glob.glob(os.path.expandvars(self.args['path']))
-            self.logger.info('Found {} files.'.format(len(files)))
+            logger.info('Found {} files.'.format(len(files)))
 
         grid.init_values()
         grid.build_axis_indexes()

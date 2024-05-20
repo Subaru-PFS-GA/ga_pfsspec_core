@@ -7,6 +7,7 @@ from scipy import ndimage
 from scipy.interpolate import LinearNDInterpolator, RegularGridInterpolator, CubicSpline
 from scipy.interpolate import interp1d, interpn
 
+from ..setup_logger import logger
 from ..util.array import *
 from .grid import Grid
 from .gridaxis import GridAxis
@@ -143,21 +144,21 @@ class ArrayGrid(Grid):
             self.value_shapes[name] = shape
 
             if self.preload_arrays:
-                self.logger.info('Initializing memory for grid "{}" of size {}...'.format(name, value_shape))
+                logger.info('Initializing memory for grid "{}" of size {}...'.format(name, value_shape))
                 self.values[name] = np.full(value_shape, np.nan)
                 self.value_indexes[name] = np.full(grid_shape, False, dtype=bool)
-                self.logger.info('Initialized memory for grid "{}" of size {}.'.format(name, value_shape))
+                logger.info('Initialized memory for grid "{}" of size {}.'.format(name, value_shape))
             elif self.mmap_arrays:
                 # TODO: allocate HDF5 dataset then mmap it
                 raise NotImplementedError()
             else:
                 self.values[name] = None
                 self.value_indexes[name] = None
-                self.logger.info('Initializing data file for grid "{}" of size {}...'.format(name, value_shape))
+                logger.info('Initializing data file for grid "{}" of size {}...'.format(name, value_shape))
                 if not self.has_item(self.get_value_path(name)):
                     self.allocate_item(self.get_value_path(name), value_shape, dtype=float)
                     self.allocate_item(self.get_index_path(name), grid_shape, dtype=bool)
-                self.logger.info('Skipped memory initialization for grid "{}". Will read random slices from storage.'.format(name))
+                logger.info('Skipped memory initialization for grid "{}". Will read random slices from storage.'.format(name))
 
     def allocate_value(self, name, shape=None):
         if shape is not None:
@@ -178,11 +179,11 @@ class ArrayGrid(Grid):
         if rebuild and not self.preload_arrays:
             raise Exception('Cannot build index on lazy-loaded grid.')
         elif rebuild or name not in self.value_indexes or self.value_indexes[name] is None:
-            self.logger.debug('Building indexes on grid "{}" of size {}'.format(name, self.value_shapes[name]))
+            logger.debug('Building indexes on grid "{}" of size {}'.format(name, self.value_shapes[name]))
             self.value_indexes[name] = self.is_value_valid(name, self.values[name])
         else:
-            self.logger.debug('Skipped building indexes on grid "{}" of size {}'.format(name, self.value_shapes[name]))
-        self.logger.debug('{} valid vectors in grid "{}" found'.format(np.sum(self.value_indexes[name]), name))
+            logger.debug('Skipped building indexes on grid "{}" of size {}'.format(name, self.value_shapes[name]))
+        logger.debug('{} valid vectors in grid "{}" found'.format(np.sum(self.value_indexes[name]), name))
 
     def get_valid_value_count(self, name, s=None):
         return np.sum(self.get_value_index(name, s=s))
@@ -475,16 +476,16 @@ class ArrayGrid(Grid):
         for name in self.enum_values():
             if self.values[name] is not None:
                 if self.preload_arrays:
-                    self.logger.debug('Saving grid "{}" of size {}'.format(name, self.values[name].shape))
+                    logger.debug('Saving grid "{}" of size {}'.format(name, self.values[name].shape))
                     self.save_item(self.get_value_path(name), self.values[name])
-                    self.logger.debug('Saved grid "{}" of size {}'.format(name, self.values[name].shape))
+                    logger.debug('Saved grid "{}" of size {}'.format(name, self.values[name].shape))
                 elif self.mmap_arrays:
                     raise NotImplementedError()
                 else:
                     shape = self.get_value_shape(name)
-                    self.logger.debug('Allocating grid "{}" with size {}...'.format(name, shape))
+                    logger.debug('Allocating grid "{}" with size {}...'.format(name, shape))
                     self.allocate_item(self.get_value_path(name), shape, float)
-                    self.logger.debug('Allocated grid "{}" with size {}. Will write directly to storage.'.format(name, shape))
+                    logger.debug('Allocated grid "{}" with size {}. Will write directly to storage.'.format(name, shape))
 
     def load_values(self, s=None):
         grid_shape = self.get_shape()
@@ -493,22 +494,22 @@ class ArrayGrid(Grid):
             # If not running in memory saver mode, load entire array
             if self.preload_arrays:
                 if s is not None:
-                    self.logger.debug('Loading grid "{}" of size {}'.format(name, s))
+                    logger.debug('Loading grid "{}" of size {}'.format(name, s))
                     self.values[name][s] = self.load_item(self.get_value_path(name), np.ndarray, s=s)
                 else:
-                    self.logger.debug('Loading grid "{}"'.format(name))
+                    logger.debug('Loading grid "{}"'.format(name))
                     self.values[name] = self.load_item(self.get_value_path(name), np.ndarray)
                     
                 if self.values[name] is not None:
                     self.value_shapes[name] = self.values[name].shape[len(grid_shape):]
-                    self.logger.debug('Loaded grid "{}" of size {}'.format(name, self.value_shapes[name]))
+                    logger.debug('Loaded grid "{}" of size {}'.format(name, self.value_shapes[name]))
             elif self.mmap_arrays:
                 # When mmap'ing, we simply ignore the slice
-                self.logger.debug('Memory mapping grid "{}"'.format(name))
+                logger.debug('Memory mapping grid "{}"'.format(name))
                 self.values[name] = self.load_item(self.get_value_path(name), np.ndarray, mmap=True)
                 if self.values[name] is not None:
                     self.value_shapes[name] = self.values[name].shape[len(grid_shape):]
-                    self.logger.debug('Memory mapped grid "{}" of size {}'.format(name, self.value_shapes[name]))
+                    logger.debug('Memory mapped grid "{}" of size {}'.format(name, self.value_shapes[name]))
             else:
                 # When lazy-loading, we simply ignore the slice
                 shape = self.get_item_shape(self.get_value_path(name))
@@ -518,7 +519,7 @@ class ArrayGrid(Grid):
                 else:
                     self.value_shapes[name] = None
                 
-                self.logger.debug('Skipped loading grid "{}". Will read directly from storage.'.format(name))
+                logger.debug('Skipped loading grid "{}". Will read directly from storage.'.format(name))
 
     def save_value_indexes(self):
         for name in self.values:
@@ -593,10 +594,10 @@ class ArrayGrid(Grid):
             # TODO: do we want the post process function in the cache key?
             cache_key = cache_key_prefix + (name, idx1, idx2, s, raw, post_process)
             if self.value_cache.is_cached(cache_key):
-                logging.trace(f'Nearby values between {idx1} and {idx2} are found in cache.')
+                logger.trace(f'Nearby values between {idx1} and {idx2} are found in cache.')
                 return self.value_cache.get(cache_key)
             
-        logging.trace(f'Loading nearby grid values between {idx1} and {idx2}.')
+        logger.trace(f'Loading nearby grid values between {idx1} and {idx2}.')
 
         # Dimensions
         D = len(idx1)
@@ -628,7 +629,7 @@ class ArrayGrid(Grid):
 
         if self.value_cache is not None:
             self.value_cache.push(cache_key, v)
-            logging.trace(f'Nearby values between {idx1} and {idx2} are written to the cache.')
+            logger.trace(f'Nearby values between {idx1} and {idx2} are written to the cache.')
 
         return v
 
@@ -645,7 +646,7 @@ class ArrayGrid(Grid):
         # Only keep dimensions where interpolation is necessary, i.e. skip
         # where axis has a single value only
 
-        self.logger.trace('Finding values to interpolate to {} using linear Nd.'
+        logger.trace('Finding values to interpolate to {} using linear Nd.'
                           .format({ k: kwargs[k] for _, k, v in self.enumerate_axes(squeeze=True) }))
 
         d = len(idx1)
@@ -664,7 +665,7 @@ class ArrayGrid(Grid):
         if v is None:
             return None
         
-        self.logger.trace('Interpolating values to {} using linead Nd.'.format(kwargs))
+        logger.trace('Interpolating values to {} using linead Nd.'.format(kwargs))
         
         # Perform the 1d interpolations along each axis
         for d in range(d):
@@ -684,7 +685,7 @@ class ArrayGrid(Grid):
         # TODO: implement multi-value version
         # TODO: implement caching
 
-        self.logger.trace('Finding values to interpolate to {} using cubic splines along {}.'.format(kwargs, free_param))
+        logger.trace('Finding values to interpolate to {} using cubic splines along {}.'.format(kwargs, free_param))
 
         # Find the index of the free parameter
         axis_list = list( p for i, p, ax in self.enumerate_axes())
@@ -693,7 +694,7 @@ class ArrayGrid(Grid):
         # Find nearest model to requested parameters
         idx = list(self.get_nearest_index(**kwargs))
         if idx is None:
-            self.logger.debug('No nearest model found.')
+            logger.debug('No nearest model found.')
             return None
         
         # Set all params to nearest value except the one in which we interpolate
@@ -717,7 +718,7 @@ class ArrayGrid(Grid):
         # interpolate over zero valid parameters, in this case return None and
         # the calling code will generate another set of random parameters
         if pars.shape[0] < 2 or kwargs[free_param] < pars.min() or pars.max() < kwargs[free_param]:
-            self.logger.debug('Parameters are at the edge of grid, no interpolation possible.')
+            logger.debug('Parameters are at the edge of grid, no interpolation possible.')
             return None
 
         idx = Grid.rectify_index(idx, s)
@@ -733,7 +734,7 @@ class ArrayGrid(Grid):
         if post_process is not None and value is not None:
             value = post_process(value)
 
-        self.logger.debug('Interpolating values to {} using cubic splines along {}.'.format(kwargs, free_param))
+        logger.debug('Interpolating values to {} using cubic splines along {}.'.format(kwargs, free_param))
 
         # Do as many parallel cubic spline interpolations as many wavelength bins we have
         x, y = pars, value

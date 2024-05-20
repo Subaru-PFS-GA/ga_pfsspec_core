@@ -1,5 +1,6 @@
 import numpy as np
 
+from ..setup_logger import logger
 from ..util.copy import *
 from .dataset import Dataset
 
@@ -165,16 +166,16 @@ class ArrayDataset(Dataset):
             self.value_dtypes[name] = dtype
           
             if self.preload_arrays:
-                self.logger.debug('Initializing memory for dataset value array "{}" of size {}...'.format(name, full_shape))
+                logger.debug('Initializing memory for dataset value array "{}" of size {}...'.format(name, full_shape))
                 self.values[name] = np.full(full_shape, self.get_dtype_invalid_value(dtype))
-                self.logger.debug('Initialized memory for dataset value array "{}" of size {}.'.format(name, full_shape))
+                logger.debug('Initialized memory for dataset value array "{}" of size {}.'.format(name, full_shape))
             else:
                 self.values[name] = None
 
-                self.logger.debug('Initializing data file for dataset value array "{}" of size {}...'.format(name, full_shape))
+                logger.debug('Initializing data file for dataset value array "{}" of size {}...'.format(name, full_shape))
                 if not self.has_item(self.get_value_path(name)):
                     self.allocate_item(self.get_value_path(name), full_shape, dtype=dtype)
-                self.logger.debug('Skipped memory initialization for dataset value array "{}". Will read random slices from storage.'.format(name))
+                logger.debug('Skipped memory initialization for dataset value array "{}". Will read random slices from storage.'.format(name))
 
     def allocate_value(self, name, shape=None, dtype=None, **kwargs):
         """
@@ -246,13 +247,13 @@ class ArrayDataset(Dataset):
         for name in self.enum_values():
             if self.preload_arrays:
                 if s is not None:
-                    self.logger.info('Loading dataset value array "{}" of size {}'.format(name, s))
+                    logger.info('Loading dataset value array "{}" of size {}'.format(name, s))
                     self.values[name][s] = self.load_item(self.get_value_path(name), np.ndarray, s=s)
-                    self.logger.info('Loaded dataset value array "{}" of size {}'.format(name, s))
+                    logger.info('Loaded dataset value array "{}" of size {}'.format(name, s))
                 else:
-                    self.logger.info('Loading dataset value array "{}" of size {}'.format(name, self.value_shapes[name]))
+                    logger.info('Loading dataset value array "{}" of size {}'.format(name, self.value_shapes[name]))
                     self.values[name] = self.load_item(self.get_value_path(name), np.ndarray)
-                    self.logger.info('Loaded dataset value array "{}" of size {}'.format(name, self.value_shapes[name]))
+                    logger.info('Loaded dataset value array "{}" of size {}'.format(name, self.value_shapes[name]))
 
                 if self.values[name] is not None:
                     self.value_shapes[name] = self.values[name].shape[1:]
@@ -266,7 +267,7 @@ class ArrayDataset(Dataset):
                     self.value_shapes[name] = None
                 self.value_dtypes[name] = self.get_item_dtype(self.get_value_path(name))
                 
-                self.logger.info('Skipped loading dataset value array "{}". Will read directly from storage.'.format(name))
+                logger.info('Skipped loading dataset value array "{}". Will read directly from storage.'.format(name))
 
     def save_values(self):
         """
@@ -280,14 +281,14 @@ class ArrayDataset(Dataset):
         for name in self.values:
             if self.values[name] is not None:
                 if self.preload_arrays:
-                    self.logger.info('Saving dataset value array "{}" of size {}'.format(name, self.values[name].shape))
+                    logger.info('Saving dataset value array "{}" of size {}'.format(name, self.values[name].shape))
                     self.save_item(self.get_value_path(name), self.values[name])
-                    self.logger.info('Saved dataset value array "{}" of size {}'.format(name, self.values[name].shape))
+                    logger.info('Saved dataset value array "{}" of size {}'.format(name, self.values[name].shape))
                 else:
                     shape = self.get_value_shape(name)
-                    self.logger.info('Allocating dataset value array "{}" with size {}...'.format(name, shape))
+                    logger.info('Allocating dataset value array "{}" with size {}...'.format(name, shape))
                     self.allocate_item(self.get_value_path(name), shape, self.value_dtypes[name])
-                    self.logger.info('Allocated dataset value array "{}" with size {}. Will write directly to storage.'.format(name, shape))
+                    logger.info('Allocated dataset value array "{}" with size {}. Will write directly to storage.'.format(name, shape))
 
     #endregion
     #region Array access with chunking and caching support
@@ -384,7 +385,7 @@ class ArrayDataset(Dataset):
         # Load and cache current
         data = self.values[name]
         if data is None:
-            self.logger.debug('Reading dataset chunk `{}:{}` from disk.'.format(name, chunk_id))
+            logger.debug('Reading dataset chunk `{}:{}` from disk.'.format(name, chunk_id))
             s = self.get_chunk_slice(chunk_size, chunk_id)
             data = self.load_item(self.get_value_path(name), np.ndarray, s=s)
             self.cache_dirty = False
@@ -429,7 +430,7 @@ class ArrayDataset(Dataset):
         :param id_key: The dictionary item to be used as index. Defaults to "id".
         """
 
-        self.logger.debug('Flushing dataset chunk `:{}` to disk.'.format(self.cache_chunk_id))
+        logger.debug('Flushing dataset chunk `:{}` to disk.'.format(self.cache_chunk_id))
 
         for name in self.values:
             self.flush_cache_item(name)
@@ -448,7 +449,7 @@ class ArrayDataset(Dataset):
         # #       only happen during building a dataset. Figure out a better solution to this.
         # self.params = None
 
-        self.logger.debug('Flushed dataset chunk {} to disk.'.format(self.cache_chunk_id))
+        logger.debug('Flushed dataset chunk {} to disk.'.format(self.cache_chunk_id))
 
         self.reset_cache_all(chunk_size, chunk_id)
 

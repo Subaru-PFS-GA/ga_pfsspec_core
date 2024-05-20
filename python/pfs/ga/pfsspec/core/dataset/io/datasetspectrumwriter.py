@@ -1,6 +1,7 @@
 import os
 import logging
 
+from ...setup_logger import logger
 from pfs.ga.pfsspec.util.parallel import SmartParallel
 from pfs.ga.pfsspec.data.spectrumwriter import SpectrumWriter
 
@@ -41,4 +42,4 @@ class DatasetSpectrumWriter(SpectrumWriter):
             for r in p.map(self.process_item, self.process_item_error, rng):
                 k += 1
 
-        self.logger.info('{} files written.'.format(k))
+        logger.info('{} files written.'.format(k))

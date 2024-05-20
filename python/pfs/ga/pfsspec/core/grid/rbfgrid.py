@@ -1,6 +1,7 @@
 import logging
 import numpy as np
 
+from ..setup_logger import logger
 from pfs.ga.pfsspec.core.util.interp import Rbf
 from .grid import Grid
 
@@ -69,15 +70,15 @@ class RbfGrid(Grid):
             valueshape = self.xi.shape[:1] + tuple(shape)
 
             if self.preload_arrays:
-                self.logger.info('Initializing memory for RBF "{}" of size {}...'.format(name, valueshape))
+                logger.info('Initializing memory for RBF "{}" of size {}...'.format(name, valueshape))
                 self.values[name] = np.full(valueshape, np.nan)
-                self.logger.info('Initialized memory for RBF "{}" of size {}.'.format(name, valueshape))
+                logger.info('Initialized memory for RBF "{}" of size {}.'.format(name, valueshape))
             else:
                 self.values[name] = None
-                self.logger.info('Initializing data file for RBF "{}" of size {}...'.format(name, valueshape))
+                logger.info('Initializing data file for RBF "{}" of size {}...'.format(name, valueshape))
                 if not self.has_item(name):
                     self.allocate_item(name, valueshape, dtype=float)
-                self.logger.info('Skipped memory initialization for RBF "{}". Will read random slices from storage.'.format(name))
+                logger.info('Skipped memory initialization for RBF "{}". Will read random slices from storage.'.format(name))
 
     def allocate_value(self, name, shape=None):
         if shape is not None:
@@ -160,7 +161,7 @@ class RbfGrid(Grid):
         idx = Grid.rectify_index(idx)
         
         if not extrapolate and self.check_extrapolation(idx):
-            logging.warning("Requested point of RBF grid would result in extrapolation")
+            logger.warning("Requested point of RBF grid would result in extrapolation")
             return None
         
         value = self.values[name](*idx)
@@ -231,7 +232,7 @@ class RbfGrid(Grid):
         #       all data values.
         for name in self.values:
             if self.values[name] is not None:
-                self.logger.info('Saving RBF "{}" of size {}'.format(name, self.values[name].nodes.shape))
+                logger.info('Saving RBF "{}" of size {}'.format(name, self.values[name].nodes.shape))
 
                 path = self.get_value_path(name)
                 self.save_item('/'.join([path, self.POSTFIX_XI]), self.values[name].xi)
@@ -240,7 +241,7 @@ class RbfGrid(Grid):
                 self.save_item('/'.join([path, self.POSTFIX_FUNCTION]), self.values[name].function)
                 self.save_item('/'.join([path, self.POSTFIX_EPSILON]), self.values[name].epsilon)
 
-                self.logger.info('Saved RBF "{}" of size {}'.format(name, self.values[name].nodes.shape))
+                logger.info('Saved RBF "{}" of size {}'.format(name, self.values[name].nodes.shape))
 
     def load_items(self, s=None):
         super(RbfGrid, self).load_items(s=s)
@@ -258,7 +259,7 @@ class RbfGrid(Grid):
             raise NotImplementedError()
 
         for name in self.values:
-            self.logger.info('Loading RBF "{}" of size {}'.format(name, s))
+            logger.info('Loading RBF "{}" of size {}'.format(name, s))
 
             path = self.get_value_path(name)
             xi = self.load_item('/'.join([path, self.POSTFIX_XI]), np.ndarray)
@@ -268,10 +269,10 @@ class RbfGrid(Grid):
             epsilon = self.load_item('/'.join([path, self.POSTFIX_EPSILON]), float)
             if xi is not None and nodes is not None:
                 self.values[name] = self.load_rbf(xi, nodes, c, function=function, epsilon=epsilon)
-                self.logger.info('Loaded RBF "{}" of size {}'.format(name, s))
+                logger.info('Loaded RBF "{}" of size {}'.format(name, s))
             else:
                 self.values[name] = None
-                self.logger.info('Skipped loading RBF "{}" of size {}'.format(name, s))
+                logger.info('Skipped loading RBF "{}" of size {}'.format(name, s))
             
     def set_object_params_idx(self, obj, idx):
         # idx might be squeezed, use single values along those axes

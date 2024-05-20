@@ -4,6 +4,7 @@ from sklearn.decomposition import TruncatedSVD
 import logging
 from tqdm import tqdm
 
+from ..setup_logger import logger
 from pfs.ga.pfsspec.core.util.timer import Timer
 from .pcagrid import PcaGrid
 from .gridbuilder import GridBuilder
@@ -122,10 +123,10 @@ class PcaGridBuilder(GridBuilder):
 
         # Build the data matrix
         X = np.empty(data_shape)
-        self.logger.info('Allocated {} bytes for data matrix of shape {}.'.format(X.size * X.itemsize, X.shape))
+        logger.info('Allocated {} bytes for data matrix of shape {}.'.format(X.size * X.itemsize, X.shape))
 
         W = np.ones((vector_count,))
-        self.logger.info('Allocated {} bytes for weight vector of shape {}.'.format(W.size * W.itemsize, W.shape))
+        logger.info('Allocated {} bytes for weight vector of shape {}.'.format(W.size * W.itemsize, W.shape))
 
         with Timer('Assembling data matrix...', logging.INFO):
             for i in tqdm(range(vector_count)):
@@ -149,7 +150,7 @@ class PcaGridBuilder(GridBuilder):
             WX = 1 / np.sqrt(np.sum(self.W[mask])) * np.sqrt(self.W[mask][:, np.newaxis]) * self.X[mask]
 
             if self.svd_method == 'skip':
-                logging.warning('Skipping SVD computation.')
+                logger.warning('Skipping SVD computation.')
                 M, N = self.X[mask].shape
                 K = min(M, N)
                 self.S = np.zeros((K,))
@@ -172,7 +173,7 @@ class PcaGridBuilder(GridBuilder):
 
         with Timer('Calculating covariance matrix...', logging.INFO):
             C = 1 / np.sum(self.W) *  np.matmul(self.X.T, np.diag(self.W), self.X)        # shape: (dim, dim)
-        self.logger.info('Allocated {} bytes for covariance matrix.'.format(C.size * C.itemsize))
+        logger.info('Allocated {} bytes for covariance matrix.'.format(C.size * C.itemsize))
 
         # Compute the SVD of the covariance matrix
         with Timer('Computing SVD with method `{}`, truncated at {}...'.format(self.svd_method, self.pca_truncate), logging.INFO):
@@ -185,7 +186,7 @@ class PcaGridBuilder(GridBuilder):
                 self.S = svd.singular_values_            # shape: (truncate,)
                 self.V = svd.components_.transpose()     # shape: (dim, truncate)
             elif self.svd_method == 'skip':
-                logging.warning('Skipping SVD computation.')
+                logger.warning('Skipping SVD computation.')
                 self.S = np.zeros(C.shape[0])
                 self.V = np.zeros(C.shape)
             else:
@@ -198,7 +199,7 @@ class PcaGridBuilder(GridBuilder):
 
         with Timer('Calculating X X^T matrix...', logging.INFO):
             self.D = np.matmul(self.X, self.X.T)        # shape: (items, items)
-        self.logger.info('Allocated {} bytes for X X^T matrix.'.format(self.D.size * self.D.itemsize))
+        logger.info('Allocated {} bytes for X X^T matrix.'.format(self.D.size * self.D.itemsize))
 
         with Timer('Computing SVD with method `{}`, truncated at {}...'.format(self.svd_method, self.pca_truncate), logging.INFO):
             if self.svd_method == 'svd' or self.pca_truncate is None:

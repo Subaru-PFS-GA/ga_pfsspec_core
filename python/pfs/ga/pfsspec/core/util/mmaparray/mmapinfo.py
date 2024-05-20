@@ -1,6 +1,7 @@
 import mmap
-import logging
 import numpy as np
+
+from ...setup_logger import logger
 
 _mmapinfo__files = {}
 _mmapinfo__mmaps = {}
@@ -25,7 +26,7 @@ class mmapinfo():
         shape = dataset.shape
 
         if offset is None:
-            logging.warning('Dataset from HDF5 cannot be memmapped, offset is None meaning the array might not be contigous.')
+            logger.warning('Dataset from HDF5 cannot be memmapped, offset is None meaning the array might not be contigous.')
             return None
         else:
             return mmapinfo(filename, offset=offset, size=size, dtype=dtype, shape=shape, slice=slice)

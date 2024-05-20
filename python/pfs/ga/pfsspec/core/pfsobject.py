@@ -1,5 +1,4 @@
 import os
-import logging
 import numpy as np
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,6 +10,7 @@ import multiprocessing as mp
 import numbers
 from collections.abc import Iterable
 
+from .setup_logger import logger
 from .constants import Constants
 from pfs.ga.pfsspec.core.util.args import get_arg, is_arg
 from pfs.ga.pfsspec.core.util.mmaparray import mmapinfo, mmaparray
@@ -40,8 +40,6 @@ class PfsObject():
             'filedata,'
             'hdf5file'
         ])
-
-        self.logger = logging.getLogger()
 
         if isinstance(orig, PfsObject):
             self.random_state = orig.random_state
@@ -95,10 +93,10 @@ class PfsObject():
             # TODO: This is causing problems with multiprocessing
             raise NotImplementedError()
             random_state = np.random.RandomState(seed=seed)
-            self.logger.debug("Initialized random state on pid {} with seed {}".format(os.getpid(), seed))
+            logger.debug("Initialized random state on pid {} with seed {}".format(os.getpid(), seed))
         elif seed is not None:
             random_state.seed(seed)
-            self.logger.debug("Re-seeded random state on pid {} with seed {}".format(os.getpid(), seed))
+            logger.debug("Re-seeded random state on pid {} with seed {}".format(os.getpid(), seed))
 
         # TODO: These are not saved now because they're causing problems
         #       with multiprocessing
@@ -232,7 +230,7 @@ class PfsObject():
         :param save_items_func: Function that calls save_item for each data item.
         """
 
-        self.logger.info("Saving {} to file {}...".format(type(self).__name__, filename))
+        logger.info("Saving {} to file {}...".format(type(self).__name__, filename))
 
         save_items_func = save_items_func or self.save_items
 
@@ -254,7 +252,7 @@ class PfsObject():
         else:
             raise NotImplementedError()
 
-        self.logger.info("Saved {} to file {}.".format(type(self).__name__, filename))
+        logger.info("Saved {} to file {}.".format(type(self).__name__, filename))
 
     def save_items(self):
         """
@@ -292,7 +290,7 @@ class PfsObject():
         :param min_string_length: Dictionary of minimum length of pandas string columns.
         """
 
-        self.logger.debug('Saving item {} with type {}'.format(name, type(item).__name__))
+        logger.debug('Saving item {} with type {}'.format(name, type(item).__name__))
 
         if self.fileformat != 'h5' and s is not None:
             raise NotImplementedError()
@@ -364,7 +362,7 @@ class PfsObject():
                 chunks = self.get_chunk_shape(name, item.shape, s=s)
                 if chunks is not None:
                     g.create_dataset(name, data=item, chunks=chunks)
-                    self.logger.debug('Saving item {} with chunks {}'.format(name, chunks))
+                    logger.debug('Saving item {} with chunks {}'.format(name, chunks))
                 else:
                     g.create_dataset(name, data=item)
         elif isinstance(item, numbers.Number) or \
@@ -421,7 +419,7 @@ class PfsObject():
         :param load_items_func: Function that calls load_item for each data item.
         """
 
-        self.logger.info("Loading {} from file {} with slices {}...".format(type(self).__name__, filename, slice))
+        logger.info("Loading {} from file {} with slices {}...".format(type(self).__name__, filename, slice))
 
         load_items_func = load_items_func or self.load_items
         format = format or PfsObject.get_format(filename)
@@ -436,7 +434,7 @@ class PfsObject():
                 self.file = None
         elif self.fileformat == 'npz':
             self.filedata = np.load(self.filename, allow_pickle=True)
-            self.logger.debug('Found items: {}'.format([k for k in self.filedata]))
+            logger.debug('Found items: {}'.format([k for k in self.filedata]))
             self.load_items(s=s)
             self.filedata = None
         elif self.fileformat == 'h5':
@@ -444,7 +442,7 @@ class PfsObject():
         else:
             raise NotImplementedError()
 
-        self.logger.info("Loaded {} from file {}.".format(type(self).__name__, filename))
+        logger.info("Loaded {} from file {}.".format(type(self).__name__, filename))
 
     def load_items(self, s=None):
         """
@@ -465,7 +463,7 @@ class PfsObject():
         :param s: Optional source slice.
         """
 
-        # self.logger.debug('Loading item {} with type {} and slices {}'.format(name, type.__name__, s))
+        # logger.debug('Loading item {} with type {} and slices {}'.format(name, type.__name__, s))
 
         if self.fileformat == 'numpy':
             data = np.load(self.file, allow_pickle=True)
@@ -555,7 +553,7 @@ class PfsObject():
                             return mmaparray(mi)
                         else:
                             # If skip_mmap is True, it's OK to load the array into memory
-                            logging.warning(f'Cannot mmap HDF5 dataset {path} of file `{self.filename}`. Is it chunked?')
+                            logger.warning(f'Cannot mmap HDF5 dataset {path} of file `{self.filename}`. Is it chunked?')
                             if not skip_mmap:
                                 return None
                     else:

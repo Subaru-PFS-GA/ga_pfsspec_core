@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 
+from ..setup_logger import logger
 from pfs.ga.pfsspec.core.pfsobject import PfsObject
 
 class Dataset(PfsObject):
@@ -71,9 +72,9 @@ class Dataset(PfsObject):
 
         super().load(filename, format=format, s=s)
 
-        self.logger.info("Loaded dataset with shapes:")
-        self.logger.info("  params:  {}".format(self.params.shape))
-        self.logger.info("  columns: {}".format(self.params.columns))
+        logger.info("Loaded dataset with shapes:")
+        logger.info("  params:  {}".format(self.params.shape))
+        logger.info("  columns: {}".format(self.params.columns))
 
     def load_items(self, s=None):
         """
@@ -114,10 +115,10 @@ class Dataset(PfsObject):
 
         super(Dataset, self).save(filename, format=format)
 
-        self.logger.info("Saved dataset with shapes:")
+        logger.info("Saved dataset with shapes:")
         if self.params is not None:
-            self.logger.info("  params:  {}".format(self.params.shape))
-            self.logger.info("  columns: {}".format(self.params.columns))
+            logger.info("  params:  {}".format(self.params.shape))
+            logger.info("  columns: {}".format(self.params.columns))
 
     def save_items(self):
         """

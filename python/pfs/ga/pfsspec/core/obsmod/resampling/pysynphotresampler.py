@@ -2,6 +2,8 @@ import logging
 import numpy as np
 from scipy.interpolate import interp1d
 from astropy import units as u
+
+from ...setup_logger import logger
 from .resampler import Resampler
 
 class PysynphotResampler(Resampler):
@@ -15,6 +17,13 @@ class PysynphotResampler(Resampler):
 
     def init(self, wave, wave_edges=None):
         super().init(wave, wave_edges)
+
+        if 'pysynphot' not in globals():
+            try:
+                import pysynphot
+            except ModuleNotFoundError as ex:
+                logger.warning(ex.msg)
+                pysynphot = None
 
         # Assume an all-1 filter
         self.filt = pysynphot.spectrum.ArraySpectralElement(wave, np.ones(len(wave)), waveunits='angstrom')
@@ -31,7 +40,7 @@ class PysynphotResampler(Resampler):
             try:
                 import pysynphot
             except ModuleNotFoundError as ex:
-                logging.warning(ex.msg)
+                logger.warning(ex.msg)
                 pysynphot = None
 
         target_wave = target_wave if target_wave is not None else self.target_wave

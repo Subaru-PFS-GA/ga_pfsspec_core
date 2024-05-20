@@ -2,6 +2,7 @@ import os
 import glob
 import logging
 
+from ..setup_logger import logger
 from pfs.ga.pfsspec.scripts.import_ import Import
 from pfs.ga.pfsspec.stellarmod.phoenixspectrumreader import PhoenixSpectrumReader
 from pfs.ga.pfsspec.stellarmod.phoenixatmreader import PhoenixAtmReader
@@ -38,12 +39,12 @@ class ImportPhoenixAtm(Import):
             grid.preload_arrays = self.args['preload_arrays']
 
         if os.path.isdir(self.args['path']):
-            self.logger.info('Running in grid mode')
+            logger.info('Running in grid mode')
             raise NotImplementedError()
         else:
-            self.logger.info('Running in file list mode')
+            logger.info('Running in file list mode')
             files = glob.glob(os.path.expandvars(self.args['path']))
-            self.logger.info('Found {} files.'.format(len(files)))
+            logger.info('Found {} files.'.format(len(files)))
 
         grid.init_values()
         grid.build_axis_indexes()

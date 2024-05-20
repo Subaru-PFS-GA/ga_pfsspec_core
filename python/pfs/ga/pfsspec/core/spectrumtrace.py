@@ -8,12 +8,22 @@ class SpectrumTrace():
     Mixin to provide trace functionality to Spectrum processing trace objects.
     """
 
+    def __init__(self):
+        pass
+
+    def add_args(self, config, parser):
+        pass
+
+    def init_from_args(self, script, config, args):
+        pass
+
     def _plot_spectrum(self, key, arm=None,
                        spectrum=None, processed_spectrum=None,
                        template=None, processed_template=None,
                        plot_spectrum=True, plot_flux_err=True, plot_processed_spectrum=True,
                        plot_template=True, plot_processed_template=True,
-                       plot_residuals=False,
+                       plot_residuals=False, plot_continuum=False,
+                       plot_mask=True, mask_bits=None,
                        wlim=None, auto_limits=True,
                        title=None):
         
@@ -25,13 +35,18 @@ class SpectrumTrace():
                                   title=title,
                                   diagram_size=(6.5, 2.0))
         
-        p, ax = self.__create_spectrum_plot(f, 0, 0, 0)
+        p, ax = self.__create_spectrum_plot(f, 0, 0, 0,
+                                            plot_mask=plot_mask,
+                                            plot_flux_err=plot_flux_err,
+                                            plot_continuum=plot_continuum)
 
         self.__plot_spectrum_impl(p, arm, 
                                   spectrum, processed_spectrum,
                                   template, processed_template,
                                   plot_spectrum, plot_flux_err, plot_processed_spectrum,
-                                  plot_template, plot_processed_template, plot_residuals,
+                                  plot_template, plot_processed_template,
+                                  plot_residuals, plot_continuum,
+                                  plot_mask=plot_mask, mask_bits=mask_bits,
                                   wlim=wlim, auto_limits=auto_limits)
 
         # TODO: Add SNR, exp time, obs date
@@ -53,7 +68,8 @@ class SpectrumTrace():
                       templates=None, processed_templates=None,
                       plot_spectrum=True, plot_flux_err=True, plot_processed_spectrum=True,
                       plot_template=True, plot_processed_template=True,
-                      plot_residuals=False,
+                      plot_residuals=False, plot_continuum=False,
+                      plot_mask=True, mask_bits=None,
                       wlim=None, auto_limits=True,
                       title=None):
         
@@ -75,7 +91,10 @@ class SpectrumTrace():
             if i == nexp:
                 break
 
-            p, ax = self.__create_spectrum_plot(f, j, k, l)
+            p, ax = self.__create_spectrum_plot(f, j, k, l,
+                                                plot_mask=plot_mask,
+                                                plot_flux_err=plot_flux_err,
+                                                plot_continuum=plot_continuum)
 
             if spectra is not None:
                 arms = spectra.keys()
@@ -87,6 +106,8 @@ class SpectrumTrace():
                 arms = processed_templates.keys()
             else:
                 raise ValueError("No spectra or templates provided")
+            
+            arms = list(arms)
 
             for arm in arms:
                 self.__plot_spectrum_impl(p, arm, 
@@ -95,23 +116,36 @@ class SpectrumTrace():
                                           templates[arm] if templates is not None else None,
                                           processed_templates[arm][i] if processed_templates is not None else None,
                                           plot_spectrum, plot_flux_err, plot_processed_spectrum,
-                                          plot_template, plot_processed_template, plot_residuals,
+                                          plot_template, plot_processed_template,
+                                          plot_residuals, plot_continuum,
+                                          plot_mask=True, mask_bits=None,
                                           wlim=wlim, auto_limits=auto_limits)
 
             # TODO: Add SNR, exp time, obs date
-            p.title = spectra[arm][i].get_name()
+            if spectra is not None:
+                spectrum = spectra[arms[0]][0]
+            elif processed_spectra is not None:
+                spectrum = processed_spectra[arms[0]][0]
+            elif templates is not None:
+                spectrum = templates[arms[0]]
+            elif processed_templates is not None:
+                spectrum = processed_templates[arms[0]][0]
+
+            if spectrum is not None:
+                p.title = spectrum.get_name()
 
             p.apply()
 
         f.match_limits()
 
-    def __create_spectrum_plot(self, f, j, k, l):
+    def __create_spectrum_plot(self, f, j, k, l,
+                               plot_mask, plot_flux_err, plot_continuum):
         p = SpectrumPlot()
         ax = f.add_diagram((j, k, l), p)
 
-        p.plot_mask = self.plot_spec_mask
-        p.plot_flux_err = self.plot_spec_flux_err
-        p.plot_cont = self.plot_spec_cont
+        p.plot_mask = plot_mask
+        p.plot_flux_err = plot_flux_err
+        p.plot_cont = plot_continuum
 
         return p, ax
 
@@ -119,15 +153,21 @@ class SpectrumTrace():
                              spectrum, processed_spectrum,
                              template, processed_template,
                              plot_spectrum, plot_flux_err, plot_processed_spectrum,
-                             plot_template, plot_processed_template, plot_residuals,
+                             plot_template, plot_processed_template,
+                             plot_residuals, plot_continuum,
+                             plot_mask, mask_bits,
                              wlim, auto_limits):
         
         # TODO: define arm color in styles
         if plot_spectrum and spectrum is not None:
-            p.plot_spectrum(spectrum, plot_flux_err=plot_flux_err, wlim=wlim, auto_limits=auto_limits)
+            p.plot_spectrum(spectrum, plot_flux_err=plot_flux_err,
+                            plot_mask=plot_mask, mask_bits=mask_bits,
+                            wlim=wlim, auto_limits=auto_limits)
 
         if plot_processed_spectrum and processed_spectrum is not None:
-            p.plot_spectrum(processed_spectrum, plot_flux_err=plot_flux_err, wlim=wlim, auto_limits=auto_limits)
+            p.plot_spectrum(processed_spectrum, plot_flux_err=plot_flux_err,
+                            plot_mask=plot_mask, mask_bits=mask_bits,
+                            wlim=wlim, auto_limits=auto_limits)
 
         if plot_template and template is not None:
             p.plot_spectrum(template, wlim=wlim, auto_limits=auto_limits)

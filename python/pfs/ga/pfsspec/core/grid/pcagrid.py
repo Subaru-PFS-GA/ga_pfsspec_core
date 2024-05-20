@@ -1,4 +1,3 @@
-import logging
 import numpy as np
 
 from pfs.ga.pfsspec.core import PfsObject

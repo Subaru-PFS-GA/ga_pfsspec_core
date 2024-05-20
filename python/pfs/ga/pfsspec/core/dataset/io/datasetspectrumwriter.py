@@ -1,5 +1,4 @@
 import os
-import logging
 
 from ...setup_logger import logger
 from pfs.ga.pfsspec.util.parallel import SmartParallel

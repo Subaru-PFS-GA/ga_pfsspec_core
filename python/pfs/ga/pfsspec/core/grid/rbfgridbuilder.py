@@ -1,6 +1,5 @@
 import os
 import gc
-import logging
 import numpy as np
 import time
 from tqdm import tqdm

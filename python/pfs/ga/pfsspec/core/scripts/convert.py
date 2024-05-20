@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
 
-import os
-import logging
-
 from .script import Script
 
 class Convert(Script):

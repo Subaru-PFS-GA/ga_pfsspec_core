@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-import os
-import logging
 import numpy as np
 
 from .script import Script

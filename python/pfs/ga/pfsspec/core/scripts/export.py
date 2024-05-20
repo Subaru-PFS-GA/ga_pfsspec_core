@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import os
-import logging
 import numpy as np
 
 from pfs.ga.pfsspec.core.scripts import Script

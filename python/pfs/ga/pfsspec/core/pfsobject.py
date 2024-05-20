@@ -29,7 +29,7 @@ class PfsObject():
         # proper logger object, even when multiprocessing
         #
         # if multiprocessing.current_process()._inheriting:
-        #    self.logger = multiprocessing.get_logger()
+        #    logger = multiprocessing.get_logger()
 
     def __init__(self, orig=None):
         self.jsonomit = set([

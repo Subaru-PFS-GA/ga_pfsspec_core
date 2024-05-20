@@ -1,6 +1,5 @@
 import os
 import glob
-import logging
 
 from ..setup_logger import logger
 from pfs.ga.pfsspec.scripts.import_ import Import

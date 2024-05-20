@@ -1,4 +1,3 @@
-import logging
 import numpy as np
 
 from ..setup_logger import logger

@@ -1,4 +1,3 @@
-import logging
 import numpy as np
 from scipy.interpolate import interp1d
 from astropy import units as u

@@ -1,5 +1,4 @@
 import os
-import logging
 import numbers
 import numpy as np
 from collections.abc import Iterable

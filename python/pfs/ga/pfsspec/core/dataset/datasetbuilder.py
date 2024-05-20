@@ -1,6 +1,5 @@
 import sys
 import os
-import logging
 import numpy as np
 import pandas as pd
 from tqdm import tqdm

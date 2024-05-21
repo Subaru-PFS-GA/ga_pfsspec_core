@@ -82,6 +82,7 @@ class Spectrum(PfsObject):
             self.cont_fit = None
 
             self.mask_bits = None               # Default mask bits for masking wrong pixels
+            self.mask_flags = None              # Dict with meaning of mask bits
 
             self.resolution = None
             self.is_wave_regular = None
@@ -125,6 +126,7 @@ class Spectrum(PfsObject):
             self.cont_fit = orig.cont_fit
 
             self.mask_bits = orig.mask_bits
+            self.mask_flags = orig.mask_flags
 
             self.resolution = orig.resolution
             self.is_wave_regular = orig.is_wave_regular

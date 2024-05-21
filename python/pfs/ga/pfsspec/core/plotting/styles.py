@@ -58,6 +58,9 @@ def blue_line(**kwargs):
 def lightgray_line(**kwargs):
     return color_line('lightgray', **kwargs)
 
+def lightblue_line(**kwargs):
+    return color_line('lightblue', **kwargs)
+
 def open_circle(**kwargs):
     args = kwargs.copy()
 
@@ -117,6 +120,14 @@ def tick_label_font(**kwargs):
     args = kwargs.copy()
 
     __update_style(args, 'labelsize', 8)
+
+    return args
+
+def mask_label_font(**kwargs):
+    args = kwargs.copy()
+
+    __update_style(args, 'labelsize', 5)
+    __update_style(args, 'labelcolor', 'red')
 
     return args
 

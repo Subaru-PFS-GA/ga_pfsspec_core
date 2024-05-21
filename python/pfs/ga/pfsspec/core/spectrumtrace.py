@@ -23,7 +23,7 @@ class SpectrumTrace():
                        plot_spectrum=True, plot_flux_err=True, plot_processed_spectrum=True,
                        plot_template=True, plot_processed_template=True,
                        plot_residuals=False, plot_continuum=False,
-                       plot_mask=True, mask_bits=None,
+                       plot_mask=False, mask_bits=None,
                        wlim=None, auto_limits=True,
                        title=None):
         
@@ -69,9 +69,10 @@ class SpectrumTrace():
                       plot_spectrum=True, plot_flux_err=True, plot_processed_spectrum=True,
                       plot_template=True, plot_processed_template=True,
                       plot_residuals=False, plot_continuum=False,
-                      plot_mask=True, mask_bits=None,
+                      plot_mask=False, mask_bits=None,
                       wlim=None, auto_limits=True,
-                      title=None):
+                      title=None,
+                      nrows=4, ncols=1, diagram_size=(6.5, 2.0)):
         
         """
         Plot a set of spectra in a grid format.
@@ -80,12 +81,10 @@ class SpectrumTrace():
         # Number of exposures
         nexp = np.max([ len(spectra[arm]) for arm in spectra.keys() ])
 
-        ncols = 1
-        nrows = 4
         npages = int(np.ceil(nexp / (ncols * nrows)))
         f = self.get_diagram_page(key, npages, nrows, ncols,
                                   title=title,
-                                  diagram_size=(6.5, 2.0))
+                                  diagram_size=diagram_size)
        
         for i, (j, k, l) in enumerate(np.ndindex((npages, nrows, ncols))):
             if i == nexp:
@@ -110,42 +109,36 @@ class SpectrumTrace():
             arms = list(arms)
 
             for arm in arms:
+                spectrum = spectra[arm][i] if spectra is not None else None
+
                 self.__plot_spectrum_impl(p, arm, 
-                                          spectra[arm][i] if spectra is not None else None,
+                                          spectrum,
                                           processed_spectra[arm][i] if processed_spectra is not None else None,
                                           templates[arm] if templates is not None else None,
                                           processed_templates[arm][i] if processed_templates is not None else None,
                                           plot_spectrum, plot_flux_err, plot_processed_spectrum,
                                           plot_template, plot_processed_template,
                                           plot_residuals, plot_continuum,
-                                          plot_mask=True, mask_bits=None,
+                                          plot_mask=plot_mask, mask_bits=mask_bits,
                                           wlim=wlim, auto_limits=auto_limits)
 
-            # TODO: Add SNR, exp time, obs date
-            if spectra is not None:
-                spectrum = spectra[arms[0]][0]
-            elif processed_spectra is not None:
-                spectrum = processed_spectra[arms[0]][0]
-            elif templates is not None:
-                spectrum = templates[arms[0]]
-            elif processed_templates is not None:
-                spectrum = processed_templates[arms[0]][0]
+                if spectrum is not None:
+                    p.title = spectrum.get_name()
 
-            if spectrum is not None:
-                p.title = spectrum.get_name()
-
-            p.apply()
+                p.apply()
 
         f.match_limits()
 
     def __create_spectrum_plot(self, f, j, k, l,
-                               plot_mask, plot_flux_err, plot_continuum):
+                               plot_mask, plot_flux_err, plot_continuum,
+                               title=None):
         p = SpectrumPlot()
         ax = f.add_diagram((j, k, l), p)
 
         p.plot_mask = plot_mask
         p.plot_flux_err = plot_flux_err
         p.plot_cont = plot_continuum
+        p.title = title
 
         return p, ax
 

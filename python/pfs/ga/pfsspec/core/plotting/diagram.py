@@ -26,6 +26,7 @@ class Diagram():
 
         # matplotlib axes
         self._ax = ax
+        self._ax2 = None
 
     def __get_axes(self):
         return ReadOnlyList(self.__diagram_axes)
@@ -93,7 +94,7 @@ class Diagram():
 
         return l
 
-    def plot(self, ax: plt.Axes, x, y, fmt=None, mask=None, s=None, **kwargs):
+    def plot(self, ax: plt.Axes, x, y, fmt=None, mask=None, s=None, zorder=None, **kwargs):
         style = styles.tiny_dots_plot(**kwargs)
 
         s = s if s is not None else np.s_[:]
@@ -103,7 +104,7 @@ class Diagram():
         if fmt is not None:
             args += (fmt,)
         
-        l = ax.plot(*args, **styles.sanitize_style(**style))
+        l = ax.plot(*args, zorder=zorder, **styles.sanitize_style(**style))
         self.apply()
 
         return l

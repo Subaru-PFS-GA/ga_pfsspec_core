@@ -8,6 +8,7 @@ import numpy as np
 from tqdm import tqdm
 
 from ..setup_logger import logger
+from ..constants import PFSSPEC_LOGNAME
 
 class SmartParallelError(Exception):
     def __init__(self, type, exception, traceback):

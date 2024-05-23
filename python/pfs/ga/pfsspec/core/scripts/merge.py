@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 from ..setup_logger import logger
-from pfs.ga.pfsspec.core import Constants
+from pfs.ga.pfsspec.core.constants import Constants
 from pfs.ga.pfsspec.core.dataset import Dataset
 from pfs.ga.pfsspec.core.scripts import Script
 

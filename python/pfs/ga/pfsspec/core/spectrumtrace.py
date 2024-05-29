@@ -109,7 +109,22 @@ class SpectrumTrace():
             arms = list(arms)
 
             for arm in arms:
-                spectrum = spectra[arm][i] if spectra is not None else None
+                # Spectra are either dict of lists or dict of dicts
+                if spectra is None:
+                    spectrum
+                elif isinstance(spectra[arm], dict):
+                    keys = list(sorted(spectra[arm].keys()))
+                    if i < len(keys):
+                        spectrum = spectra[arm][keys[i]]
+                    else:
+                        spectrum = None
+                elif isinstance(spectra[arm], list):
+                    if i < len(spectra[arm]):
+                        spectrum = spectra[arm][i]
+                    else:
+                        spectrum = None
+                else:
+                    raise NotImplementedError()
 
                 self.__plot_spectrum_impl(p, arm, 
                                           spectrum,

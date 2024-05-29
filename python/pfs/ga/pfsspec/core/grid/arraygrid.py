@@ -490,35 +490,38 @@ class ArrayGrid(Grid):
         grid_shape = self.get_shape()
 
         for name in self.enum_values():
+            path = self.get_value_path(name)
+
             # If not running in memory saver mode, load entire array
             if self.preload_arrays:
+                
                 if s is not None:
-                    logger.debug('Loading grid "{}" of size {}'.format(name, s))
-                    self.values[name][s] = self.load_item(self.get_value_path(name), np.ndarray, s=s)
+                    logger.debug(f'Loading grid `{path}` with slice {s} from file `{self.filename}`.')
+                    self.values[name][s] = self.load_item(path, np.ndarray, s=s)
                 else:
-                    logger.debug('Loading grid "{}"'.format(name))
-                    self.values[name] = self.load_item(self.get_value_path(name), np.ndarray)
+                    logger.debug(f'Loading grid `{path}` from file `{self.filename}`.')
+                    self.values[name] = self.load_item(path, np.ndarray)
                     
                 if self.values[name] is not None:
                     self.value_shapes[name] = self.values[name].shape[len(grid_shape):]
-                    logger.debug('Loaded grid "{}" of size {}'.format(name, self.value_shapes[name]))
+                    logger.debug(f'Loaded grid `{path}` of size {self.value_shapes[name]} from file `{self.filename}`.')
             elif self.mmap_arrays:
                 # When mmap'ing, we simply ignore the slice
-                logger.debug('Memory mapping grid "{}"'.format(name))
-                self.values[name] = self.load_item(self.get_value_path(name), np.ndarray, mmap=True)
+                logger.debug(f'Memory mapping grid `{path}` from file `{self.filename}`.')
+                self.values[name] = self.load_item(path, np.ndarray, mmap=True)
                 if self.values[name] is not None:
                     self.value_shapes[name] = self.values[name].shape[len(grid_shape):]
-                    logger.debug('Memory mapped grid "{}" of size {}'.format(name, self.value_shapes[name]))
+                    logger.debug(f'Memory mapped grid `{path}` of size {self.value_shapes[name]} from file `{self.filename}`.')
             else:
                 # When lazy-loading, we simply ignore the slice
-                shape = self.get_item_shape(self.get_value_path(name))
+                shape = self.get_item_shape(path)
                 self.values[name] = None
                 if shape is not None:
                     self.value_shapes[name] = shape[len(grid_shape):]
                 else:
                     self.value_shapes[name] = None
                 
-                logger.debug('Skipped loading grid "{}". Will read directly from storage.'.format(name))
+                logger.debug(f'Skipped loading grid `{path}` from `{self.filename}`. Will read directly from storage.')
 
     def save_value_indexes(self):
         for name in self.values:

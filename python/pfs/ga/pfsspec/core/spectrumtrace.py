@@ -197,5 +197,4 @@ class SpectrumTrace():
 
             fn = os.path.join(self.logdir, filename)
             self.make_outdir(fn)
-            with open(fn, "w") as f:
-                f.writelines([ s + '\n' for s in spectrum.history ])
+            spectrum.history.save(fn)

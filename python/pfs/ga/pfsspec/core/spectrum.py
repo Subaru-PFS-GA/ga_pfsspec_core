@@ -2,7 +2,9 @@ import numpy as np
 import numbers
 import collections
 import matplotlib.pyplot as plt
+import logging
 
+from pfs.ga.pfsspec.core.history import History
 from pfs.ga.pfsspec.core.util.copy import *
 from pfs.ga.pfsspec.core.pfsobject import PfsObject
 from pfs.ga.pfsspec.core.obsmod.psf import *
@@ -90,7 +92,7 @@ class Spectrum(PfsObject):
             self.is_wave_log = None
 
             self.aux_params = {}
-            self.history = []
+            self.history = History()
         else:
             self.index = orig.index
             self.id = orig.id
@@ -141,8 +143,13 @@ class Spectrum(PfsObject):
         s.append_history('A copy of a spectrum is created.')
         return s
 
-    def append_history(self, msg):
+    def append_history(self, msg, log_level=None):
+        # Save message to the history and write to the log
+
+        log_level = log_level if log_level is not None else logging.TRACE
+
         self.history.append(msg)
+        logger.log(log_level, msg)
 
     def get_param_names(self):
         return ['id',
@@ -497,7 +504,7 @@ class Spectrum(PfsObject):
 
         if mask.sum() == 0:
             self.snr = np.nan
-            self.append_history(f'S/N cannot be calculated using method `{type(snr).__name__}` because number of unmasked pixels is zero.')
+            self.append_history(f'S/N cannot be calculated using method `{type(snr).__name__}` because number of unmasked pixels is zero.', logging.WARNING)
         else:
             self.snr = snr.get_snr(self.flux, self.flux_err, mask)
             self.append_history(f'S/N calculated to be {self.snr} using method `{type(snr).__name__}`')

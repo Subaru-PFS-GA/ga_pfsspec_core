@@ -30,8 +30,8 @@ class GridReader(Importer):
 
         parser.add_argument('--preload-arrays', action='store_true', help='Preload arrays, do not use to save memory\n')
 
-    def init_from_args(self, config, args):
-        super().init_from_args(config, args)
+    def init_from_args(self, script, config, args):
+        super().init_from_args(script, config, args)
         
         self.preload_arrays = self.get_arg('preload_arrays', self.preload_arrays, args)
 
@@ -56,11 +56,9 @@ class GridReader(Importer):
         grid = self.get_array_grid()
         slice = grid.get_slice()
         g = GridEnumerator(grid, s=slice, top=self.top, resume=resume)
-        t = tqdm(total=len(g))
-        with SmartParallel(verbose=False, parallel=self.parallel, threads=self.threads) as p:
+        with SmartParallel(verbose=True, parallel=self.parallel, threads=self.threads) as p:
             for res in p.map(self.process_item, self.process_item_error, g):
                 self.store_item(res)
-                t.update(1)
 
         logger.info("Grid loaded.")
 

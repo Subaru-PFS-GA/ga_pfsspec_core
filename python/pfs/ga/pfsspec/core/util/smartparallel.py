@@ -2,13 +2,12 @@ import os, sys
 import logging
 import traceback
 import multiprocessing
-from multiprocessing import Manager
-from .pool import Pool
+from multiprocessing import Manager, Pool
 import numpy as np
 from tqdm import tqdm
 
-from ..setup_logger import logger
-from ..constants import PFSSPEC_LOGNAME
+SMARTPARALLEL_LOGNAME = 'smartparallel'
+logger = logging.getLogger(SMARTPARALLEL_LOGNAME)
 
 class SmartParallelError(Exception):
     def __init__(self, type, exception, traceback):
@@ -111,7 +110,7 @@ class SmartParallel():
 
         if random_seed is not None:
             np.random.seed(random_seed)
-            logger = logging.getLogger(PFSSPEC_LOGNAME)
+            logger = logging.getLogger(SMARTPARALLEL_LOGNAME)
             logger.debug("Re-seeded random state on pid {} with seed {}".format(os.getpid(), random_seed))
 
     @staticmethod
@@ -150,9 +149,15 @@ class SmartParallel():
             args = (self.queue_out, worker, error) + args
             kwargs = {**kwargs, 'obj': obj}
 
+            logger.info(f'Starting parallel map with {len(items)} items.')
+            if self.verbose:
+                items = tqdm(items, total=len(items))
+
             for i in items:
                 self.pool.apply_async(SmartParallel.pool_worker, args=(i,) + args, kwds=kwargs,
                                       error_callback=SmartParallel.pool_error_callback)
+
+            logger.info(f'{len(items)} items added to the work queue.')
 
             m = IterableQueue(self.queue_out, len(items))
         else:

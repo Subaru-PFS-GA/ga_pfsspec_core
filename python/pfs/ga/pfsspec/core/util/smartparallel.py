@@ -2,7 +2,8 @@ import os, sys
 import logging
 import traceback
 import multiprocessing
-from multiprocessing import Manager, Pool
+from multiprocessing import Manager
+from .pool import Pool
 import numpy as np
 from tqdm import tqdm
 
@@ -151,6 +152,7 @@ class SmartParallel():
 
             logger.info(f'Starting parallel map with {len(items)} items.')
             if self.verbose:
+                logger.info(f'Enqueuing {len(items)} items.')
                 items = tqdm(items, total=len(items))
 
             for i in items:

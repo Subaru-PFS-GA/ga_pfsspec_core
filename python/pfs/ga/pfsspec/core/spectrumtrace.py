@@ -20,7 +20,7 @@ class SpectrumTrace():
     def _plot_spectrum(self, key, arm=None,
                        spectrum=None, processed_spectrum=None,
                        template=None, processed_template=None,
-                       plot_spectrum=True, plot_flux_err=True, plot_processed_spectrum=True,
+                       plot_spectrum=True, plot_flux=True, plot_flux_err=True, plot_processed_spectrum=True,
                        plot_template=True, plot_processed_template=True,
                        plot_residuals=False, plot_continuum=False,
                        plot_mask=False, mask_bits=None,
@@ -37,6 +37,7 @@ class SpectrumTrace():
         
         p, ax = self.__create_spectrum_plot(f, 0, 0, 0,
                                             plot_mask=plot_mask,
+                                            plot_flux=plot_flux,
                                             plot_flux_err=plot_flux_err,
                                             plot_continuum=plot_continuum)
 
@@ -145,12 +146,13 @@ class SpectrumTrace():
         f.match_limits()
 
     def __create_spectrum_plot(self, f, j, k, l,
-                               plot_mask, plot_flux_err, plot_continuum,
+                               plot_mask, plot_flux, plot_flux_err, plot_continuum,
                                title=None):
         p = SpectrumPlot()
         ax = f.add_diagram((j, k, l), p)
 
         p.plot_mask = plot_mask
+        p.plot_flux = plot_flux
         p.plot_flux_err = plot_flux_err
         p.plot_cont = plot_continuum
         p.title = title
@@ -168,12 +170,14 @@ class SpectrumTrace():
         
         # TODO: define arm color in styles
         if plot_spectrum and spectrum is not None:
-            p.plot_spectrum(spectrum, plot_flux_err=plot_flux_err,
+            p.plot_spectrum(spectrum,
+                            plot_flux_err=plot_flux_err,
                             plot_mask=plot_mask, mask_bits=mask_bits,
                             wlim=wlim, auto_limits=auto_limits)
 
         if plot_processed_spectrum and processed_spectrum is not None:
-            p.plot_spectrum(processed_spectrum, plot_flux_err=plot_flux_err,
+            p.plot_spectrum(processed_spectrum,
+                            plot_flux_err=plot_flux_err,
                             plot_mask=plot_mask, mask_bits=mask_bits,
                             wlim=wlim, auto_limits=auto_limits)
 

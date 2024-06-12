@@ -13,7 +13,7 @@ from . import styles
 class SpectrumPlot(Diagram):
     def __init__(self, ax: plt.Axes = None, diagram_axes=None,
                  title=None,
-                 plot_mask=None, plot_flux_err=None, plot_cont=None,
+                 plot_mask=None, plot_flux=None, plot_flux_err=None, plot_cont=None,
                  orig=None):
         
         if diagram_axes is None:
@@ -23,10 +23,12 @@ class SpectrumPlot(Diagram):
 
         if not isinstance(orig, SpectrumPlot):
             self.plot_mask = plot_mask if plot_mask is not None else False
+            self.plot_flux = plot_flux if plot_flux is not None else True
             self.plot_flux_err = plot_flux_err if plot_flux_err is not None else False
             self.plot_cont = plot_cont if plot_cont is not None else False
         else:
             self.plot_mask = plot_mask if plot_mask is not None else orig.plot_mask
+            self.plot_flux = plot_flux if plot_flux is not None else orig.plot_flux
             self.plot_flux_err = plot_flux_err if plot_flux_err is not None else orig.plot_flux_err
             self.plot_cont = plot_cont if plot_cont is not None else orig.plot_cont
 
@@ -70,11 +72,12 @@ class SpectrumPlot(Diagram):
     
     def _plot_spectrum(self, wave, flux, flux_err, cont, mask, style,
                        mask_bits=None, mask_flags=None, s=None,
-                       plot_mask=None, plot_flux_err=None, plot_cont=None,
+                       plot_mask=None, plot_flux=None, plot_flux_err=None, plot_cont=None,
                        plot_residual=False,
                        auto_limits=False):
         
         plot_mask = plot_mask if plot_mask is not None else self.plot_mask,
+        plot_flux = plot_flux if plot_flux is not None else self.plot_flux,
         plot_flux_err = plot_flux_err if plot_flux_err is not None else self.plot_flux_err
         plot_cont = plot_cont if plot_cont is not None else self.plot_cont
 
@@ -124,34 +127,41 @@ class SpectrumPlot(Diagram):
         Z_ORDER_FLUX = 2.5
         Z_ORDER_CONT = 2.6
         Z_ORDER_MASK = 2.7 
-    
-        # Plot flux
-        # First iteration: plot everything in gray if plotting mask is requested
-        # Second iteration: plot unmasked pixels in color
-        for i in range(2):
-            if i == 0 and mask is not None:
-                ss = styles.lightgray_line(**style)
-                zorder = Z_ORDER_MASKED_FLUX
-                m = None
-            elif i == 0:
-                # No mask, continue with plotting unmasked spectrum
-                continue
-            elif i == 1:
-                ss = style
-                zorder = Z_ORDER_FLUX
-                m = get_mask()
-            else:
-                raise NotImplementedError()
 
-            l = safe_plot(wave, flux, m, zorder=zorder, **ss)
+        m = None
+        l = None
+    
+        if plot_flux and flux is not None:
+            # First iteration: plot everything in gray if plotting mask is requested
+            # Second iteration: plot unmasked pixels in color
+            for i in range(2):
+                if i == 0 and mask is not None:
+                    ss = styles.lightgray_line(**style)
+                    zorder = Z_ORDER_MASKED_FLUX
+                    m = None
+                elif i == 0:
+                    # No mask, continue with plotting unmasked spectrum
+                    continue
+                elif i == 1:
+                    ss = style
+                    zorder = Z_ORDER_FLUX
+                    m = get_mask()
+                else:
+                    raise NotImplementedError()
+
+                l = safe_plot(wave, flux, m, zorder=zorder, **ss)
 
         # Plot flux error
         if plot_flux_err and flux_err is not None:
-            safe_plot(wave, flux_err, None, zorder=Z_ORDER_FLUX_ERR, **styles.lightblue_line(**style))
+            l2 = safe_plot(wave, flux_err, None, zorder=Z_ORDER_FLUX_ERR, **styles.lightblue_line(**style))
+            if l is None:
+                l = l2
 
         # Plot continuum
         if plot_cont and cont is not None:
-            safe_plot(wave, cont, None, zorder=Z_ORDER_CONT **styles.red_line(**style))
+            l2 = safe_plot(wave, cont, None, zorder=Z_ORDER_CONT, **styles.red_line(**style))
+            if l is None:
+                l = l2
 
         # Plot the mask bits
         if plot_mask and mask is not None:
@@ -164,15 +174,17 @@ class SpectrumPlot(Diagram):
 
         # Set limits
         if auto_limits:
+            m = get_mask()
+            f = flux if flux is not None else cont
+
             if np.sum(m) == 0:
                 # The entire spectrum is masked
                 self.update_limits(0, (None, None))
                 self.update_limits(1, (None, None))
             else:
-                m = get_mask()
                 wmin, wmax, fmax = self.get_limits(
                     apply_slice(wave),
-                    apply_slice(flux),
+                    apply_slice(f),
                     mask=apply_slice(m),
                     plot_residual=plot_residual)
 

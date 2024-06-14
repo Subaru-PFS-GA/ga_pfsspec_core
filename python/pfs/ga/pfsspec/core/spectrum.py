@@ -445,6 +445,40 @@ class Spectrum(PfsObject):
             self.append_history(f'Multiplied by {a}.')
         elif not silent:
             raise Exception('Cannot multiply by NaN of Inf')
+        
+    def normalize(self, model):
+        """
+        Normalize the spectrum flux values and errors by a vector.
+        """
+
+        def normalize_vector(data):
+            return data / model if data is not None else None
+
+        self.flux = normalize_vector(self.flux)
+        self.flux_model = normalize_vector(self.flux_model)
+        self.flux_err = normalize_vector(self.flux_err)
+        self.flux_sky = normalize_vector(self.flux_sky)
+        self.cont = normalize_vector(self.cont)
+        self.cont_fit = normalize_vector(self.cont_fit)
+
+        self.append_history('Normalized by continuum vector.')
+
+    def denormalize(self, model):
+        """
+        Denormalize the spectrum flux values and errors by a vector.
+        """
+
+        def denormalize_vector(data):
+            return data * model if data is not None else None
+        
+        self.flux = denormalize_vector(self.flux)
+        self.flux_model = denormalize_vector(self.flux_model)
+        self.flux_err = denormalize_vector(self.flux_err)
+        self.flux_sky = denormalize_vector(self.flux_sky)
+        self.cont = denormalize_vector(self.cont)
+        self.cont_fit = denormalize_vector(self.cont_fit)
+
+        self.append_history('Denormalized by continuum vector.')
 
     def normalize_at(self, lam, value=1.0):
         idx = np.digitize(lam, self.wave)

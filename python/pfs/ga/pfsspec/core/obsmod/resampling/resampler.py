@@ -6,13 +6,13 @@ from pfs.ga.pfsspec.core.util.copy import *
 from .binning import Binning
 
 class Resampler(PfsObject):
-    def __init__(self, orig=None):
+    def __init__(self, target_wave=None, target_wave_edges=None, target_mask=None, orig=None):
         super().__init__(orig=orig)
         
         if not isinstance(orig, Resampler):
-            self.target_wave = None
-            self.target_wave_edges = None
-            self.target_mask = None
+            self.target_wave = target_wave
+            self.target_wave_edges = target_wave_edges
+            self.target_mask = target_mask
         else:
             self.target_wave = safe_deep_copy(orig.target_wave)
             self.target_wave_edges = safe_deep_copy(orig.target_wave_edges)

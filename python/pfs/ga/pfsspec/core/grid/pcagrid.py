@@ -83,9 +83,6 @@ class PcaGrid(PfsObject):
     def rbf_grid(self):
         return self.grid.rbf_grid
 
-    def init_from_args(self, args):
-        self.grid.init_from_args(args)
-
     def get_slice(self):
         """
         Returns the slicing of the grid.
@@ -172,8 +169,8 @@ class PcaGrid(PfsObject):
 
         parser.add_argument('--pca-truncate', type=int, default=None, help='PCA truncate.')
 
-    def init_from_args(self, args):
-        self.grid.init_from_args(args)
+    def init_from_args(self, args, slice_from_args=True):
+        self.grid.init_from_args(args, slice_from_args=slice_from_args)
 
         self.k = self.get_arg('pca_truncate', self.k, args)
 

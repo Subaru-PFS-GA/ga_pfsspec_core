@@ -66,7 +66,7 @@ class Diagram():
             self._ax.invert_xaxis()
         self._ax.xaxis.offsetText.set(**styles.axis_label_font())
 
-        if ylim[0] != None or ylim[1] != None:
+        if ylim[0] is not None or ylim[1] is not None:
             self._ax.set_ylim(ylim)
         self._ax.set_ylabel(self.__diagram_axes[1].label, **styles.axis_label_font())
         if self.__diagram_axes[1].invert and not self._ax.yaxis_inverted():

@@ -287,32 +287,6 @@ class Spectrum(PfsObject):
             return np.bitwise_or(mask1, mask2)
 
     #endregion
-    #region Wave manipulation
-        
-    @staticmethod
-    def get_wave_edges_1d(wave_edges):
-        if wave_edges is None:
-            return None
-        elif wave_edges.ndim == 1:
-            return wave_edges
-        elif wave_edges.ndim == 2:
-            # TODO: this assumes that the bind are adjecent!
-            return np.concatenate([wave_edges[0], wave_edges[1][-1:]])
-        else:
-            raise NotImplementedError()
-
-    @staticmethod
-    def get_wave_edges_2d(wave_edges):
-        if wave_edges is None:
-            return None
-        elif wave_edges.ndim == 1:
-            return np.stack([wave_edges[:-1], [wave_edges[1:]]], axis=0)
-        elif wave_edges.ndim == 2:
-            return wave_edges
-        else:
-            raise NotImplementedError()
-        
-    #endregion
         
     def apply_redshift(self, z):
         """

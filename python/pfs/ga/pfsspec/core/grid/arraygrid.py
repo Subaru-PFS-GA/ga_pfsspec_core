@@ -252,7 +252,7 @@ class ArrayGrid(Grid):
         for i, p, ax in self.enumerate_axes():
             if p not in kwargs:
                 idx1 += (slice(None),)
-                idx2 += (slice(None))
+                idx2 += (slice(None),)
             else:
                 if kwargs[p] < ax.values[0] or ax.values[-1] < kwargs[p]:
                     # value is outside the grid

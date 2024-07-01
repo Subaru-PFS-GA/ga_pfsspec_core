@@ -2,6 +2,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 from astropy import units as u
 
+from .binning import Binning
 from .resampler import Resampler
 
 class FluxConservingResampler(Resampler):
@@ -22,9 +23,12 @@ class FluxConservingResampler(Resampler):
         target_wave = target_wave if target_wave is not None else self.target_wave
         target_wave_edges = target_wave_edges if target_wave_edges is not None else self.target_wave_edges
 
-        # Find wave edges if they're not provided
+        # Find wave edges if they're not provided and make sure they're 1d arrays (no gaps between bins)
+        # TODO: maybe we should allow for gaps between bins and use 2d edges array
         wave_edges = wave_edges if wave_edges is not None else self.find_wave_edges(wave)
+        wave_edges = Binning.get_wave_edges_1d(wave_edges)
         target_wave_edges = target_wave_edges if target_wave_edges is not None else self.find_wave_edges(target_wave)
+        target_wave_edges = Binning.get_wave_edges_1d(target_wave_edges)
 
         target_mask = target_mask if target_mask is not None else np.s_[:]
 

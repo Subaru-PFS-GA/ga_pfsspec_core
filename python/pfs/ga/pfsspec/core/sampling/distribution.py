@@ -13,6 +13,9 @@ class Distribution():
             self.min = min if min is not None else orig.min
             self.max = max if max is not None else orig.max
 
+    def copy(self):
+        return type(self)(orig=self)
+
     @staticmethod
     def from_args(name, args, random_state=None):
         from . import DISTRIBUTIONS

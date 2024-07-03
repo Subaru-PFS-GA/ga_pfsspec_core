@@ -34,11 +34,27 @@ class Trace():
 
         self.id = id if id is not None else ''  # Unique identifier of the object being processed
 
+        self.reset()
+
+    def reset(self):
+        self.counters = {}
+
     def add_args(self, config, parser):
         pass
 
     def init_from_args(self, script, config, args):
         self.plot_level = get_arg('plot_level', self.plot_level, args)
+
+    def inc_counter(self, key):
+        if key not in self.counters:
+            self.counters[key] = 0
+        self.counters[key] += 1
+
+    def get_counter(self, key):
+        if key not in self.counters:
+            return None
+        else:
+            return self.counters[key]
 
     def make_outdir(self, fn):
         dir = os.path.dirname(fn)

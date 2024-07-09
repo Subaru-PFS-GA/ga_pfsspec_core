@@ -407,18 +407,18 @@ class Spectrum(PfsObject):
             self.flux_sky[self.mask != 0] = 0
 
     def multiply(self, a, silent=True):
-        if np.all(np.isfinite(a)):
-            self.flux = a * self.flux
-            if self.flux_err is not None:
-                self.flux_err = a * self.flux_err
-            if self.flux_sky is not None:
-                self.flux_sky = a * self.flux_sky
-            if self.cont is not None:
-                self.cont = a * self.cont
+        self.flux = a * self.flux
+        if self.flux_err is not None:
+            self.flux_err = a * self.flux_err
+        if self.flux_sky is not None:
+            self.flux_sky = a * self.flux_sky
+        if self.cont is not None:
+            self.cont = a * self.cont
 
-            self.append_history(f'Multiplied by {a}.')
-        elif not silent:
-            raise Exception('Cannot multiply by NaN of Inf')
+        # TODO: what if the multiplier is a vector that contains NaNs?
+        #       should we update the mask in that case?
+
+        self.append_history(f'Multiplied by {a}.')
         
     def normalize(self, model):
         """

@@ -48,7 +48,7 @@ class FluxConservingResampler(Resampler):
             cs = np.empty_like(wave_edges[mask_edges], dtype=value.dtype)
             cs[0] = 0.0
             cs[1:] = np.cumsum(value[mask] * np.diff(wave_edges)[mask])
-            ip = interp1d(wave_edges[mask_edges], cs, bounds_error=False, fill_value=(np.nan, np.nan), kind=self.kind)
+            ip = interp1d(wave_edges[mask_edges], cs, bounds_error=False, fill_value=(np.nan, np.nan), assume_sorted=True, kind=self.kind)
                         
             # Interpolate the integral and take the numerical differential
             if target_wave_edges.ndim == 1:
@@ -58,7 +58,7 @@ class FluxConservingResampler(Resampler):
             else:
                 raise NotImplementedError()
             
-            # TODO: generate a mask if resampling outside original coverage!
+            # Generate a mask if resampling outside original coverage
             ip_mask = ~np.isnan(ip_value)
             
         # TODO: some time can be saved by only building the interpolator between the min and max of target_wave

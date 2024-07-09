@@ -1,3 +1,4 @@
+import numpy as np
 from scipy.interpolate import interp1d
 
 from .resampler import Resampler
@@ -16,9 +17,13 @@ class Interp1dResampler(Resampler):
 
         if value is None:
             ip_value = None
+            ip_mask = None
         else:
-            ip = interp1d(wave, value, kind=self.kind, bounds_error=True, assume_sorted=True)
+            ip = interp1d(wave, value, kind=self.kind, bounds_error=False, fill_value=(np.nan, np.nan), assume_sorted=True)
             ip_value = ip(target_wave)
+
+            # Generate a mask if resampling outside original coverage
+            ip_mask = ~np.isnan(ip_value)
 
         if error is None:
             ip_error = None
@@ -27,7 +32,7 @@ class Interp1dResampler(Resampler):
             # later we can figure out how to do this correctly and add correlated noise, etc.
 
             # TODO: do this with correct propagation of error
-            ip = interp1d(wave, error, kind='nearest', assume_sorted=True)
+            ip = interp1d(wave, error, kind='nearest', bounds_error=False, fill_value=(np.nan, np.nan), assume_sorted=True)
             ip_error = ip(target_wave)
 
-        return ip_value, ip_error, None
+        return ip_value, ip_error, ip_mask

@@ -92,6 +92,7 @@ class SpectrumTrace():
                 break
 
             p, ax = self.__create_spectrum_plot(f, j, k, l,
+                                                plot_flux=plot_spectrum,
                                                 plot_mask=plot_mask,
                                                 plot_flux_err=plot_flux_err,
                                                 plot_continuum=plot_continuum)

@@ -210,9 +210,9 @@ class SpectrumPlot(Diagram):
                 self.update_limits(1, (None, None))
             else:
                 wmin, wmax, fmin, fmax = self.get_limits(
-                    wave,
+                    apply_slice(wave),
                     apply_slice(f),
-                    flux_err=e,
+                    flux_err=apply_slice(e),
                     mask=apply_slice(m),
                     plot_residual=plot_residual)
 

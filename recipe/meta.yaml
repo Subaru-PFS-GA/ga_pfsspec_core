@@ -1,0 +1,52 @@
+package:
+    name: pfsspec-core
+    version: 0.1.1
+
+source:
+  fn: pfsspec-core-0.1.1.tar.gz
+  url: https://pypi.python.org/packages/source/t/toolz/toolz-0.6.0.tar.gz
+  md5: 779bd5844a223c9f0be7e7ea03cc02b1
+
+build:
+    noarch: python
+    number: 1
+    script: python -m pip install --no-deps --ignore-installed .
+    entry_points:
+        - pfsspec-convert = pfs.ga.pfsspec.core.scripts.convert:main
+        - pfsspec-rbf = pfs.ga.pfsspec.core.scripts.rbf:main
+        - pfsspec-download = pfs.ga.pfsspec.core.scripts.download:main
+        - pfsspec-fit = pfs.ga.pfsspec.core.scripts.fit:main
+        - pfsspec-import = pfs.ga.pfsspec.core.scripts.import_:main
+        - pfsspec-pca = pfs.ga.pfsspec.core.scripts.pca:main
+        - pfsspec-export = pfs.ga.pfsspec.core.scripts.export:main
+        - pfsspec-merge = pfs.ga.pfsspec.core.scripts.merge:main
+
+
+requirements:
+    build:
+        - python >=3.7
+        - setuptools >=65.0.2
+        - setuptools_scm[toml]>=4
+        - pip >=22.0
+
+    run:
+        - python >=3.10
+        - tqdm >=4
+        - numpy >=1.24
+        - pandas >=1.5
+        - h5py >=3.8
+        - matplotlib >=3.7
+        - scipy >=1.10
+        - pyyaml >=6.0
+
+
+test:
+    imports:
+        - toolz
+
+    #commands:
+    #    -
+
+about:
+    home: https://github.com/Subaru-PFS-GA/ga_pfsspec_core
+    license: NO LICENSE - DO NOT DISTRIBUTE

@@ -79,6 +79,13 @@ class ParameterSampler(PfsObject):
 
         # TODO: this is now using pandas, consider making it more generic
 
+        # TODO: allow overriding a few of the parameters from the command-line
+        #       it is tricky because the arguments are a combination of the
+        #       configs, so if we just pass in the original config files but
+        #       add --match-params to the command line, it can't be told if an
+        #       argument is from the config or from the command line.
+        #       The solution is maybe to exclude/include certain params.
+
         params = self.match_params[self.match_params['id'] == i].to_dict('records')[0]
         return params
 

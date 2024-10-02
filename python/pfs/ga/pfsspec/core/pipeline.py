@@ -20,6 +20,8 @@ class Pipeline(PfsObject):
         super().__init__(orig=orig)
 
         if not isinstance(orig, Pipeline):
+            self.skip_stage = []                # Skip stages of the pipeline
+
             self.restframe = False          # When true, use value from spectra to convert to restframe
             self.redshift = None            # When true, use value from spectra to shift to certain redshift,
                                             # when value, use value to redshift spectrum to
@@ -40,6 +42,11 @@ class Pipeline(PfsObject):
             self.norm = None                # Post process normalization method
             self.norm_wave = None           # Post process normalization wavelength range
         else:
+            self.skip_stage = orig.skip_stage
+
+            self.restframe = orig.restframe
+            self.redshift = orig.redshift
+
             self.conv_sigma = orig.conv_sigma
             self.conv_resolution = orig.conv_resolution
             self.conv_gauss = orig.conv_gauss
@@ -57,6 +64,8 @@ class Pipeline(PfsObject):
             self.norm_wave = orig.norm_wave
 
     def add_args(self, parser):
+        parser.add_argument('--skip-stage', type=int, nargs='*', default=[], help='Skip stages of the pipeline.\n')
+
         parser.add_argument('--restframe', action='store_true', help='Convert to rest-frame.\n')
         parser.add_argument('--conv-sigma', type=float, help='Gaussian convolution sigma in AA.\n')
         parser.add_argument('--conv-resolution', type=float, help='Gaussian convolution to resolution.\n')
@@ -72,6 +81,8 @@ class Pipeline(PfsObject):
         parser.add_argument('--norm-wave', type=float, nargs=2, default=[4200, 6500], help='Normalization method\n')
 
     def init_from_args(self, config, args, sampler=None):
+        self.skip_stage = self.get_arg('skip_stage', self.skip_stage, args)
+
         self.restframe = self.get_arg('restframe', self.restframe, args)
             
         self.conv_sigma = self.get_arg('conv_sigma', self.conv_sigma, args)

@@ -1,0 +1,5 @@
+#!/bin/bash
+
+set -o noglob
+./bin/run "-m pfs.ga.pfsspec.core.scripts.merge" "$@"
+set +o noglob

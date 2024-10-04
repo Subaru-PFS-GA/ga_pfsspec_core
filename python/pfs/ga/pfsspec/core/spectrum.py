@@ -204,7 +204,7 @@ class Spectrum(PfsObject):
                 row[p] = v
 
         return row
-    
+        
     #region Mask manipulation
     
     def merge_mask(self, mask, bits=MASK_DEFAULT):

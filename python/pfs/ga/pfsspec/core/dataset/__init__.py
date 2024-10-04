@@ -5,3 +5,4 @@ from .datasetmerger import DatasetMerger
 from .arraydataset import ArrayDataset
 from .pcadataset import PcaDataset
 from .spectrumdataset import SpectrumDataset
+from .spectrumdatasetmerger import SpectrumDatasetMerger

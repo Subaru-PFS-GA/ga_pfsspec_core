@@ -27,32 +27,35 @@ class Merge(Script):
                 
                 pp = spd.add_parser(dt)
 
+                # Register merge arguments
+                self.add_args(pp, mrconfig)
+
                 # Register merger arguments
                 merger.add_args(pp, mrconfig)
 
     def add_args(self, parser, config):
         super(Merge, self).add_args(parser, config)
+
         parser.add_argument("--in", type=str, nargs='+', help="List of inputs.\n")
         parser.add_argument("--out", type=str, help="Output directory\n")
 
     def parse_args(self):
         super(Merge, self).parse_args()
 
+        #
+
     def create_merger(self, mrconfig):
         merger = mrconfig['type']()
         return merger
     
-    def load_input_data(self, config):
-        self.merger.load_input(self.args['in'])
-
     def init_merger(self, config):
         self.merger.init_from_args(self, config, self.args)
+    
+    def open_input_data(self, config):
+        self.merger.open_input_data(self.args['in'])
 
-    def init_input_data(self):
-        pass
-
-    def init_output_data(self):
-        pass
+    def open_output_data(self, config):
+        self.merger.open_output_data(self.args['out'])
 
     def prepare(self):
         super(Merge, self).prepare()
@@ -65,10 +68,8 @@ class Merge(Script):
         self.merger = self.create_merger(mrconfig)
         self.init_merger(mrconfig)
 
-        self.init_input_data()
-        self.load_input_data()
-
-        self.init_output_data()
+        self.open_input_data(mrconfig)
+        self.open_output_data(mrconfig)
 
     def run(self):
         self.merger.merge()

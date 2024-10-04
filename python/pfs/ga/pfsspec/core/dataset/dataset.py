@@ -105,13 +105,16 @@ class Dataset(PfsObject):
     def load_values(self, s=None):
         raise NotImplementedError()
 
-    def save(self, filename, format='h5'):
+    def save(self, filename=None, format=None):
         """
         Saves the dataset to a file.
 
         :param filename: Path to the file.
         :param format: Format string, defaults to 'h5'.
         """
+
+        filename = filename if filename is not None else self.filename
+        format = format if format is not None else self.fileformat if self.fileformat is not None else 'h5'
 
         super(Dataset, self).save(filename, format=format)
 

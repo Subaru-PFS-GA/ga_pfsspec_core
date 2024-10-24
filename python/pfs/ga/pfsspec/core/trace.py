@@ -39,6 +39,10 @@ class Trace():
     def reset(self):
         self.counters = {}
 
+    def update(self, figdir=None, logdir=None):
+        self.figdir = figdir if figdir is not None else self.figdir
+        self.logdir = logdir if logdir is not None else self.logdir
+
     def add_args(self, config, parser):
         pass
 

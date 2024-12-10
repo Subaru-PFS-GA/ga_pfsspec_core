@@ -419,7 +419,7 @@ class PfsObject():
         :param load_items_func: Function that calls load_item for each data item.
         """
 
-        logger.info("Loading {} from file {} with slices {}...".format(type(self).__name__, filename, slice))
+        logger.info("Loading {} from file {} with slices {}...".format(type(self).__name__, filename, s))
 
         load_items_func = load_items_func or self.load_items
         format = format or PfsObject.get_format(filename)

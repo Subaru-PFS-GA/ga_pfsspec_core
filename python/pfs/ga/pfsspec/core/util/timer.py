@@ -4,7 +4,8 @@ import logging
 from ..setup_logger import logger
 
 class Timer:
-    def __init__(self, message, level=logging.DEBUG, print_to_console=False, print_to_log=True):
+    def __init__(self, message, logger=logger, level=logging.DEBUG, print_to_console=False, print_to_log=True):
+        self.logger = logger
         self.message = message
         self.level = level
         self.print_to_console = print_to_console
@@ -22,7 +23,7 @@ class Timer:
         if self.print_to_console:
             print(self.message)
         if self.print_to_log:
-            logger.log(self.level, self.message)
+            self.logger.log(self.level, self.message)
 
     def stamp(self):
         elapsed = time.perf_counter() - self.start
@@ -30,4 +31,4 @@ class Timer:
         if self.print_to_console:
             print(msg)
         if self.print_to_log:
-            logger.log(self.level, msg)
+            self.logger.log(self.level, msg)

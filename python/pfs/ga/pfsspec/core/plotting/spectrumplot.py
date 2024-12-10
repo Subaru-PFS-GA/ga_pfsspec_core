@@ -14,10 +14,14 @@ class SpectrumPlot(Diagram):
     def __init__(self, ax: plt.Axes = None, diagram_axes=None,
                  title=None,
                  plot_mask=None, plot_flux=None, plot_flux_err=None, plot_cont=None,
+                 flux_calibrated=True,
                  orig=None):
         
         if diagram_axes is None:
-            diagram_axes = [SpecAxis('nm'), FluxAxis('nJy')]
+            if flux_calibrated:
+                diagram_axes = [SpecAxis('nm'), FluxAxis('nJy')]
+            else:
+                diagram_axes = [SpecAxis('nm'), FluxAxis('ADU')]
         
         super().__init__(ax, title=title, diagram_axes=diagram_axes, orig=orig)
 
@@ -92,14 +96,54 @@ class SpectrumPlot(Diagram):
                        mask_bits=None, mask_flags=None,
                        plot_flux=None, plot_flux_err=None, plot_cont=None,
                        plot_residual=False,
-                       plot_mask=None, plot_nan=False,
+                       plot_mask=None, plot_nan=None,
                        s=None,
                        auto_limits=False):
+
+        """
+        Plot a spectrum, an optionally the flux error, continuum or mask.
+
+        Parameters
+        ----------
+        wave : numpy.ndarray
+            Wavelength array.
+        flux : numpy.ndarray
+            Flux array.
+        flux_err : numpy.ndarray
+            Flux error array.
+        cont : numpy.ndarray
+            Continuum array.
+        mask : numpy.ndarray
+            Mask array. Boolean or integer.
+        style : dict
+            Style dictionary.
+        mask_bits : int
+            Mask bits to treat as masked pixels. If None, all non-zero values are
+            treated as masked.
+        plot_flux : bool
+            Plot the flux vector.
+        plot_flux_err : bool
+            Plot the flux error vector.
+        plot_cont : bool
+            Plot the continuum vector.
+        plot_residual : bool
+            Assume that the flux vector is a residual. Limits of the y-axis will
+            be set symmetrically around zero.
+        plot_mask : bool
+            Plot the mask bits.
+        plot_nan : bool
+            Plot a dot where NaN values are present.
+        s : slice
+            Slice to apply to the vectors.
+        auto_limits : bool
+            Automatically set limits based on the data.
+        """
         
         plot_flux = plot_flux if plot_flux is not None else self.plot_flux,
         plot_flux_err = plot_flux_err if plot_flux_err is not None else self.plot_flux_err
         plot_cont = plot_cont if plot_cont is not None else self.plot_cont
         plot_mask = plot_mask if plot_mask is not None else self.plot_mask
+        plot_nan = plot_nan if plot_nan is not None else False
 
         def apply_slice(vector):
             if s is not None:
@@ -189,8 +233,10 @@ class SpectrumPlot(Diagram):
 
         # Plot the mask bits
         if plot_mask and mask is not None:
-            for i in range(mask_r):
+            for i in range(mask_r + 1):
                 mm = np.where(mask & (1 << i), i, np.nan)
+                if plot_nan:
+                    mm += 1
                 self.plot(mask_ax, wave, mm, zorder=Z_ORDER_MASK, **styles.red_line(**styles.solid_line(**ss)))
 
         if plot_nan and flux is not None:
@@ -225,9 +271,22 @@ class SpectrumPlot(Diagram):
         return l
     
     def __get_mask_axis(self, mask, mask_flags, include_nan=False):
+        """
+        Create a right axis to display mask bits with labels.
+
+        Parameters
+        ----------
+        mask : numpy.ndarray
+            Mask array. Its dtype is used to determine the maximum number of bits.
+        mask_flags : dict
+            Dictionary with mask bit labels.
+        include_nan : bool
+            Include a label for NaN and INF values.
+        """
+
         r = None
         if mask.dtype == bool:
-            r = 2 if include_nan else 1
+            r = 1
         elif mask.dtype == np.int32 or mask.dtype == np.uint32 or \
              mask.dtype == np.int64 or mask.dtype == np.uint64:
             
@@ -250,18 +309,18 @@ class SpectrumPlot(Diagram):
             self._mask_ax = self._ax.twinx()
 
             ymax = r + 1 if include_nan else r
-            self._mask_ax.set_ylim(-1, ymax)
+            self._mask_ax.set_ylim(-1, ymax + 1)
 
             # Add labels to the axis if mask_flags is provided
             ticks = []
             labels = []
 
             if include_nan:
-                    ticks.append(0)
-                    labels.append('NAN or INF')
+                ticks.append(0)
+                labels.append('NAN or INF')
 
             if mask_flags is not None:
-                for i in range(r):
+                for i in range(r + 1):
                     if i in mask_flags:
                         ticks.append(i + 1 if include_nan else i)
                         labels.append(mask_flags[i])
@@ -271,7 +330,6 @@ class SpectrumPlot(Diagram):
                 self._mask_ax.tick_params(axis='y', which='both', **styles.mask_label_font())
 
         return self._mask_ax, r
-
 
     def plot_spectrum(self, spectrum, /,
                       plot_flux_err=None, plot_cont=None,
@@ -314,15 +372,25 @@ class SpectrumPlot(Diagram):
 
         mask = spectrum.mask
         mask_flags = spectrum.mask_flags
+        mask_bits = mask_bits if mask_bits is not None else spectrum.mask_bits
         wave, _ = spectrum.wave_in_unit(self.axes[0].unit)
-        flux, flux_err = spectrum.flux_in_unit(self.axes[1].unit)
 
+        # By default, assume a calibrated spectrum
+        if spectrum.is_flux_calibrated is not None and not spectrum.is_flux_calibrated:
+            flux, flux_err = spectrum.flux, spectrum.flux_err
+        else:
+            flux, flux_err = spectrum.flux_in_unit(self.axes[1].unit)
+
+        # Flux correction is a unitless, wavelength-dependent factor
         if flux_corr is not None:
             flux = flux / flux_corr
             flux_err = flux_err / flux_corr if flux_err is not None else None
                 
         if spectrum.cont is not None:
-            cont = spectrum.cont_in_unit(self.axes[1].unit)
+            if spectrum.is_flux_calibrated is not None and not spectrum.is_flux_calibrated:
+                cont = spectrum.cont
+            else:
+                cont = spectrum.cont_in_unit(self.axes[1].unit)
         else:
             cont = None
 
@@ -350,7 +418,11 @@ class SpectrumPlot(Diagram):
         style = styles.red_line(**style)
 
         wave, _ = template.wave_in_unit(self.axes[0].unit)
-        flux, flux_err = template.flux_in_unit(self.axes[1].unit)
+
+        if template.is_flux_calibrated is not None and not template.is_flux_calibrated:
+            flux, flux_err = template.flux, template.flux_err
+        else:
+            flux, flux_err = template.flux_in_unit(self.axes[1].unit)
 
         wave_mask = self._get_wave_mask(template, wlim)
         l = self._plot_spectrum(wave, flux, flux_err, None, None, style, s=wave_mask, auto_limits=auto_limits)
@@ -367,8 +439,13 @@ class SpectrumPlot(Diagram):
 
         mask = spectrum.mask_as_bool(bits=mask_bits)
         wave, _ = spectrum.wave_in_unit(self.axes[0].unit)
-        flux, _ = spectrum.flux_in_unit(self.axes[1].unit)
-        template_flux, _ = template.flux_in_unit(self.axes[1].unit)
+
+        if spectrum.is_flux_calibrated is not None and not spectrum.is_flux_calibrated:
+            flux, _ = spectrum.flux, spectrum.flux_err
+            template_flux, _ = template.flux, template.flux_err
+        else:
+            flux, _ = spectrum.flux_in_unit(self.axes[1].unit)
+            template_flux, _ = template.flux_in_unit(self.axes[1].unit)
 
         flux = flux - template_flux
 
@@ -382,4 +459,10 @@ class SpectrumPlot(Diagram):
                                 plot_residual=True,
                                 auto_limits=auto_limits)
         return l
+    
+    def shade_ranges(self, ranges, **kwargs):
+        # Shade the masked regions
 
+        if ranges is not None:
+            for (wmin, wmax) in ranges:
+                self._ax.axvspan(wmin, wmax, **kwargs)     

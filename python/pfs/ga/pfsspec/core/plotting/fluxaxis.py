@@ -13,6 +13,8 @@ class FluxAxis(DiagramAxis):
             self.label = r'$F_\nu$ [nJy]'
         elif self.__unit == 'cgs_A':
             self.label = r'$F_\lambda$ [erg s$^{-1}$ c$^{-2}$ $\AA^{-1}$]'
+        elif self.__unit == 'ADU':
+            self.label = r'$F$ [ADU]'
         else:
             raise NotImplementedError()
 

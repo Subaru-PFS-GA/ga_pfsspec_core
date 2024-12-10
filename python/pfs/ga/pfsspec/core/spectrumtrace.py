@@ -91,11 +91,7 @@ class SpectrumTrace():
             if i == nexp:
                 break
 
-            p, ax = self.__create_spectrum_plot(f, j, k, l,
-                                                plot_flux=plot_spectrum,
-                                                plot_mask=plot_mask,
-                                                plot_flux_err=plot_flux_err,
-                                                plot_continuum=plot_continuum)
+            p, ax = None, None
 
             if spectra is not None:
                 arms = spectra.keys()
@@ -127,29 +123,46 @@ class SpectrumTrace():
                         spectrum = None
                 else:
                     raise NotImplementedError()
-
-                self.__plot_spectrum_impl(p, arm, 
-                                          spectrum,
-                                          processed_spectra[arm][i] if processed_spectra is not None else None,
-                                          templates[arm] if templates is not None else None,
-                                          processed_templates[arm][i] if processed_templates is not None else None,
-                                          plot_spectrum, plot_flux_err, plot_processed_spectrum,
-                                          plot_template, plot_processed_template,
-                                          plot_residuals, plot_continuum,
-                                          plot_mask=plot_mask, mask_bits=mask_bits,
-                                          wlim=wlim, auto_limits=auto_limits)
-
+                
+                # Initialize the plot when plotting the first spectrum
                 if spectrum is not None:
+                    if p is None:
+                        if spectrum.is_flux_calibrated is not None and not spectrum.is_flux_calibrated:
+                            flux_calibrated = False
+                        else:
+                            flux_calibrated = True
+
+                        p, ax = self.__create_spectrum_plot(f, j, k, l,
+                                                            plot_flux=plot_spectrum,
+                                                            plot_mask=plot_mask,
+                                                            plot_flux_err=plot_flux_err,
+                                                            plot_continuum=plot_continuum,
+                                                            flux_calibrated=flux_calibrated)
+
+                    self.__plot_spectrum_impl(p, arm, 
+                                            spectrum,
+                                            processed_spectra[arm][i] if processed_spectra is not None else None,
+                                            templates[arm] if templates is not None else None,
+                                            processed_templates[arm][i] if processed_templates is not None else None,
+                                            plot_spectrum, plot_flux_err, plot_processed_spectrum,
+                                            plot_template, plot_processed_template,
+                                            plot_residuals, plot_continuum,
+                                            plot_mask=plot_mask, mask_bits=mask_bits,
+                                            wlim=wlim, auto_limits=auto_limits)
+
                     p.title = spectrum.get_name()
 
-                p.apply()
+                if p is not None:
+                    p.apply()
 
         f.match_limits()
 
     def __create_spectrum_plot(self, f, j, k, l,
                                plot_mask, plot_flux, plot_flux_err, plot_continuum,
+                               flux_calibrated=True,
                                title=None):
-        p = SpectrumPlot()
+        
+        p = SpectrumPlot(flux_calibrated=flux_calibrated)
         ax = f.add_diagram((j, k, l), p)
 
         p.plot_mask = plot_mask

@@ -91,6 +91,8 @@ class Spectrum(PfsObject):
             self.is_wave_lin = None
             self.is_wave_log = None
 
+            self.is_flux_calibrated = None
+
             self.aux_params = {}
             self.history = History()
         else:
@@ -134,6 +136,8 @@ class Spectrum(PfsObject):
             self.is_wave_regular = orig.is_wave_regular
             self.is_wave_lin = orig.is_wave_lin
             self.is_wave_log = orig.is_wave_log
+
+            self.is_flux_calibrated = orig.is_flux_calibrated
 
             self.aux_params = safe_deep_copy(orig.aux_params)
             self.history = safe_deep_copy(orig.history)
@@ -771,7 +775,7 @@ class Spectrum(PfsObject):
             elif unit == 'erg s-1 cm-2 Hz-1':
                 return flux
         else:
-            return NotImplementedError()
+            raise NotImplementedError()
         
     def flux_in_unit(self, unit):
         return self.__flux_in_unit(self.flux, unit), self.__flux_in_unit(self.flux_err, unit)

@@ -24,6 +24,7 @@ class SpectrumTrace():
                        plot_template=True, plot_processed_template=True,
                        plot_residuals=False, plot_continuum=False,
                        plot_mask=False, mask_bits=None,
+                       wave_include=None, wave_exclude=None,
                        wlim=None, auto_limits=True,
                        title=None):
         
@@ -60,6 +61,12 @@ class SpectrumTrace():
         elif processed_template is not None:
             p.title = processed_template.get_name()
 
+        if wave_include is not None:
+            p.shade_wave_ranges(wave_include)
+
+        if wave_exclude is not None:
+            p.shade_wave_ranges(wave_exclude)
+
         p.apply()
 
         f.match_limits()
@@ -71,12 +78,62 @@ class SpectrumTrace():
                       plot_template=True, plot_processed_template=True,
                       plot_residuals=False, plot_continuum=False,
                       plot_mask=False, mask_bits=None,
+                      wave_include=None, wave_exclude=None,
                       wlim=None, auto_limits=True,
                       title=None,
                       nrows=4, ncols=1, diagram_size=(6.5, 2.0)):
         
         """
-        Plot a set of spectra in a grid format.
+        Plot a set of spectra, each in its own plot arranged in a grid format.
+
+        Parameters
+        ----------
+        key : str
+            Key to identify the diagram page.
+        spectra : dict of Spectrum or dict of list of Spectrum
+            Dictionary of spectra, where the keys are the arms and the values are the spectra.
+        processed_spectra : dict of Spectrum or dict of list of Spectrum
+            Dictionary of processed spectra, where the keys are the arms and the values are the spectra.
+        templates : dict of Spectrum or dict of list of Spectrum
+            Dictionary of templates, where the keys are the arms and the values are the spectra. These
+            are the original, high resolution templates.
+        processed_templates : dict of Spectrum or dict of list of Spectrum
+            Dictionary of processed templates, where the keys are the arms and the values are the spectra.
+            These are the templates that have been processed to match the resolution of the spectra.
+        plot_spectrum : bool
+            Plot the spectrum.
+        plot_flux_err : bool
+            Plot the flux errors.
+        plot_processed_spectrum : bool
+            Plot the processed spectrum.
+        plot_template : bool
+            Plot the template.
+        plot_processed_template : bool
+            Plot the processed template.
+        plot_residuals : bool
+            Plot the residuals. This changes how the y-axis is scaled.
+        plot_continuum : bool
+            Plot the continuum.
+        plot_mask : bool
+            Plot the mask.
+        mask_bits : list of str
+            List of mask bits to plot.
+        wave_include : list of list of float
+            List of wavelength ranges to include in the mask. Will be plotted as shaded regions.
+        wave_exclude : list of list of float
+            List of wavelength ranges to exclude from the mask. Will be plotted as shaded regions.
+        wlim : list of float
+            Wavelength limits to plot.
+        auto_limits : bool
+            Automatically set the limits.
+        title : str
+            Title of the diagram.
+        nrows : int
+            Number of rows in the grid.
+        ncols : int
+            Number of columns in the grid.
+        diagram_size : tuple of float
+            Size of the diagram.
         """
         
         # Number of exposures
@@ -152,8 +209,14 @@ class SpectrumTrace():
 
                     p.title = spectrum.get_name()
 
-                if p is not None:
-                    p.apply()
+            if p is not None:
+                if wave_include is not None:
+                    p.shade_wave_ranges(wave_include)
+
+                if wave_exclude is not None:
+                    p.shade_wave_ranges(wave_exclude)
+
+                p.apply()
 
         f.match_limits()
 

@@ -11,6 +11,14 @@ from .fluxaxis import FluxAxis
 from . import styles
 
 class SpectrumPlot(Diagram):
+
+    Z_ORDER_MASKED_FLUX = 2.0
+    Z_ORDER_FLUX_ERR = 2.1
+    Z_ORDER_FLUX = 2.5
+    Z_ORDER_CONT = 2.6
+    Z_ORDER_MASK = 2.7
+    Z_ORDER_SHADE = 2.8
+
     def __init__(self, ax: plt.Axes = None, diagram_axes=None,
                  title=None,
                  plot_mask=None, plot_flux=None, plot_flux_err=None, plot_cont=None,
@@ -184,13 +192,7 @@ class SpectrumPlot(Diagram):
             return m
             
         if np.size(apply_slice(wave)) == 0:
-            return None
-        
-        Z_ORDER_MASKED_FLUX = 2.0
-        Z_ORDER_FLUX_ERR = 2.1
-        Z_ORDER_FLUX = 2.5
-        Z_ORDER_CONT = 2.6
-        Z_ORDER_MASK = 2.7 
+            return None 
 
         m = None
         l = None
@@ -201,14 +203,14 @@ class SpectrumPlot(Diagram):
             for i in range(2):
                 if i == 0 and mask is not None:
                     ss = styles.lightgray_line(**style)
-                    zorder = Z_ORDER_MASKED_FLUX
+                    zorder = SpectrumPlot.Z_ORDER_MASKED_FLUX
                     m = None
                 elif i == 0:
                     # No mask, continue with plotting unmasked spectrum
                     continue
                 elif i == 1:
                     ss = style
-                    zorder = Z_ORDER_FLUX
+                    zorder = SpectrumPlot.Z_ORDER_FLUX
                     m = get_mask()
                 else:
                     raise NotImplementedError()
@@ -217,13 +219,13 @@ class SpectrumPlot(Diagram):
 
         # Plot flux error
         if plot_flux_err and flux_err is not None:
-            l2 = safe_plot(wave, flux_err, None, zorder=Z_ORDER_FLUX_ERR, **styles.lightblue_line(**style))
+            l2 = safe_plot(wave, flux_err, None, zorder=SpectrumPlot.Z_ORDER_FLUX_ERR, **styles.lightblue_line(**style))
             if l is None:
                 l = l2
 
         # Plot continuum
         if plot_cont and cont is not None:
-            l2 = safe_plot(wave, cont, None, zorder=Z_ORDER_CONT, **styles.red_line(**style))
+            l2 = safe_plot(wave, cont, None, zorder=SpectrumPlot.Z_ORDER_CONT, **styles.red_line(**style))
             if l is None:
                 l = l2
 
@@ -237,12 +239,12 @@ class SpectrumPlot(Diagram):
                 mm = np.where(mask & (1 << i), i, np.nan)
                 if plot_nan:
                     mm += 1
-                self.plot(mask_ax, wave, mm, zorder=Z_ORDER_MASK, **styles.red_line(**styles.solid_line(**ss)))
+                self.plot(mask_ax, wave, mm, zorder=SpectrumPlot.Z_ORDER_MASK, **styles.red_line(**styles.solid_line(**ss)))
 
         if plot_nan and flux is not None:
             # TODO: what if we don't plot the mask?)
             mm = np.where(np.isnan(flux) | np.isinf(flux), 0, np.nan)
-            self.plot(mask_ax, wave, mm, zorder=Z_ORDER_MASK, **styles.blue_line(**styles.solid_line(**ss)))
+            self.plot(mask_ax, wave, mm, zorder=SpectrumPlot.Z_ORDER_MASK, **styles.blue_line(**styles.solid_line(**ss)))
 
         # Set limits
         if auto_limits:
@@ -460,9 +462,13 @@ class SpectrumPlot(Diagram):
                                 auto_limits=auto_limits)
         return l
     
-    def shade_ranges(self, ranges, **kwargs):
+    def shade_wave_ranges(self, ranges, **kwargs):
         # Shade the masked regions
+
+        style = styles.red_shade(**kwargs)
 
         if ranges is not None:
             for (wmin, wmax) in ranges:
-                self._ax.axvspan(wmin, wmax, **kwargs)     
+                wmin = Spectrum._wave_in_unit(wmin, self.axes[0].unit)
+                wmax = Spectrum._wave_in_unit(wmax, self.axes[0].unit)
+                self._ax.axvspan(wmin, wmax, zorder=SpectrumPlot.Z_ORDER_SHADE, **style)

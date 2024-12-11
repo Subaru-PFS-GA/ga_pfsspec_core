@@ -137,3 +137,11 @@ def plot_title_font(**kwargs):
     __update_style(args, 'fontsize', 8)
 
     return args
+
+def red_shade(**kwargs):
+    args = kwargs.copy()
+
+    __update_style(args, 'facecolor', 'red')
+    __update_style(args, 'alpha', 0.1)
+
+    return args

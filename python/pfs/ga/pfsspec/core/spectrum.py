@@ -748,17 +748,22 @@ class Spectrum(PfsObject):
         for p in self.get_param_names():
             print(p, getattr(self, p))
 
-    def wave_in_unit(self, unit):
-        if self.wave is None:
+    @staticmethod
+    def _wave_in_unit(wave, unit):
+        if wave is None:
             return None
         elif unit == 'AA':
-            return self.wave, self.wave_edges
+            return wave
         elif unit == 'nm':
-            return Physics.angstrom_to_nm(self.wave), Physics.angstrom_to_nm(self.wave_edges)
+            return Physics.angstrom_to_nm(wave)
         else:
             raise NotImplementedError()
+
+    def wave_in_unit(self, unit):
+        return self._wave_in_unit(self.wave, unit), self._wave_in_unit(self.wave_edges, unit)
         
-    def __flux_in_unit(self, flux, unit):
+    @staticmethod
+    def _flux_in_unit(wave, flux, unit):
         def conv(factor, vector):
             return factor * vector if vector is not None else None
 
@@ -767,7 +772,7 @@ class Spectrum(PfsObject):
         elif unit == 'erg s-1 cm-2 A-1':
             return flux
         elif unit in ['nJy', 'Jy', 'erg s-1 cm-2 Hz-1']:
-            flux = Physics.flam_to_fnu(self.wave, flux)
+            flux = Physics.flam_to_fnu(wave, flux)
             if unit == 'nJy':
                 return conv(1e32, flux)
             elif unit == 'Jy':
@@ -778,10 +783,10 @@ class Spectrum(PfsObject):
             raise NotImplementedError()
         
     def flux_in_unit(self, unit):
-        return self.__flux_in_unit(self.flux, unit), self.__flux_in_unit(self.flux_err, unit)
+        return self._flux_in_unit(self.wave, self.flux, unit), self._flux_in_unit(self.wave, self.flux_err, unit)
         
     def cont_in_unit(self, unit):
-        return self.__flux_in_unit(self.cont, unit)
+        return self._flux_in_unit(self.wave, self.cont, unit)
 
     def get_name(self):
         return f'{self.name}'

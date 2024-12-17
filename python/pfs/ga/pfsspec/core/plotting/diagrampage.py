@@ -1,6 +1,6 @@
 import os
 import numpy as np
-import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 from matplotlib.gridspec import GridSpec
 from matplotlib.backends.backend_pdf import PdfPages
 
@@ -64,7 +64,7 @@ class DiagramPage():
         layout = self.__get_layout()
 
         for p in range(self.__npages):
-            f = plt.figure(figsize=self.__page_size, dpi=self.__dpi)
+            f = Figure(figsize=self.__page_size, dpi=self.__dpi)
             gs = GridSpec(nrows=self.__nrows, ncols=self.__ncols, figure=f, **layout)
             ff.append(f)
             gss.append(gs)

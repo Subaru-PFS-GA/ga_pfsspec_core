@@ -77,7 +77,7 @@ class Spectrum(PfsObject):
             self.flux_model = None              # Flux (model, when noise is frozen)
             self.flux_err = None                # Flux error (sigma, not squared)
             self.flux_sky = None                # Background flux (sky + moon, no detector)
-            self.flux_calibration = None
+            self.flux_corr = None
             self.mask = None
             self.weight = None
             self.cont = None
@@ -123,7 +123,7 @@ class Spectrum(PfsObject):
             self.flux_model = safe_deep_copy(orig.flux_model)
             self.flux_err = safe_deep_copy(orig.flux_err)
             self.flux_sky = safe_deep_copy(orig.flux_sky)
-            self.flux_calibration = safe_deep_copy(orig.flux_calibration)
+            self.flux_corr = safe_deep_copy(orig.flux_corr)
             self.mask = safe_deep_copy(orig.mask)
             self.weight = safe_deep_copy(orig.weight)
             self.cont = safe_deep_copy(orig.cont)
@@ -397,7 +397,7 @@ class Spectrum(PfsObject):
             self.flux_model = trim_vector(self.flux_model, mask)
             self.flux_err = trim_vector(self.flux_err, mask)
             self.flux_sky = trim_vector(self.flux_sky, mask)
-            self.flux_calibration = trim_vector(self.flux_calibration, mask)
+            self.flux_corr = trim_vector(self.flux_corr, mask)
             self.mask = trim_vector(self.mask, mask)
             self.weight = trim_vector(self.weight, mask)
             self.cont = trim_vector(self.cont, mask)

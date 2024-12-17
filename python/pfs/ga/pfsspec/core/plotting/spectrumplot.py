@@ -334,9 +334,10 @@ class SpectrumPlot(Diagram):
         return self._mask_ax, r
 
     def plot_spectrum(self, spectrum, /,
-                      plot_flux_err=None, plot_cont=None,
+                      plot_flux=None, plot_flux_err=None, plot_cont=None,
                       plot_mask=None, plot_nan=None,
-                      flux_corr=None,
+                      apply_flux_corr=False,
+                      normalize_cont=False,
                       mask_bits=None,
                       wlim=None,
                       auto_limits=False,
@@ -349,6 +350,8 @@ class SpectrumPlot(Diagram):
         ----------
         spectrum : Spectrum
             A spectrum object to plot with at least the wave and flux attributes set.
+        plot_flux : bool
+            Plot flux.
         plot_flux_err : bool
             Plot flux error, if available.
         plot_cont : bool
@@ -357,9 +360,6 @@ class SpectrumPlot(Diagram):
             Plot mask bits.
         plot_nan : bool
             Plot a dot where NaN values are present.
-        flux_corr : float
-            Flux correction as a function of wavelength. When specified, the flux
-            is corrected by dividing by this value.
         mask_bits : int
             Bits to treat as a masked pixel when plotting the spectrum.
         wlim : tuple
@@ -383,11 +383,6 @@ class SpectrumPlot(Diagram):
         else:
             flux, flux_err = spectrum.flux_in_unit(self.axes[1].unit)
 
-        # Flux correction is a unitless, wavelength-dependent factor
-        if flux_corr is not None:
-            flux = flux / flux_corr
-            flux_err = flux_err / flux_corr if flux_err is not None else None
-                
         if spectrum.cont is not None:
             if spectrum.is_flux_calibrated is not None and not spectrum.is_flux_calibrated:
                 cont = spectrum.cont
@@ -395,6 +390,16 @@ class SpectrumPlot(Diagram):
                 cont = spectrum.cont_in_unit(self.axes[1].unit)
         else:
             cont = None
+
+        # Flux correction is a unitless, wavelength-dependent factor
+        if apply_flux_corr and spectrum.flux_corr is not None:
+            flux = flux * spectrum.flux_corr
+            flux_err = flux_err * spectrum.flux_corr if flux_err is not None else None
+
+        # Normalize with the continuum, the continuum has a unit
+        if normalize_cont and cont is not None:
+            flux = flux / cont
+            flux_err = flux_err / cont if flux_err is not None else None
 
         wave_mask = self._get_wave_mask(spectrum, wlim)
         l = self._plot_spectrum(wave,
@@ -406,6 +411,7 @@ class SpectrumPlot(Diagram):
                                 mask_bits=mask_bits,
                                 mask_flags=mask_flags,
                                 s=wave_mask,
+                                plot_flux=plot_flux,
                                 plot_flux_err=plot_flux_err,
                                 plot_cont=plot_cont,
                                 plot_mask=plot_mask,
@@ -413,12 +419,28 @@ class SpectrumPlot(Diagram):
                                 auto_limits=auto_limits)
         return l
     
-    def plot_template(self, template, wlim=None, auto_limits=False, **kwargs):
-        # Plot a spectrum template
+    def plot_template(self, template, /,
+                      plot_flux=None, plot_cont=None,
+                      plot_mask=None, plot_nan=None,
+                      apply_flux_corr=False,
+                      normalize_cont=False,
+                      mask_bits=None,
+                      wlim=None,
+                      auto_limits=False,
+                      **kwargs):
+        
+        """
+        Plot a spectrum template. This is similar to plot_spectrum but it assumes
+        that the spectrum is a template so flux correction and continuum normalization
+        is applied differently and no flux error is assumed.
+        """
 
         style = styles.extra_thin_line(**styles.solid_line(**kwargs))
         style = styles.red_line(**style)
 
+        mask = template.mask
+        mask_flags = template.mask_flags
+        mask_bits = mask_bits if mask_bits is not None else template.mask_bits
         wave, _ = template.wave_in_unit(self.axes[0].unit)
 
         if template.is_flux_calibrated is not None and not template.is_flux_calibrated:
@@ -426,38 +448,80 @@ class SpectrumPlot(Diagram):
         else:
             flux, flux_err = template.flux_in_unit(self.axes[1].unit)
 
+        if template.cont is not None:
+            if template.is_flux_calibrated is not None and not template.is_flux_calibrated:
+                cont = template.cont
+            else:
+                cont = template.cont_in_unit(self.axes[1].unit)
+        else:
+            cont = None
+
+        # Flux correction is a unitless, wavelength-dependent factor
+        if apply_flux_corr and template.flux_corr is not None:
+            flux = flux * template.flux_corr
+            flux_err = flux_err * template.flux_corr if flux_err is not None else None
+
+        # Normalize with the continuum, the continuum has a unit
+        if normalize_cont and cont is not None:
+            flux = flux / cont
+            flux_err = flux_err / cont if flux_err is not None else None
+
         wave_mask = self._get_wave_mask(template, wlim)
-        l = self._plot_spectrum(wave, flux, flux_err, None, None, style, s=wave_mask, auto_limits=auto_limits)
+        l = self._plot_spectrum(wave,
+                                flux,
+                                flux_err,
+                                cont,
+                                mask,
+                                style=style,
+                                mask_bits=mask_bits,
+                                mask_flags=mask_flags,
+                                s=wave_mask,
+                                plot_flux=plot_flux,
+                                plot_cont=plot_cont,
+                                plot_mask=plot_mask,
+                                plot_nan=plot_nan,
+                                auto_limits=auto_limits)
         return l
     
-    def plot_residual(self, spectrum, template,
-                      plot_mask=None, plot_flux_err=None, plot_cont=None,
-                      mask_bits=None, 
+    def plot_residual(self, spectrum, template, /,
+                      plot_flux=None,
+                      plot_mask=None, plot_nan=None,
+                      mask_bits=None,
                       wlim=None,
                       auto_limits=False,
                       **kwargs):
         
         style = styles.extra_thin_line(**styles.solid_line(**kwargs))
 
-        mask = spectrum.mask_as_bool(bits=mask_bits)
+        mask = spectrum.mask_as_bool(bits=mask_bits) & template.mask_as_bool(bits=mask_bits)
         wave, _ = spectrum.wave_in_unit(self.axes[0].unit)
 
         if spectrum.is_flux_calibrated is not None and not spectrum.is_flux_calibrated:
-            flux, _ = spectrum.flux, spectrum.flux_err
-            template_flux, _ = template.flux, template.flux_err
+            flux = spectrum.flux
         else:
             flux, _ = spectrum.flux_in_unit(self.axes[1].unit)
+
+        if template.is_flux_calibrated is not None and not template.is_flux_calibrated:
+            template_flux = template.flux
+        else:
             template_flux, _ = template.flux_in_unit(self.axes[1].unit)
 
+        # The residual is the difference between the spectrum and the template
         flux = flux - template_flux
 
-        wave_mask = self._get_wave_mask(spectrum, wlim)
-        l = self._plot_spectrum(wave, flux, None, None, mask,
-                                style,
+        wave_mask = self._get_wave_mask(spectrum, wlim) & self._get_wave_mask(template, wlim)
+        l = self._plot_spectrum(wave,
+                                flux,
+                                None,
+                                None,
+                                mask,
+                                style=style,
                                 s=wave_mask,
-                                plot_mask=plot_mask,
-                                plot_flux_err=plot_flux_err,
+                                plot_flux=True,
+                                plot_flux_err=False,
                                 plot_cont=False,
+                                plot_mask=plot_mask,
+                                plot_nan=plot_nan,
                                 plot_residual=True,
                                 auto_limits=auto_limits)
         return l

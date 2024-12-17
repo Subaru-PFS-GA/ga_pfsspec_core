@@ -42,10 +42,10 @@ def extra_thin_line(**kwargs):
 
     return args
 
-def color_line(color, **kwargs):
+def color_line(__color, **kwargs):
     args = kwargs.copy()
 
-    __update_style(args, 'color', color)
+    __update_style(args, 'color', __color)
 
     return args
 

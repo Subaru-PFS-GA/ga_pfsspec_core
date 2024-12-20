@@ -97,10 +97,15 @@ class Trace():
                 self.make_outdir(fn)
                 fig.save(fn)
 
+    def close_figures(self):
+        for k, fig in self.diagram_pages.items():
+            del fig
+        self.diagram_pages = {}
+
     def flush_figures(self):
         self.format_figures()
         if self.plot_inline:
             self.show_figures()
         else:
             self.save_figures()
-        self.diagram_pages = {}
+        self.close_figures()

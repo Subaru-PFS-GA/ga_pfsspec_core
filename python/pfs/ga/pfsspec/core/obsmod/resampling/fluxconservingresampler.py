@@ -14,8 +14,9 @@ class FluxConservingResampler(Resampler):
         else:
             self.kind = orig.kind
 
-    def resample_flux(self, wave, wave_edges, value, error=None, mask=None, target_wave=None, target_wave_edges=None, target_mask=None):
-        # TODO: How to properly resample using the flux conseving method
+    def resample_flux(self, wave, wave_edges, flux, flux_err=None, mask=None,
+                      target_wave=None, target_wave_edges=None):
+        # TODO: How to properly resample using the flux conserving method
         #       when the source vector has masks?
         if mask is not None:
             raise NotImplementedError()
@@ -30,24 +31,22 @@ class FluxConservingResampler(Resampler):
         target_wave_edges = target_wave_edges if target_wave_edges is not None else self.find_wave_edges(target_wave)
         target_wave_edges = Binning.get_wave_edges_1d(target_wave_edges)
 
-        target_mask = target_mask if target_mask is not None else np.s_[:]
-
-        if value is None:
+        if flux is None:
             ip_value = None
             ip_mask = None
         else:
-            # Mask out nan values in input because those would compromise the results
+            # Mask out nan and inf values in input because those would compromise the results
             # TODO: combine this mask with the mask passed to the function
-            mask = ~np.isnan(value)
+            mask = ~np.isnan(flux) & ~np.isinf(flux)
             mask_edges = np.empty_like(wave_edges, dtype=bool)
             mask_edges[0] = True
             mask_edges[1:] = mask
             
             # (Numerically) integrate the flux density as a function of wave at the upper
             # edges of the wavelength bins
-            cs = np.empty_like(wave_edges[mask_edges], dtype=value.dtype)
+            cs = np.empty_like(wave_edges[mask_edges], dtype=flux.dtype)
             cs[0] = 0.0
-            cs[1:] = np.cumsum(value[mask] * np.diff(wave_edges)[mask])
+            cs[1:] = np.cumsum(flux[mask] * np.diff(wave_edges)[mask])
             ip = interp1d(wave_edges[mask_edges], cs, bounds_error=False, fill_value=(np.nan, np.nan), assume_sorted=True, kind=self.kind)
                         
             # Interpolate the integral and take the numerical differential
@@ -59,18 +58,18 @@ class FluxConservingResampler(Resampler):
                 raise NotImplementedError()
             
             # Generate a mask if resampling outside original coverage
-            ip_mask = ~np.isnan(ip_value)
+            ip_mask = ~np.isnan(ip_value) & (wave[0] <= target_wave_edges[:-1]) & (target_wave_edges[1:] <= wave[-1])
             
         # TODO: some time can be saved by only building the interpolator between the min and max of target_wave
 
-        if error is None:
+        if flux_err is None:
             ip_error = None
         else:
             # For the error vector, use nearest-neighbor interpolations
             # later we can figure out how to do this correctly and add correlated noise, etc.
 
             # TODO: do this with correct propagation of error
-            ip = interp1d(wave, error, kind='nearest', assume_sorted=True)
+            ip = interp1d(wave, flux_err, kind='nearest', assume_sorted=True)
             ip_error = ip(target_wave)
 
         return ip_value, ip_error, ip_mask

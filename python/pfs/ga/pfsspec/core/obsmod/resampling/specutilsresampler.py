@@ -22,7 +22,7 @@ class SpecutilsResampler(Resampler):
         else:
             self.resampler = orig.resampler
 
-    def resample_flux(self, wave, wave_edges, value, error=None, mask=None, target_wave=None, target_wave_edges=None, target_mask=None):
+    def resample_flux(self, wave, wave_edges, value, error=None, mask=None, target_wave=None, target_wave_edges=None):
         # NOTE: SLOW!
 
         # TODO: specutils version on the dev system is outdated,

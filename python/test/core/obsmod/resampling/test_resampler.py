@@ -18,11 +18,20 @@ class TestResampler(TestBase):
 
         wave_edges = np.linspace(3000, 9000, 6001)
         wave = 0.5 * (wave_edges[1:] + wave_edges[:-1])
-        mask = (np.random.uniform(size=wave.shape) < 0.5)
 
         nwave_edges = np.linspace(3000, 9000, 601)
         nwave = 0.5 * (nwave_edges[1:] + nwave_edges[:-1])
 
         res.init(nwave, nwave_edges)
+
+        # Boolean mask
+        mask = (np.random.uniform(size=wave.shape) < 0.5)
         nmask = res.resample_mask(wave, wave_edges, mask)
+        self.assertTrue(nmask.dtype == bool)
+
+        # Integer mask
+        mask = np.random.random_integers(0, 256, size=wave.shape)
+        nmask = res.resample_mask(wave, wave_edges, mask)
+        self.assertTrue(nmask.dtype == mask.dtype)
+
         res.reset()

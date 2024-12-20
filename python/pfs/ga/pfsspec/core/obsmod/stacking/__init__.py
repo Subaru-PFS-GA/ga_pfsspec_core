@@ -1,2 +1,2 @@
-from .stacker import Stacker
-from .stackertrace import StackerTrace
+from .spectrumstacker import SpectrumStacker
+from .spectrumstackertrace import SpectrumStackerTrace

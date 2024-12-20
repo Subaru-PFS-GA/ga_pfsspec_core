@@ -5,7 +5,7 @@ from pfs.ga.pfsspec.core.plotting import SpectrumPlot, DistributionPlot, styles
 from pfs.ga.pfsspec.core import Trace
 from pfs.ga.pfsspec.core.util.args import *
 
-class StackerTrace(Trace):
+class SpectrumStackerTrace(Trace):
 
     def __init__(self,
                  id=None,

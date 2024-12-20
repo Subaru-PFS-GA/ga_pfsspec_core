@@ -1,11 +1,12 @@
 import numpy as np
 
-from pfs.ga.pfsspec.core.util.copy import *
-from pfs.ga.pfsspec.core.util.args import *
+from ...util.copy import *
+from ...util.args import *
+from ... import Spectrum
 from ... import Physics
-from ..resampling import FluxConservingResampler, Binning
+from ..resampling import Interp1dResampler, FluxConservingResampler, Binning
 
-class Stacker():
+class SpectrumStacker():
     # Base class for stacking multiple observations
 
     # For now, we assume that the spectra are in the same velocity frame
@@ -16,20 +17,38 @@ class Stacker():
 
     def __init__(self, trace=None, orig=None):
         
-        if not isinstance(orig, Stacker):
+        if not isinstance(orig, SpectrumStacker):
             self.trace = trace
+
+            self.spectrum_type = Spectrum
 
             self.binning = None             # Binning: lin or log
             self.nbins = None               # Number of new bins
             self.binsize = None             # Spectral bin size (lambda or log lambda) after resampling
 
-            self.resampler = FluxConservingResampler()
+            self.normalize_cont = False     # Normalize the continuum, if continuum is present
+            self.apply_flux_corr = False    # Use flux correction, if available
+
+            self.mask_no_data_bit = 1            # Bit to set in the mask for no data
+            self.mask_exclude_bits = None   # List of mask bits to exclude from coadding
+
+            # self.resampler = FluxConservingResampler()
+            self.resampler = Interp1dResampler()
+
         else:
             self.trace = trace if trace is not None else orig.trace
+
+            self.spectrum_type = orig.spectrum_type
 
             self.binning = orig.binning
             self.nbins = orig.nbins
             self.binsize = orig.binsize
+
+            self.normalize_cont = orig.normalize_cont
+            self.apply_flux_corr = orig.apply_flux_corr
+
+            self.mask_no_data_bit = orig.mask_no_data_bit
+            self.mask_exclude_bits = orig.mask_exclude_bits
 
             self.resampler = orig.resampler
 
@@ -44,12 +63,31 @@ class Stacker():
         self.nbins = get_arg('nbins', self.nbins, args)
         self.binsize = get_arg('binsize', self.binsize, args)
 
+        self.normalize_cont = get_arg('normalize_cont', self.normalize_cont, args)
+        self.apply_flux_corr = get_arg('apply_flux_corr', self.apply_flux_corr, args)
+
     def stack(self, 
               spectra: list,
               target_wave=None, target_wave_edges=None,
-              v_corr: list = None, weights: list = None,
-              flux_corr: list = None):
-        # Resample and stack the spectra to a common grid
+              v_corr: list = None):
+        
+        """
+        Resample and stack the spectra to a common grid
+
+        Parameters
+        ----------
+        spectra : list
+            List of Spectrum objects
+        target_wave : array
+            Target wavelength grid, optional. If not specified, the wavelength grid is determined
+            from the input spectra.
+        target_wave_edges : array
+            Target wavelength bin edges, optional. If not specified, the wavelength bin edges are
+            determined from the input spectra.
+        v_corr : list
+            List of velocity corrections for the input spectra, optional. If specified, spectra are
+            shifted by the velocity correction before stacking.
+        """
 
         # Common wavelength grid
         redshifts = self.__get_redshifts(spectra, v_corr=v_corr)
@@ -63,15 +101,22 @@ class Stacker():
         #       - error is now interpolated linearly, replace
         #         it with proper quadrature of the integrated pixels
         #       - calculate full error covariance matrix
-        #       - mask is taken to be the nearest neighbor, instead
-        #         calculate the binary OR of the integrated pixels
+
+
+        # TODO: separate resampling and stacking into two pipeline steps
 
         stacked_flux = np.zeros(target_wave.shape, dtype=spectra[0].flux.dtype)
-        stacked_error = np.zeros(target_wave.shape, dtype=spectra[0].flux.dtype)
+        stacked_flux_err = np.zeros(target_wave.shape, dtype=spectra[0].flux.dtype)
         stacked_mask = np.zeros(target_wave.shape, dtype=spectra[0].mask.dtype)
         stacked_weight = np.zeros(target_wave.shape, dtype=spectra[0].flux.dtype)
 
+        is_flux_calibrated = True
+        mask_flags = None
+
         for i, spec in enumerate(spectra):
+            is_flux_calibrated &= spec.is_flux_calibrated
+            mask_flags = mask_flags if mask_flags is not None else spec.mask_flags
+
             # TODO: Do we need to rescale the flux when correcting for the Doppler shift?
             # TODO: Move the redshifting to the resampler class
             if v_corr is not None:
@@ -85,19 +130,16 @@ class Stacker():
             # Apply the flux correction to the observed spectra. Note than when fitting the
             # templates, the flux correction is a multiplier of the templates, hence we have
             # to divide the observed spectra with it.
-            if flux_corr is not None:
-                corr = flux_corr[i]
-                flux = spec.flux / corr
-                error = spec.flux_err / corr
-            else:
-                flux = spec.flux
-                error = spec.flux_err
+            if self.apply_flux_corr and spec.flux_corr is not None:
+                spec.multiply(1.0 / spec.flux_corr)
+
+            if self.normalize_cont and spec.cont is not None:
+                spec.multiply(1.0 / spec.cont)
 
             # Mask the target wavelength range to the range of the input spectrum
             # so that no extrapolation happens during resampling. To resample the flux
             # we use the wave edges but the error is resampled using the wave centers
             # so we need to make sure both are properly masked.
-
             wave_mask = (wave[0] <= target_wave) & (target_wave <= wave[-1]) & \
                         (wave_edges[0] <= target_wave_edges[:-1]) & (target_wave_edges[1:] <= wave_edges[-1])
             wave_edges_mask = (wave_edges[0] <= target_wave_edges) & (target_wave_edges <= wave_edges[-1])
@@ -110,30 +152,73 @@ class Stacker():
             #             (wave_edges[0] <= target_wave_edges[:-1]) & (target_wave_edges[1:] <= wave_edges[-1])
             # wave_edges_mask = (wave_edges[0] <= target_wave_edges) & (target_wave_edges <= wave_edges[-1])
 
-            flux, error, resampler_mask = self.resampler.resample_flux(wave, wave_edges, flux, error,
-                                                target_wave=target_wave[wave_mask],
-                                                target_wave_edges=target_wave_edges[wave_edges_mask])
+            flux, flux_err, resampler_mask = self.resampler.resample_flux(
+                wave, wave_edges, spec.flux, spec.flux_err,
+                target_wave=target_wave[wave_mask],
+                target_wave_edges=target_wave_edges[wave_edges_mask])
             
             # TODO: this assumes that the mask bits are the same for every spectrum but this is not
             #       necessarily the case
             mask = self.resampler.resample_mask(wave, wave_edges, spec.mask,
-                                                target_wave=target_wave[wave_mask],
-                                                target_wave_edges=target_wave_edges[wave_edges_mask])
+                                                       target_wave=target_wave[wave_mask],
+                                                       target_wave_edges=target_wave_edges[wave_edges_mask])
+            
+            # Calculate the weight vector for each pixel of the current spectrum
+            # TODO: use exposure time or we're happy with weighting by relative error?
+            # TODO: verify if this is correct in case of normalized spectra
+            weight = 1.0 / flux_err ** 2
+            
+            # Give zero weight to masked pixels
+            if self.mask_exclude_bits is not None:
+                weight[(mask & self.mask_exclude_bits) != 0] = 0
             
             # TODO: add trace hook
 
             # Stack up vectors. Errors are assumed to be absolute and summed up in quadrature.
-            stacked_flux[wave_mask] = stacked_flux[wave_mask] + np.where(resampler_mask, flux, 0.0)
-            stacked_error[wave_mask] = stacked_error[wave_mask] + np.where(resampler_mask, error ** 2, 0.0)
-            stacked_weight[wave_mask] = stacked_weight[wave_mask] + np.where(resampler_mask, weights[i] if weights is not None else 1.0, 0.0)
-            stacked_mask[wave_mask] = stacked_mask[wave_mask] | np.where(resampler_mask, mask, False)
+            stacked_flux[wave_mask] = stacked_flux[wave_mask] + weight * np.where(resampler_mask, flux, 0.0)
+            stacked_weight[wave_mask] = stacked_weight[wave_mask] + np.where(resampler_mask, weight, 0.0)
             
+            # Only consider that part of the mask where the flux could be calculated
+            # Resampler_mask is True for the pixels where the flux could be calculated by the interpolator
+            if mask.dtype == bool:
+                stacked_mask[wave_mask] = stacked_mask[wave_mask] | np.where(resampler_mask, mask, False)
+            else:
+                stacked_mask[wave_mask] = stacked_mask[wave_mask] | np.where(resampler_mask, mask, self.mask_no_data_bit)
+
         # TODO: add trace hook
 
-        stacked_flux /= stacked_weight
-        stacked_error = np.sqrt(stacked_error)
+        stacked_flux = stacked_flux / stacked_weight
+        stacked_flux_err = np.sqrt(1 / stacked_weight)
+        stacked_flux_err[~np.isfinite(stacked_flux_err)] = 0.0
 
-        return target_wave, target_wave_edges, stacked_flux, stacked_error, stacked_weight, stacked_mask
+        # Mask out bins where the weight is zero
+        stacked_mask = np.where(stacked_weight == 0, stacked_mask | self.mask_no_data_bit, stacked_mask)
+
+        # Create a new Spectrum object
+        spec = self.spectrum_type()
+
+        # TODO: 
+        if self.binning == 'log':
+            spec.is_wave_regular = True
+            spec.is_wave_lin = False
+            spec.is_wave_log = True
+        elif self.binning == 'lin':
+            spec.is_wave_regular = True
+            spec.is_wave_lin = True
+            spec.is_wave_log = False
+        else:
+            raise NotImplementedError()
+
+        spec.is_flux_calibrated = is_flux_calibrated
+        spec.mask_flags = mask_flags
+
+        spec.wave = target_wave
+        spec.wave_edges = target_wave_edges
+        spec.flux = stacked_flux
+        spec.flux_err = stacked_flux_err
+        spec.mask = stacked_mask
+
+        return spec
 
     def __get_target_wave(self, spectra, target_wave=None, target_wave_edges=None, redshifts=None):
         # Get the common wavelength grid for the spectra

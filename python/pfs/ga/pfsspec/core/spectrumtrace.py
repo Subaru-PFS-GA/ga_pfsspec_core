@@ -31,7 +31,8 @@ class SpectrumTrace():
                        plot_mask=False, mask_bits=None,
                        wave_include=None, wave_exclude=None,
                        wlim=None, auto_limits=True,
-                       title=None):
+                       title=None,
+                       diagram_size=(6.5, 2.0)):
         
         """
         Plot a single spectrum, optinally along with a template.
@@ -39,7 +40,7 @@ class SpectrumTrace():
 
         f = self.get_diagram_page(key, 1, 1, 1,
                                   title=title,
-                                  diagram_size=(6.5, 2.0))
+                                  diagram_size=diagram_size)
         
         flux_calibrated = None
         

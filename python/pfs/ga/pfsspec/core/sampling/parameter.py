@@ -54,6 +54,7 @@ class Parameter():
         # distribution is specified but we have a min and max value
         # that are different, we sample from uniform by default.
         if self.min is not None and self.max is not None and self.min == self.max:
+            self.value = self.min
             self.dist = 'const'
         elif self.min is not None and self.max is not None and not is_arg(f'{name}_dist', args):
             self.dist = 'uniform'

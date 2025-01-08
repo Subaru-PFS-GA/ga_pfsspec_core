@@ -238,7 +238,7 @@ class ArrayGrid(Grid):
 
         return idx
 
-    def get_nearby_indexes(self, **kwargs):
+    def get_nearby_indexes(self, squeeze=False, **kwargs):
         """
         Returns the indices bracketing the values specified. Used for linear interpolation.
 
@@ -249,7 +249,7 @@ class ArrayGrid(Grid):
         idx1 = ()
         idx2 = ()
 
-        for i, p, ax in self.enumerate_axes():
+        for i, p, ax in self.enumerate_axes(squeeze=squeeze):
             if p not in kwargs:
                 idx1 += (slice(None),)
                 idx2 += (slice(None),)
@@ -423,11 +423,10 @@ class ArrayGrid(Grid):
         idx = self.get_nearest_index(**kwargs)
         return self.get_value_at(name, idx, s=s)
 
-    def get_value_at(self, name, idx, s=None, raw=None, post_process=None, cache_key_prefix=()):
-        # TODO: consider adding a squeeze=False option to keep exactly indexed dimensions       
+    def get_value_at(self, name, idx, s=None, raw=None, post_process=None, cache_key_prefix=(), squeeze=False):
 
         if self.value_cache is not None:
-            cache_key = cache_key_prefix + (name, idx, s, raw)
+            cache_key = cache_key_prefix + (name, idx, s, raw, squeeze)
             if self.value_cache.is_cached(cache_key):
                 return self.value_cache.get(cache_key)
 
@@ -442,6 +441,9 @@ class ArrayGrid(Grid):
                 v = self.load_item(self.get_value_path(name), np.ndarray, idx)
         else:
             v = None
+
+        if squeeze:
+            v = np.squeeze(v)
 
         if post_process is not None and v is not None:
             v = post_process(v)
@@ -589,12 +591,12 @@ class ArrayGrid(Grid):
             
         return self.get_nearby_value_at(name, idx1, idx2)
     
-    def get_nearby_value_at(self, name, idx1, idx2, s=None, raw=None, post_process=None, cache_key_prefix=()):
+    def get_nearby_value_at(self, name, idx1, idx2, s=None, raw=None, post_process=None, cache_key_prefix=(), squeeze=False):
         # TODO: implement multi-value version
 
         if self.value_cache is not None:
             # TODO: do we want the post process function in the cache key?
-            cache_key = cache_key_prefix + (name, idx1, idx2, s, raw, post_process)
+            cache_key = cache_key_prefix + (name, idx1, idx2, s, raw, post_process, squeeze)
             if self.value_cache.is_cached(cache_key):
                 logger.trace(f'Nearby values between {idx1} and {idx2} are found in cache.')
                 return self.value_cache.get(cache_key)
@@ -613,7 +615,7 @@ class ArrayGrid(Grid):
         # Retrieve the value arrays for each of the surrounding grid points
         v = None
         for i in range(ii.shape[0]):
-            y = self.get_value_at(name, kk[i], s=s, raw=raw, post_process=post_process, cache_key_prefix=cache_key_prefix)
+            y = self.get_value_at(name, kk[i], s=s, raw=raw, post_process=post_process, cache_key_prefix=cache_key_prefix, squeeze=squeeze)
 
             # Missing value at gridpoint. This means we cannot interpolate.
             # Not just return None but also cache it.
@@ -639,7 +641,7 @@ class ArrayGrid(Grid):
         # TODO: implement multi-value version
 
         # Find lower and upper neighboring indices around the coordinates
-        idx = self.get_nearby_indexes(**kwargs)
+        idx = self.get_nearby_indexes(squeeze=True, **kwargs)
         if idx is None:
             return None
         else:
@@ -651,7 +653,7 @@ class ArrayGrid(Grid):
         logger.trace('Finding values to interpolate to {} using linear Nd.'
                           .format({ k: kwargs[k] for _, k, v in self.enumerate_axes(squeeze=True) }))
 
-        d = len(idx1)
+        dim = len(idx1)
         
         x = []
         xx = []
@@ -661,7 +663,7 @@ class ArrayGrid(Grid):
         x = np.array(x)
         xx = np.array(xx)
 
-        v = self.get_nearby_value_at(name, idx1, idx2, s=s, post_process=post_process, cache_key_prefix=cache_key_prefix)
+        v = self.get_nearby_value_at(name, idx1, idx2, s=s, post_process=post_process, cache_key_prefix=cache_key_prefix, squeeze=True)
 
         # Some of the nearby models are missing, interpolation cannot proceed
         if v is None:
@@ -670,7 +672,7 @@ class ArrayGrid(Grid):
         logger.trace('Interpolating values to {} using linead Nd.'.format(kwargs))
         
         # Perform the 1d interpolations along each axis
-        for d in range(d):
+        for d in range(dim):
             x0 = xx[d, 0]
             x1 = xx[d, 1]
             

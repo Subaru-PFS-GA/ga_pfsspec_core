@@ -221,9 +221,9 @@ class Grid(PfsObject):
     def rectify_index(idx, s=None):
         idx = tuple(idx)
         if isinstance(s, Iterable):
-            idx = idx + tuple(s)
+            idx = idx + (Ellipsis,) + tuple(s)
         elif s is not None:
-            idx = idx + (s,)
+            idx = idx + (Ellipsis, s)
 
         return tuple(idx)
     

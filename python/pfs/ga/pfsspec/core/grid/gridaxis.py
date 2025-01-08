@@ -34,9 +34,6 @@ class GridAxis(Parameter):
         #     elif len(values) > 2:
         #         self.values = np.linspace(*values)
 
-        
-        
-        
     def build_index(self):
         # NOTE: assume one dimension here
         self.index = {v: i[0] for i, v in np.ndenumerate(self.values)}

@@ -515,7 +515,7 @@ class PfsObject():
                 g = g[part]
         return g, parts[-1]
 
-    def load_item_hdf5(self, path, type, s=None, default=None, mmap=False, skip_mmap=False):
+    def load_item_hdf5(self, path, output_type, s=None, default=None, mmap=False, skip_mmap=False):
         """
         Loads an item from an HDF5 file. Supports partial arrays.
 
@@ -537,12 +537,12 @@ class PfsObject():
         # - str: Read from an attribute instead of a dataset. Returns None if the attribute
         #   doesn't exist.
 
-        if type == pd.DataFrame:
+        if output_type == pd.DataFrame:
             if s is not None:
                 return pd.read_hdf(self.filename, path, start=s.start, stop=s.stop)
             else:
                 return pd.read_hdf(self.filename, path)
-        elif type == np.ndarray:
+        elif output_type == np.ndarray:
             # Try to mmap first            
             if mmap:
                 with h5py.File(self.filename, 'r') as f:
@@ -564,46 +564,53 @@ class PfsObject():
                 g, name = self.get_hdf5_group(f, path, create=False)
                 if g is not None and name in g:
                     # Do some smart indexing magic here because index arrays are not supported by h5py
-                    # This is not full fancy indexing!
-
-                    shape = None
-                    idxshape = None
+                    # `s` can contain slices, arrays an-d integers and an ellipsis
+                    # When an ndarray appears in the slice list, it will be iterated over and the output
+                    # All index arrays must have the same shape
+                    # is put together from pieces. This is not full fancy indexing but close enough.
                     if isinstance(s, Iterable):
-                        # TODO: also handle when ellipsis in the middle
-                        if not isinstance(s[0], np.ndarray) and s[0] == Ellipsis:
-                            slice_idx = range(1, len(s))
-                            array_idx = range(len(g[name].shape) - len(s) + 1, len(g[name].shape))
-                        else:
-                            slice_idx = range(len(s))
-                            array_idx = range(len(s))
+                        # Look for ellipsis in s and replace it with full slices to match shape of array
+                        ns = []
+                        for i, ss in enumerate(s):
+                            if ss is Ellipsis:
+                                ns.extend([slice(None)] * (len(g[name].shape) - len(s) + 1))
+                            else:
+                                ns.append(ss)
+                        s = tuple(ns)
 
-                        for si, ai in zip(slice_idx, array_idx):
-                            if isinstance(s[si], (np.int32, np.int64)):
-                                if shape is None:
-                                    shape = (1,)
-                            elif isinstance(s[si], np.ndarray):
-                                if shape is None or shape == (1,):
-                                    shape = s[si].shape
-                                if idxshape is not None and idxshape != s[si].shape:
+                        # Calculate the output shape based on the input slice
+                        output_shape = ()          # output shape
+                        idx_shape = None           # shape of the index array
+                        for i in range(len(s)):
+                            if isinstance(s[i], (np.int32, np.int64)):
+                                output_shape = output_shape + (1,)
+                            elif isinstance(s[i], np.ndarray):
+                                output_shape = output_shape + s[i].shape
+
+                                # The shape of all index arrays must be the same
+                                if idx_shape is not None and idx_shape != s[i].shape:
                                     raise Exception('Incompatible shapes')
-                                idxshape = s[si].shape
-                            elif isinstance(s[si], slice):
-                                k = len(range(*s[si].indices(g[name].shape[ai])))
-                                if shape is None:
-                                    shape = (k, )
-                                else:
-                                    shape = shape + (k, )
+                                idx_shape = s[i].shape
+                            elif isinstance(s[i], slice):
+                                k = len(range(*s[i].indices(g[name].shape[i])))
+                                output_shape = output_shape + (k,)
+                            else:
+                                raise NotImplementedError()
 
-                        if shape is None:
-                            shape = g[name].shape
+                        if output_shape == ():
+                            # If no slice is specified, that output shape is the same
+                            # as the input shape
+                            output_shape = g[name].shape
                         else:
-                            shape = shape + g[name].shape[len(s):]
+                            # If the specified slice has less element than the dimensions of the
+                            # HDF5 array, expand it to the full shape
+                            output_shape = output_shape + g[name].shape[len(s):]
 
-                        if idxshape is None:
+                        if idx_shape is None:
                             data = g[name][s]
                         else:
-                            data = np.empty(shape)
-                            for idx in np.ndindex(idxshape):
+                            data = np.empty(output_shape, dtype=g[name].dtype)
+                            for idx in np.ndindex(idx_shape):
                                 ii = []
                                 for i in range(len(s)):
                                     if isinstance(s[i], (np.int32, np.int64)):
@@ -612,6 +619,8 @@ class PfsObject():
                                         ii.append(s[i][idx])
                                     elif isinstance(s[i], slice):
                                         ii.append(s[i])
+                                    else:
+                                        raise NotImplementedError()
                                 data[idx] = g[name][tuple(ii)]
                     elif s is not None:
                         data = g[name][s]
@@ -625,7 +634,7 @@ class PfsObject():
                     data = default
 
             return data
-        elif type == float or type == int:
+        elif output_type == float or output_type == int:
             # Try attributes first, then dataset, otherwise return None
             with h5py.File(self.filename, 'r') as f:
                 g, name = self.get_hdf5_group(f, path, create=False)
@@ -636,7 +645,7 @@ class PfsObject():
                     return data
                 else:
                     return default
-        elif type == bool:
+        elif output_type == bool:
             # Try attributes first, then dataset, otherwise return None
             with h5py.File(self.filename, 'r') as f:
                 g, name = self.get_hdf5_group(f, path, create=False)
@@ -647,7 +656,7 @@ class PfsObject():
                     return data
                 else:
                     return default
-        elif type == str:
+        elif output_type == str:
             with h5py.File(self.filename, 'r') as f:
                 g, name = self.get_hdf5_group(f, path, create=False)
                 if g is not None and name in g.attrs:

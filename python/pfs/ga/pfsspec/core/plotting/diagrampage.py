@@ -30,9 +30,9 @@ class DiagramPage():
         self.__diagram_size = diagram_size if diagram_size is not None else (3.0, 2.0)
         self.__dpi = dpi if dpi is not None else 240
 
-        self.__f, self.__gs = self.__create_figures()
         self.__ax = {}
         self.__diagrams = []
+        self.__f, self.__gs, self.__page_ax = self.__create_figures()
 
     def __get_title(self):
         return self.__title
@@ -52,6 +52,11 @@ class DiagramPage():
     
     ax = property(__get_ax)
 
+    def __get_page_ax(self):
+        return self.__page_ax
+
+    page_ax = property(__get_page_ax)
+
     def __get_diagrams(self):
         return self.__diagrams
     
@@ -60,6 +65,7 @@ class DiagramPage():
     def __create_figures(self):
         ff = []
         gss = []
+        pax = []
 
         layout = self.__get_layout()
 
@@ -69,10 +75,16 @@ class DiagramPage():
             ff.append(f)
             gss.append(gs)
 
+            # Create an Axes object that covers the whole page within the margins
+            ax = f.add_subplot(gs[:, :])
+            ax.set_axis_off()
+            pax.append(ax)
+
+            # Set the super title for the page
             if self.__title is not None:
                 f.suptitle(self.__title)
 
-        return ff, gss
+        return ff, gss, pax
 
     def __get_layout(self):
             # Area within margins

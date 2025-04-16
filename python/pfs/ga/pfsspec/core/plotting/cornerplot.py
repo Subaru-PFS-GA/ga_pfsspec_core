@@ -184,5 +184,19 @@ class CornerPlot():
                          normalize=normalize, auto_limits=False,
                          **kwargs)
 
+    def print_parameters(self, *args, **kwargs):
+        # Print the parameters along the diagonal
+        text = ''
+
+        # TODO: add axis unit and number format
+
+        for i, iaxis in enumerate(self.__diagram_axes):
+            ax = self.__diagram_axes[i]
+            param_fit, param_err = args[i]
+            text += f'{ax.label} = ${param_fit:0.2f} \pm {param_err:0.2f}$\n'
+
+        ax = self.__diagram_page.page_ax[0]
+        ax.text(1.0, 1.0, text, ha='right', va='top', transform=ax.transAxes)
+
     def hist(self):
         pass

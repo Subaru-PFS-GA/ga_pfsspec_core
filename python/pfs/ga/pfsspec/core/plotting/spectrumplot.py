@@ -286,7 +286,7 @@ class SpectrumPlot(Diagram):
             Include a label for NaN and INF values.
         """
 
-        r = None
+        r = 0
         if mask.dtype == bool:
             r = 1
         elif mask.dtype == np.int32 or mask.dtype == np.uint32 or \

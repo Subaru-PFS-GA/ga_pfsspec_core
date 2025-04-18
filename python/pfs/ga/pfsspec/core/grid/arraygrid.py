@@ -399,9 +399,9 @@ class ArrayGrid(Grid):
         idx = self.get_nearest_index(**kwargs)
         return self.get_values_at(idx, s, names=names)
 
-    def get_values_at(self, idx, s=None, names=None, raw=False, post_process=None, cache_key=()):
+    def get_values_at(self, idx, s=None, names=None, raw=False, pre_process=None, cache_key=()):
         names = names or self.values.keys()
-        return {name: self.get_value_at(name, idx, s=s, raw=raw, post_process=post_process, cache_key=cache_key) for name in names}
+        return {name: self.get_value_at(name, idx, s=s, raw=raw, pre_process=pre_process, cache_key=cache_key) for name in names}
 
     def get_value(self, name, s=None, squeeze=False, **kwargs):
         idx = self.get_index(**kwargs)
@@ -423,7 +423,11 @@ class ArrayGrid(Grid):
         idx = self.get_nearest_index(**kwargs)
         return self.get_value_at(name, idx, s=s)
 
-    def get_value_at(self, name, idx, s=None, raw=None, post_process=None, cache_key_prefix=(), squeeze=False):
+    def get_value_at(self, name, idx, s=None, raw=None, pre_process=None, cache_key_prefix=(), squeeze=False):
+        """
+        Get the value array at the grid point defined by `idx` and apply an optional pre-processing function
+        to it. The `raw` parameter has no effect in case of array grids.
+        """
 
         if self.value_cache is not None:
             cache_key = cache_key_prefix + (name, idx, s, raw, squeeze)
@@ -445,8 +449,8 @@ class ArrayGrid(Grid):
         if squeeze:
             v = np.squeeze(v)
 
-        if post_process is not None and v is not None:
-            v = post_process(v)
+        if pre_process is not None and v is not None:
+            v = pre_process(v)
         
         if self.value_cache is not None:
             self.value_cache.push(cache_key, v)
@@ -543,13 +547,13 @@ class ArrayGrid(Grid):
         self.load_value_indexes()
         self.load_values(s)
 
-    def interpolate_value_linear(self, name, s=None, post_process=None, cache_key_prefix=(), **kwargs):
+    def interpolate_value_linear(self, name, s=None, pre_process=None, cache_key_prefix=(), **kwargs):
         if len(self.axes) == 1:
-            return self.interpolate_value_linear1d(name, s=s, post_process=post_process, cache_key_prefix=cache_key_prefix, **kwargs)
+            return self.interpolate_value_linear1d(name, s=s, pre_process=pre_process, cache_key_prefix=cache_key_prefix, **kwargs)
         else:
-            return self.interpolate_value_linearNd(name, s=s, post_process=post_process, cache_key_prefix=cache_key_prefix, **kwargs)
+            return self.interpolate_value_linearNd(name, s=s, pre_process=pre_process, cache_key_prefix=cache_key_prefix, **kwargs)
 
-    def interpolate_value_linear1d(self, name, s=None, post_process=None, cache_key_prefix=(), **kwargs):
+    def interpolate_value_linear1d(self, name, s=None, pre_process=None, cache_key_prefix=(), **kwargs):
         idx = self.get_nearby_indexes(**kwargs)
         if idx is None:
             return None
@@ -565,10 +569,10 @@ class ArrayGrid(Grid):
         xb = self.axes[p].values[idx2[0]]
 
         if xa == xb:
-            value = self.get_value_at(name, idx1, s=s, post_process=post_process, cache_key_prefix=cache_key_prefix)
+            value = self.get_value_at(name, idx1, s=s, pre_process=pre_process, cache_key_prefix=cache_key_prefix)
         else:
-            a = self.get_value_at(name, idx1, s=s, post_process=post_process, cache_key_prefix=cache_key_prefix)
-            b = self.get_value_at(name, idx2, s=s, post_process=post_process, cache_key_prefix=cache_key_prefix)
+            a = self.get_value_at(name, idx1, s=s, pre_process=pre_process, cache_key_prefix=cache_key_prefix)
+            b = self.get_value_at(name, idx2, s=s, pre_process=pre_process, cache_key_prefix=cache_key_prefix)
             m = (b - a) / (xb - xa)
             value = a + (x - xa) * m
 
@@ -591,12 +595,12 @@ class ArrayGrid(Grid):
             
         return self.get_nearby_value_at(name, idx1, idx2)
     
-    def get_nearby_value_at(self, name, idx1, idx2, s=None, raw=None, post_process=None, cache_key_prefix=(), squeeze=False):
+    def get_nearby_value_at(self, name, idx1, idx2, s=None, raw=None, pre_process=None, cache_key_prefix=(), squeeze=False):
         # TODO: implement multi-value version
 
         if self.value_cache is not None:
             # TODO: do we want the post process function in the cache key?
-            cache_key = cache_key_prefix + (name, idx1, idx2, s, raw, post_process, squeeze)
+            cache_key = cache_key_prefix + (name, idx1, idx2, s, raw, pre_process, squeeze)
             if self.value_cache.is_cached(cache_key):
                 logger.trace(f'Nearby values between {idx1} and {idx2} are found in cache.')
                 return self.value_cache.get(cache_key)
@@ -615,7 +619,7 @@ class ArrayGrid(Grid):
         # Retrieve the value arrays for each of the surrounding grid points
         v = None
         for i in range(ii.shape[0]):
-            y = self.get_value_at(name, kk[i], s=s, raw=raw, post_process=post_process, cache_key_prefix=cache_key_prefix, squeeze=squeeze)
+            y = self.get_value_at(name, kk[i], s=s, raw=raw, pre_process=pre_process, cache_key_prefix=cache_key_prefix, squeeze=squeeze)
 
             # Missing value at gridpoint. This means we cannot interpolate.
             # Not just return None but also cache it.
@@ -637,8 +641,16 @@ class ArrayGrid(Grid):
 
         return v
 
-    def interpolate_value_linearNd(self, name, s=None, post_process=None, cache_key_prefix=(), **kwargs):
-        # TODO: implement multi-value version
+    def interpolate_value_linearNd(self, name, s=None, pre_process=None, cache_key_prefix=(), **kwargs):
+        """
+        Interpolate the value array `name` to the point specified in **kwargs. And optional pre-process
+        function is applied to the values before interpolation.
+
+        The linear interpolation is performed by looking up and pre-processing the values at the corners
+        of the grid cell surrounding the independent parameters.
+        """
+
+        # TODO: implement multi-valued version
 
         # Find lower and upper neighboring indices around the coordinates
         idx = self.get_nearby_indexes(squeeze=True, **kwargs)
@@ -663,7 +675,7 @@ class ArrayGrid(Grid):
         x = np.array(x)
         xx = np.array(xx)
 
-        v = self.get_nearby_value_at(name, idx1, idx2, s=s, post_process=post_process, cache_key_prefix=cache_key_prefix, squeeze=True)
+        v = self.get_nearby_value_at(name, idx1, idx2, s=s, pre_process=pre_process, cache_key_prefix=cache_key_prefix, squeeze=True)
 
         # Some of the nearby models are missing, interpolation cannot proceed
         if v is None:
@@ -683,10 +695,10 @@ class ArrayGrid(Grid):
 
         return v, kwargs
 
-    def interpolate_value_spline(self, name, free_param, s=None, post_process=None, cache_key_prefix=(), **kwargs):
+    def interpolate_value_spline(self, name, free_param, s=None, pre_process=None, cache_key_prefix=(), **kwargs):
         # Interpolate a value vector using cubic splines in 1D, along a single dimension.
 
-        # TODO: implement multi-value version
+        # TODO: implement multi-valued version
         # TODO: implement caching
 
         logger.trace('Finding values to interpolate to {} using cubic splines along {}.'.format(kwargs, free_param))
@@ -735,8 +747,8 @@ class ArrayGrid(Grid):
 
         # Apply post processing to each data vector
         # value.shape: (models, wave)
-        if post_process is not None and value is not None:
-            value = post_process(value)
+        if pre_process is not None and value is not None:
+            value = pre_process(value)
 
         logger.debug('Interpolating values to {} using cubic splines along {}.'.format(kwargs, free_param))
 

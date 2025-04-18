@@ -156,7 +156,7 @@ class RbfGrid(Grid):
                 return True
         return False
 
-    def get_value_at(self, name, idx, s=None, post_process=None, cache_key_prefix=(), extrapolate=False):
+    def get_value_at(self, name, idx, s=None, pre_process=None, cache_key_prefix=(), extrapolate=False):
         idx = Grid.rectify_index(idx)
         
         if not extrapolate and self.check_extrapolation(idx):
@@ -166,8 +166,8 @@ class RbfGrid(Grid):
         value = self.values[name](*idx)
         
         if value is not None:
-            if post_process is not None:
-                value = post_process(value)
+            if pre_process is not None:
+                value = pre_process(value)
 
             value = value[s or ()]
 
@@ -283,8 +283,8 @@ class RbfGrid(Grid):
             else:
                 setattr(obj, p, float(axis.values[0]))
 
-    def interpolate_value_rbf(self, name, s=None, post_process=None, cache_key_prefix=(), extrapolate=False, **kwargs):
+    def interpolate_value_rbf(self, name, s=None, pre_process=None, cache_key_prefix=(), extrapolate=False, **kwargs):
         idx = self.get_index(**kwargs)
-        value = self.get_value_at(name, idx, s=s, post_process=post_process, cache_key_prefix=cache_key_prefix, extrapolate=extrapolate)
+        value = self.get_value_at(name, idx, s=s, pre_process=pre_process, cache_key_prefix=cache_key_prefix, extrapolate=extrapolate)
         return value, kwargs
     

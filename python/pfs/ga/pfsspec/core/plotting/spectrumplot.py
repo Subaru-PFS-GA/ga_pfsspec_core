@@ -22,6 +22,7 @@ class SpectrumPlot(Diagram):
     def __init__(self, ax: plt.Axes = None, diagram_axes=None,
                  title=None,
                  plot_mask=None, plot_flux=None, plot_flux_err=None, plot_cont=None,
+                 print_snr=None,
                  flux_calibrated=True,
                  orig=None):
         
@@ -38,6 +39,7 @@ class SpectrumPlot(Diagram):
             self.plot_flux = plot_flux if plot_flux is not None else True
             self.plot_flux_err = plot_flux_err if plot_flux_err is not None else False
             self.plot_cont = plot_cont if plot_cont is not None else False
+            self.print_snr = print_snr if print_snr is not None else False
 
             self.auto_limits_mask_min = 10              # Minimum number of unmasked pixels
             self.auto_limits_flux_quantile = 0.95
@@ -47,6 +49,7 @@ class SpectrumPlot(Diagram):
             self.plot_flux = plot_flux if plot_flux is not None else orig.plot_flux
             self.plot_flux_err = plot_flux_err if plot_flux_err is not None else orig.plot_flux_err
             self.plot_cont = plot_cont if plot_cont is not None else orig.plot_cont
+            self.print_snr = print_snr if print_snr is not None else orig.print_snr
 
             self.auto_limits_mask_min = orig.auto_limits_mask_min
             self.auto_limits_flux_quantile = orig.auto_limits_flux_quantile
@@ -102,9 +105,11 @@ class SpectrumPlot(Diagram):
     def _plot_spectrum(self, wave, flux, flux_err, cont, mask, /, 
                        style={},
                        mask_bits=None, mask_flags=None,
+                       snr=None,
                        plot_flux=None, plot_flux_err=None, plot_cont=None,
                        plot_residual=False,
                        plot_mask=None, plot_nan=None,
+                       print_snr=None,
                        s=None,
                        auto_limits=False):
 
@@ -246,24 +251,32 @@ class SpectrumPlot(Diagram):
             mm = np.where(np.isnan(flux) | np.isinf(flux), 0, np.nan)
             self.plot(mask_ax, wave, mm, zorder=SpectrumPlot.Z_ORDER_MASK, **styles.blue_line(**styles.solid_line(**ss)))
 
+        # Calculate the limits
+        m = get_mask()
+        f = flux if flux is not None else cont
+        e = flux_err
+
+        if np.sum(m) > 0:
+            wmin, wmax, fmin, fmax = self.get_limits(
+                apply_slice(wave),
+                apply_slice(f),
+                flux_err=apply_slice(e),
+                mask=apply_slice(m),
+                plot_residual=plot_residual)            
+        else:
+            wmin, wmax, fmin, fmax = None, None, None, None
+
+        # Print the SNR
+        if print_snr and snr is not None:
+            self.text(self._ax, wave.mean(), fmax, f'S/N = {snr:0.2f}')
+
         # Set limits
         if auto_limits:
-            m = get_mask()
-            f = flux if flux is not None else cont
-            e = flux_err
-
             if np.sum(m) == 0:
                 # The entire spectrum is masked
                 self.update_limits(0, (None, None))
                 self.update_limits(1, (None, None))
             else:
-                wmin, wmax, fmin, fmax = self.get_limits(
-                    apply_slice(wave),
-                    apply_slice(f),
-                    flux_err=apply_slice(e),
-                    mask=apply_slice(m),
-                    plot_residual=plot_residual)
-
                 # Update min and max
                 self.update_limits(0, (wmin, wmax))
                 self.update_limits(1, (fmin, fmax))
@@ -336,6 +349,7 @@ class SpectrumPlot(Diagram):
     def plot_spectrum(self, spectrum, /,
                       plot_flux=None, plot_flux_err=None, plot_cont=None,
                       plot_mask=None, plot_nan=None,
+                      print_snr=False,
                       apply_flux_corr=False,
                       normalize_cont=False,
                       mask_bits=None,
@@ -407,6 +421,7 @@ class SpectrumPlot(Diagram):
                                 flux_err,
                                 cont,
                                 mask,
+                                snr=spectrum.snr,
                                 style=style,
                                 mask_bits=mask_bits,
                                 mask_flags=mask_flags,
@@ -416,6 +431,7 @@ class SpectrumPlot(Diagram):
                                 plot_cont=plot_cont,
                                 plot_mask=plot_mask,
                                 plot_nan=plot_nan,
+                                print_snr=print_snr,
                                 auto_limits=auto_limits)
         return l
     

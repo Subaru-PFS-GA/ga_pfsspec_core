@@ -29,6 +29,7 @@ class SpectrumTrace():
                        plot_template=True,
                        plot_residual=False,
                        plot_mask=False, mask_bits=None,
+                       print_snr=False,
                        wave_include=None, wave_exclude=None,
                        wlim=None, auto_limits=True,
                        title=None,
@@ -41,7 +42,7 @@ class SpectrumTrace():
         f = self.get_diagram_page(key, 1, 1, 1,
                                   title=title,
                                   diagram_size=diagram_size)
-        
+
         flux_calibrated = None
         
         if spectrum is not None and spectrum.is_flux_calibrated is not None and not spectrum.is_flux_calibrated:
@@ -69,6 +70,7 @@ class SpectrumTrace():
                                       plot_flux, plot_flux_err,
                                       plot_continuum,
                                       plot_mask, mask_bits,
+                                      print_snr,
                                       wlim, auto_limits)
             
         if template is not None:
@@ -107,6 +109,7 @@ class SpectrumTrace():
                       key,
                       spectra=None,
                       templates=None,
+                      single_plot=False,
                       apply_flux_corr=None,
                       normalize_cont=False,
                       plot_flux=None, plot_flux_err=None,
@@ -114,10 +117,12 @@ class SpectrumTrace():
                       plot_template=None,
                       plot_residual=None,
                       plot_mask=None, mask_bits=None,
+                      print_snr=False,
                       wave_include=None, wave_exclude=None,
                       wlim=None, auto_limits=True,
                       title=None,
-                      nrows=4, ncols=1, diagram_size=(6.5, 2.0)):
+                      nrows=4, ncols=1, diagram_size=(6.5, 2.0),
+                      **kwargs):
         
         """
         Plot a set of spectra, each in its own plot arranged in a grid format.
@@ -176,15 +181,24 @@ class SpectrumTrace():
                 
             return p
         
-        # Number of exposures
+        # Total number of exposures
         nexp = np.max([ len(spectra[arm]) for arm in spectra.keys() ])
 
-        npages = int(np.ceil(nexp / (ncols * nrows)))
+        if single_plot:
+            npages = 1
+        else:
+            npages = int(np.ceil(nexp / (ncols * nrows)))
+
         f = self.get_diagram_page(key, npages, nrows, ncols,
                                   title=title,
                                   diagram_size=diagram_size)
+        
+        if single_plot:
+            indexes = nexp * [(0, 0, 0)]
+        else:
+            indexes = np.ndindex((npages, nrows, ncols))
        
-        for i, (j, k, l) in enumerate(np.ndindex((npages, nrows, ncols))):
+        for i, (j, k, l) in enumerate(indexes):
             if i == nexp:
                 break
 
@@ -242,7 +256,9 @@ class SpectrumTrace():
                                               normalize_cont,
                                               plot_flux, plot_flux_err, plot_continuum,
                                               plot_mask, mask_bits,
-                                              wlim, auto_limits)
+                                              print_snr,
+                                              wlim, auto_limits,
+                                              **kwargs)
                     
                     p.title = spectrum.get_name()
                         
@@ -253,7 +269,8 @@ class SpectrumTrace():
                                               apply_flux_corr,
                                               normalize_cont,
                                               plot_mask, mask_bits,
-                                              wlim, auto_limits)
+                                              wlim, auto_limits,
+                                              **kwargs)
                     
                 if plot_residual and spectrum is not None and template is not None:
                     p = get_plot(p)
@@ -262,7 +279,8 @@ class SpectrumTrace():
                                               apply_flux_corr,
                                               normalize_cont,
                                               plot_mask, mask_bits,
-                                              wlim, auto_limits)
+                                              wlim, auto_limits,
+                                              **kwargs)
 
             if p is not None:
                 if wave_include is not None:
@@ -298,7 +316,9 @@ class SpectrumTrace():
                              plot_flux, plot_flux_err,
                              plot_continuum,
                              plot_mask, mask_bits,
-                             wlim, auto_limits):
+                             print_snr,
+                             wlim, auto_limits,
+                             **kwargs):
         
         # TODO: define arm color in styles
         if spectrum is not None and (plot_flux or plot_flux_err or plot_continuum or plot_mask):
@@ -307,34 +327,40 @@ class SpectrumTrace():
                             normalize_cont=normalize_cont,
                             plot_flux=plot_flux, plot_flux_err=plot_flux_err,
                             plot_mask=plot_mask, mask_bits=mask_bits,
-                            wlim=wlim, auto_limits=auto_limits)
+                            print_snr=print_snr,
+                            wlim=wlim, auto_limits=auto_limits,
+                            **kwargs)
 
     def __plot_template_impl(self, p, arm,
                              template,
                              apply_flux_corr,
                              normalize_cont,
                              plot_mask, mask_bits,
-                             wlim, auto_limits):
+                             wlim, auto_limits,
+                             **kwargs):
         
         if template is not None:
             p.plot_template(template,
                             apply_flux_corr=apply_flux_corr,
                             normalize_cont=normalize_cont,
                             plot_mask=plot_mask, mask_bits=mask_bits,
-                            wlim=wlim)
+                            wlim=wlim,
+                            **kwargs)
 
     def __plot_residual_impl(self, p, arm,
                               spectrum, template,
                               apply_flux_correction,
                               normalize_cont,
                               plot_mask, mask_bits,
-                              wlim, auto_limits):
+                              wlim, auto_limits,
+                              **kwargs):
         
         if spectrum is not None and template is not None:
             p.plot_residual(spectrum, template,
                             apply_flux_correction=apply_flux_correction,
                             plot_mask=plot_mask, mask_bits=mask_bits,
-                            wlim=wlim, auto_limits=auto_limits)
+                            wlim=wlim, auto_limits=auto_limits,
+                            **kwargs)
 
     def _save_spectrum_history(self, filename, spectrum):
         """

@@ -174,6 +174,9 @@ class DiagramPage():
             ax.set_xlim(limits[0])
             ax.set_ylim(limits[1])
 
+    def apply(self):
+        pass
+
     def format(self):
         """
         Finalize the format of subplots

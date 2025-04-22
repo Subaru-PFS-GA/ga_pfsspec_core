@@ -74,6 +74,8 @@ class CornerPlot():
             if d is not None:
                 d.apply()
 
+        self.__diagram_page.apply()
+
     def scatter(self, *args, **kwargs):
         pass
 

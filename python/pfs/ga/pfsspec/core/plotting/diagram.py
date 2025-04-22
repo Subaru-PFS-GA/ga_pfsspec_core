@@ -148,3 +148,6 @@ class Diagram():
         self.apply(ax)
 
         return l
+
+    def text(self, ax: plt.Axes, x, y, s: str, **kwargs):
+        ax.text(x, y, s, **kwargs)

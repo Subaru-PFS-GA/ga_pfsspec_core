@@ -616,8 +616,14 @@ class ArrayGrid(Grid):
         ii = np.array(list(itertools.product(*([[0, 1],] * D))))
         kk = np.array(list(itertools.product(*[[idx1[i], idx2[i]] for i in range(len(idx1))])))
         
-        # Retrieve the value arrays for each of the surrounding grid points
+        # Retrieve the value arrays for each of the surrounding grid points and
+        # store them in an array of objects to avoid large memory slicing operations
+        # v = np.empty(D * (2,), dtype=object)
+
+        # Store the value arrays in one big array, this seems to be slightly faster
         v = None
+
+        # Look up all surrounding points
         for i in range(ii.shape[0]):
             y = self.get_value_at(name, kk[i], s=s, raw=raw, pre_process=pre_process, cache_key_prefix=cache_key_prefix, squeeze=squeeze)
 
@@ -627,13 +633,13 @@ class ArrayGrid(Grid):
                 v = None
                 break
 
-            # TODO: Does this squeeze solves the problem above?
-            y = np.squeeze(y)
-
+            # Use this when storing the values in one big array
             if v is None:
                 shape = D * (2, ) + y.shape
                 v = np.empty(shape)
-            v[tuple(ii[i])] = y
+
+            # TODO: Does this squeeze solves the problem above?
+            v[tuple(ii[i])] = np.squeeze(y)
 
         if self.value_cache is not None:
             self.value_cache.push(cache_key, v)
@@ -672,8 +678,6 @@ class ArrayGrid(Grid):
         for i, p, axis in self.enumerate_axes(squeeze=True): 
             x.append(kwargs[p])
             xx.append((axis.values[idx1[i]], axis.values[idx2[i]]))
-        x = np.array(x)
-        xx = np.array(xx)
 
         v = self.get_nearby_value_at(name, idx1, idx2, s=s, pre_process=pre_process, cache_key_prefix=cache_key_prefix, squeeze=True)
 
@@ -685,8 +689,8 @@ class ArrayGrid(Grid):
         
         # Perform the 1d interpolations along each axis
         for d in range(dim):
-            x0 = xx[d, 0]
-            x1 = xx[d, 1]
+            x0 = xx[d][0]
+            x1 = xx[d][1]
             
             if (x1 != x0):
                 v = v[0] + (v[1] - v[0]) / (x1 - x0) * (x[d] - x0)

@@ -131,7 +131,7 @@ class SpectrumStacker():
             # templates, the flux correction is a multiplier of the templates, hence we have
             # to divide the observed spectra with it.
             if self.apply_flux_corr and spec.flux_corr is not None:
-                spec.multiply(1.0 / spec.flux_corr)
+                spec.multiply(spec.flux_corr)
 
             if self.normalize_cont and spec.cont is not None:
                 spec.multiply(1.0 / spec.cont)

@@ -70,3 +70,11 @@ class Distribution():
             bounds = [self.min, self.max]       # Either can be None but not both
             
         return x_0, bounds, step
+
+    def is_at_edge(self, x, eps=1e-3):
+        """
+        Check if x is at the edge of the distribution, if min or max is set.
+        """
+
+        return (self.min is not None and np.abs(x - self.min) < eps or
+                self.max is not None and np.abs(x - self.max) < eps)

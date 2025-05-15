@@ -446,7 +446,7 @@ class ArrayGrid(Grid):
         else:
             v = None
 
-        if squeeze:
+        if squeeze and v is not None:
             v = np.squeeze(v)
 
         if pre_process is not None and v is not None:

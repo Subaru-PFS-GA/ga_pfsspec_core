@@ -195,7 +195,7 @@ class CornerPlot():
         for i, iaxis in enumerate(self.__diagram_axes):
             ax = self.__diagram_axes[i]
             param_fit, param_err = args[i]
-            text += f'{ax.label} = ${param_fit:0.2f} \pm {param_err:0.2f}$\n'
+            text += f'{ax.label} = ${param_fit:0.2f} \\pm {param_err:0.2f}$\n'
 
         ax = self.__diagram_page.page_ax[0]
         ax.text(1.0, 1.0, text, ha='right', va='top', transform=ax.transAxes)

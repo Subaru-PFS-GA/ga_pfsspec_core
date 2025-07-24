@@ -220,11 +220,19 @@ class SpectrumPlot(Diagram):
                 else:
                     raise NotImplementedError()
 
-                l = safe_plot(wave, flux, m, zorder=zorder, **ss)
+                l = safe_plot(wave,
+                              flux,
+                              m,
+                              zorder=zorder,
+                              **styles.alpha_line(**ss))
 
         # Plot flux error
         if plot_flux_err and flux_err is not None:
-            l2 = safe_plot(wave, flux_err, None, zorder=SpectrumPlot.Z_ORDER_FLUX_ERR, **styles.lightblue_line(**style))
+            l2 = safe_plot(wave,
+                           flux_err,
+                           None,
+                           zorder=SpectrumPlot.Z_ORDER_FLUX_ERR,
+                           **styles.alpha_line(**styles.blue_line(**style)))
             if l is None:
                 l = l2
 

@@ -61,6 +61,11 @@ def lightgray_line(**kwargs):
 def lightblue_line(**kwargs):
     return color_line('lightblue', **kwargs)
 
+def alpha_line(alpha=0.3, **kwargs):
+    args = kwargs.copy()
+    __update_style(args, 'alpha', alpha)
+    return args
+
 def open_circle(**kwargs):
     args = kwargs.copy()
 

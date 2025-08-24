@@ -21,28 +21,6 @@ class Spectrum(PfsObject):
     MASK_EXTRAPOLATED = 0x40000             # Values are extrapolated
     MASK_ANY = 0xEFFFFFFF                   # All bits (signed int)
 
-
-    # PFS masks:
-
-    # BAD: the pixel is a known bad pixel
-    # SAT: the pixel was saturated
-    # INTRP: the pixel has been interpolated
-    # CR: the pixel is believed to be affected by a cosmic ray
-    # EDGE: the pixel is close to the edge of the image (from LSST; not relevant for PFS)
-    # DETECTED: the pixel has a positive value over threshold (from LSST; not relevant for PFS)
-    # DETECTED_NEGATIVE: the pixel has a negative value over threshold (from LSST; not relevant for PFS)
-    # SUSPECT: the pixel is suspected to be non-linear
-    # NO_DATA: there are no good value for this value
-    # UNMASKEDNAN: the pixel contained a NAN
-    # BAD_FLAT: the pixel is bad in the flat
-    # FIBERTRACE: the pixel is part of a fiber trace
-    # BAD_SKY: the pixel is bad in the sky model
-    # BAD_FLUXCAL: the pixel is bad in the flux calibration
-    # OVERLAP: the pixel is part of a wavelength overlap (dichroic)
-
-
-
-
     def __init__(self, orig=None):
         super().__init__(orig=orig)
         

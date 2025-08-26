@@ -56,6 +56,7 @@ class Spectrum(PfsObject):
             self.flux_err = None                # Flux error (sigma, not squared)
             self.flux_sky = None                # Background flux (sky + moon, no detector)
             self.flux_corr = None
+            self.covar = None
             self.mask = None
             self.weight = None
             self.cont = None
@@ -102,6 +103,7 @@ class Spectrum(PfsObject):
             self.flux_err = safe_deep_copy(orig.flux_err)
             self.flux_sky = safe_deep_copy(orig.flux_sky)
             self.flux_corr = safe_deep_copy(orig.flux_corr)
+            self.covar = safe_deep_copy(orig.covar)
             self.mask = safe_deep_copy(orig.mask)
             self.weight = safe_deep_copy(orig.weight)
             self.cont = safe_deep_copy(orig.cont)
@@ -765,6 +767,9 @@ class Spectrum(PfsObject):
         
     def cont_in_unit(self, unit):
         return self._flux_in_unit(self.wave, self.cont, unit)
+
+    def model_in_unit(self, unit):
+        return self._flux_in_unit(self.wave, self.flux_model, unit)
 
     def get_name(self):
         return f'{self.name}'

@@ -21,7 +21,7 @@ class SpectrumPlot(Diagram):
 
     def __init__(self, ax: plt.Axes = None, diagram_axes=None,
                  title=None,
-                 plot_mask=None, plot_flux=None, plot_flux_err=None, plot_cont=None,
+                 plot_mask=None, plot_flux=None, plot_flux_err=None, plot_cont=None, plot_model=None,
                  print_snr=None,
                  flux_calibrated=True,
                  orig=None):
@@ -39,6 +39,7 @@ class SpectrumPlot(Diagram):
             self.plot_flux = plot_flux if plot_flux is not None else True
             self.plot_flux_err = plot_flux_err if plot_flux_err is not None else False
             self.plot_cont = plot_cont if plot_cont is not None else False
+            self.plot_model = plot_model if plot_model is not None else False
             self.print_snr = print_snr if print_snr is not None else False
 
             self.auto_limits_mask_min = 10              # Minimum number of unmasked pixels
@@ -49,6 +50,7 @@ class SpectrumPlot(Diagram):
             self.plot_flux = plot_flux if plot_flux is not None else orig.plot_flux
             self.plot_flux_err = plot_flux_err if plot_flux_err is not None else orig.plot_flux_err
             self.plot_cont = plot_cont if plot_cont is not None else orig.plot_cont
+            self.plot_model = plot_model if plot_model is not None else orig.plot_model
             self.print_snr = print_snr if print_snr is not None else orig.print_snr
 
             self.auto_limits_mask_min = orig.auto_limits_mask_min
@@ -102,11 +104,11 @@ class SpectrumPlot(Diagram):
 
         return wave_mask
     
-    def _plot_spectrum(self, wave, flux, flux_err, cont, mask, /, 
+    def _plot_spectrum(self, wave, flux, flux_err, cont, model, mask, /, 
                        style={},
                        mask_bits=None, mask_flags=None,
                        snr=None,
-                       plot_flux=None, plot_flux_err=None, plot_cont=None,
+                       plot_flux=None, plot_flux_err=None, plot_cont=None, plot_model=None,
                        plot_residual=False,
                        plot_mask=None, plot_nan=None,
                        print_snr=None,
@@ -126,6 +128,8 @@ class SpectrumPlot(Diagram):
             Flux error array.
         cont : numpy.ndarray
             Continuum array.
+        model : numpy.ndarray
+            Best fit model array.
         mask : numpy.ndarray
             Mask array. Boolean or integer.
         style : dict
@@ -155,6 +159,7 @@ class SpectrumPlot(Diagram):
         plot_flux = plot_flux if plot_flux is not None else self.plot_flux,
         plot_flux_err = plot_flux_err if plot_flux_err is not None else self.plot_flux_err
         plot_cont = plot_cont if plot_cont is not None else self.plot_cont
+        plot_model = plot_model if plot_model is not None else self.plot_model
         plot_mask = plot_mask if plot_mask is not None else self.plot_mask
         plot_nan = plot_nan if plot_nan is not None else False
 
@@ -239,6 +244,12 @@ class SpectrumPlot(Diagram):
         # Plot continuum
         if plot_cont and cont is not None:
             l2 = safe_plot(wave, cont, None, zorder=SpectrumPlot.Z_ORDER_CONT, **styles.red_line(**style))
+            if l is None:
+                l = l2
+
+        # Plot model
+        if plot_model and model is not None:
+            l2 = safe_plot(wave, model, None, zorder=SpectrumPlot.Z_ORDER_CONT, **styles.red_line(**style))
             if l is None:
                 l = l2
 
@@ -355,7 +366,7 @@ class SpectrumPlot(Diagram):
         return self._mask_ax, r
 
     def plot_spectrum(self, spectrum, /,
-                      plot_flux=None, plot_flux_err=None, plot_cont=None,
+                      plot_flux=None, plot_flux_err=None, plot_cont=None, plot_model=None,
                       plot_mask=None, plot_nan=None,
                       print_snr=False,
                       apply_flux_corr=False,
@@ -378,6 +389,8 @@ class SpectrumPlot(Diagram):
             Plot flux error, if available.
         plot_cont : bool
             Plot continuum, if available.
+        plot_model : bool
+            Plot best fit model, if available.
         plot_mask : bool
             Plot mask bits.
         plot_nan : bool
@@ -413,6 +426,14 @@ class SpectrumPlot(Diagram):
         else:
             cont = None
 
+        if spectrum.flux_model is not None:
+            if spectrum.is_flux_calibrated is not None and not spectrum.is_flux_calibrated:
+                model = spectrum.flux_model
+            else:
+                model = spectrum.model_in_unit(self.axes[1].unit)
+        else:
+            model = None
+
         # Flux correction is a unitless, wavelength-dependent factor
         if apply_flux_corr and spectrum.flux_corr is not None:
             flux = flux * spectrum.flux_corr
@@ -428,6 +449,7 @@ class SpectrumPlot(Diagram):
                                 flux,
                                 flux_err,
                                 cont,
+                                model,
                                 mask,
                                 snr=spectrum.snr,
                                 style=style,
@@ -495,6 +517,7 @@ class SpectrumPlot(Diagram):
                                 flux,
                                 flux_err,
                                 cont,
+                                None,
                                 mask,
                                 style=style,
                                 mask_bits=mask_bits,
@@ -536,6 +559,7 @@ class SpectrumPlot(Diagram):
         wave_mask = self._get_wave_mask(spectrum, wlim) & self._get_wave_mask(template, wlim)
         l = self._plot_spectrum(wave,
                                 flux,
+                                None,
                                 None,
                                 None,
                                 mask,

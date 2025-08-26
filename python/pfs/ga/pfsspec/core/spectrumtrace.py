@@ -26,6 +26,7 @@ class SpectrumTrace():
                        normalize_cont=False,
                        plot_flux=None, plot_flux_err=None,
                        plot_continuum=None,
+                       plot_model=None,
                        plot_template=True,
                        plot_residual=False,
                        plot_mask=False, mask_bits=None,
@@ -69,6 +70,7 @@ class SpectrumTrace():
                                       normalize_cont,
                                       plot_flux, plot_flux_err,
                                       plot_continuum,
+                                      plot_model,
                                       plot_mask, mask_bits,
                                       print_snr,
                                       wlim, auto_limits)
@@ -114,6 +116,7 @@ class SpectrumTrace():
                       normalize_cont=False,
                       plot_flux=None, plot_flux_err=None,
                       plot_continuum=None,
+                      plot_model=None,
                       plot_template=None,
                       plot_residual=None,
                       plot_mask=None, mask_bits=None,
@@ -143,6 +146,8 @@ class SpectrumTrace():
             Plot the flux errors.
         plot_continuum : bool
             Plot the continuum.
+        plot_model : bool
+            Plot the best fit model.
         plot_mask : bool
             Plot the mask.
         mask_bits : list of str
@@ -254,7 +259,9 @@ class SpectrumTrace():
                                               spectrum,
                                               apply_flux_corr,
                                               normalize_cont,
-                                              plot_flux, plot_flux_err, plot_continuum,
+                                              plot_flux, plot_flux_err,
+                                              plot_continuum,
+                                              plot_model,
                                               plot_mask, mask_bits,
                                               print_snr,
                                               wlim, auto_limits,
@@ -315,17 +322,19 @@ class SpectrumTrace():
                              normalize_cont,
                              plot_flux, plot_flux_err,
                              plot_continuum,
+                             plot_model,
                              plot_mask, mask_bits,
                              print_snr,
                              wlim, auto_limits,
                              **kwargs):
         
         # TODO: define arm color in styles
-        if spectrum is not None and (plot_flux or plot_flux_err or plot_continuum or plot_mask):
+        if spectrum is not None and (plot_flux or plot_flux_err or plot_continuum or plot_model or plot_mask):
             p.plot_spectrum(spectrum,
                             apply_flux_corr=apply_flux_corr,
                             normalize_cont=normalize_cont,
                             plot_flux=plot_flux, plot_flux_err=plot_flux_err,
+                            plot_continuum=plot_continuum, plot_model=plot_model,
                             plot_mask=plot_mask, mask_bits=mask_bits,
                             print_snr=print_snr,
                             wlim=wlim, auto_limits=auto_limits,

@@ -29,8 +29,11 @@ class SpectrumStacker():
             self.normalize_cont = False     # Normalize the continuum, if continuum is present
             self.apply_flux_corr = False    # Use flux correction, if available
 
-            self.mask_no_data_bit = 1            # Bit to set in the mask for no data
+            self.mask_no_data_bit = 1       # Bit to set in the mask for no data
             self.mask_exclude_bits = None   # List of mask bits to exclude from coadding
+
+            self.snr = None                 # S/N calculator object
+            self.snr_mask_flags = None      # Mask bits to ignore when calculating S/N
 
             # self.resampler = FluxConservingResampler()
             self.resampler = Interp1dResampler()
@@ -215,11 +218,12 @@ class SpectrumStacker():
 
         # TODO: add trace hook
 
-        stacked_flux = stacked_flux / stacked_weight
-        stacked_flux_err = np.sqrt(1 / stacked_weight)
-        stacked_flux_err[~np.isfinite(stacked_flux_err)] = 0.0
-        if has_sky:
-            stacked_flux_sky = stacked_flux_sky / stacked_weight
+        with np.errstate(divide='ignore', invalid='ignore'):
+            stacked_flux = stacked_flux / stacked_weight
+            stacked_flux_err = np.sqrt(1 / stacked_weight)
+            stacked_flux_err[~np.isfinite(stacked_flux_err)] = 0.0
+            if has_sky:
+                stacked_flux_sky = stacked_flux_sky / stacked_weight
 
         # Mask out bins where the weight is zero
         stacked_mask = np.where(stacked_weight == 0, stacked_mask | self.mask_no_data_bit, stacked_mask)
@@ -255,6 +259,11 @@ class SpectrumStacker():
         spec.covar = np.zeros((3,) + spec.wave.shape)
         spec.covar[1, :] = spec.flux_err**2
         spec.covar2 = np.zeros((1, 1), dtype=np.float32)
+
+        # Calculate S/N of the stacked spectrum
+        if self.snr is not None:
+            mask_bits = spec.get_mask_bits(self.snr_mask_flags)
+            spec.calculate_snr(self.snr, mask_bits=mask_bits)
 
         if self.trace is not None:
             self.trace.on_coadd_finish_stack(

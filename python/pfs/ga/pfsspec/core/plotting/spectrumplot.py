@@ -21,7 +21,10 @@ class SpectrumPlot(Diagram):
 
     def __init__(self, ax: plt.Axes = None, diagram_axes=None,
                  title=None,
-                 plot_mask=None, plot_flux=None, plot_flux_err=None, plot_cont=None, plot_model=None,
+                 plot_mask=None, plot_flux=None, plot_flux_err=None,
+                 plot_cont=None,
+                 plot_model=None,
+                 plot_residual=None,
                  print_snr=None,
                  flux_calibrated=True,
                  orig=None):
@@ -40,6 +43,7 @@ class SpectrumPlot(Diagram):
             self.plot_flux_err = plot_flux_err if plot_flux_err is not None else False
             self.plot_cont = plot_cont if plot_cont is not None else False
             self.plot_model = plot_model if plot_model is not None else False
+            self.plot_residual = plot_residual if plot_residual is not None else False
             self.print_snr = print_snr if print_snr is not None else False
 
             self.auto_limits_mask_min = 10              # Minimum number of unmasked pixels
@@ -51,6 +55,7 @@ class SpectrumPlot(Diagram):
             self.plot_flux_err = plot_flux_err if plot_flux_err is not None else orig.plot_flux_err
             self.plot_cont = plot_cont if plot_cont is not None else orig.plot_cont
             self.plot_model = plot_model if plot_model is not None else orig.plot_model
+            self.plot_residual = plot_residual if plot_residual is not None else orig.plot_residual
             self.print_snr = print_snr if print_snr is not None else orig.print_snr
 
             self.auto_limits_mask_min = orig.auto_limits_mask_min
@@ -108,8 +113,10 @@ class SpectrumPlot(Diagram):
                        style={},
                        mask_bits=None, mask_flags=None,
                        snr=None,
-                       plot_flux=None, plot_flux_err=None, plot_cont=None, plot_model=None,
-                       plot_residual=False,
+                       plot_flux=None, plot_flux_err=None,
+                       plot_cont=None,
+                       plot_model=None,
+                       plot_residual=None,
                        plot_mask=None, plot_nan=None,
                        print_snr=None,
                        s=None,
@@ -160,6 +167,7 @@ class SpectrumPlot(Diagram):
         plot_flux_err = plot_flux_err if plot_flux_err is not None else self.plot_flux_err
         plot_cont = plot_cont if plot_cont is not None else self.plot_cont
         plot_model = plot_model if plot_model is not None else self.plot_model
+        plot_residual = plot_residual if plot_residual is not None else self.plot_residual
         plot_mask = plot_mask if plot_mask is not None else self.plot_mask
         plot_nan = plot_nan if plot_nan is not None else False
 
@@ -250,6 +258,13 @@ class SpectrumPlot(Diagram):
         # Plot model
         if plot_model and model is not None:
             l2 = safe_plot(wave, model, None, zorder=SpectrumPlot.Z_ORDER_CONT, **styles.red_line(**style))
+            if l is None:
+                l = l2
+
+        # Plot residual
+        if plot_residual and model is not None and flux is not None:
+            m = get_mask()
+            l2 = safe_plot(wave, flux - model, m, zorder=SpectrumPlot.Z_ORDER_MASKED_FLUX, **styles.lightgray_line(**style))
             if l is None:
                 l = l2
 
@@ -366,7 +381,10 @@ class SpectrumPlot(Diagram):
         return self._mask_ax, r
 
     def plot_spectrum(self, spectrum, /,
-                      plot_flux=None, plot_flux_err=None, plot_cont=None, plot_model=None,
+                      plot_flux=None, plot_flux_err=None,
+                      plot_cont=None,
+                      plot_model=None,
+                      plot_residual=None,
                       plot_mask=None, plot_nan=None,
                       print_snr=False,
                       apply_flux_corr=False,
@@ -459,6 +477,8 @@ class SpectrumPlot(Diagram):
                                 plot_flux=plot_flux,
                                 plot_flux_err=plot_flux_err,
                                 plot_cont=plot_cont,
+                                plot_model=plot_model,
+                                plot_residual=plot_residual,
                                 plot_mask=plot_mask,
                                 plot_nan=plot_nan,
                                 print_snr=print_snr,

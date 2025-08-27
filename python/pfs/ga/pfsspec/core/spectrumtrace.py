@@ -71,6 +71,7 @@ class SpectrumTrace():
                                       plot_flux, plot_flux_err,
                                       plot_continuum,
                                       plot_model,
+                                      plot_residual,
                                       plot_mask, mask_bits,
                                       print_snr,
                                       wlim, auto_limits)
@@ -262,6 +263,7 @@ class SpectrumTrace():
                                               plot_flux, plot_flux_err,
                                               plot_continuum,
                                               plot_model,
+                                              plot_residual,
                                               plot_mask, mask_bits,
                                               print_snr,
                                               wlim, auto_limits,
@@ -323,18 +325,21 @@ class SpectrumTrace():
                              plot_flux, plot_flux_err,
                              plot_continuum,
                              plot_model,
+                             plot_residual,
                              plot_mask, mask_bits,
                              print_snr,
                              wlim, auto_limits,
                              **kwargs):
         
         # TODO: define arm color in styles
-        if spectrum is not None and (plot_flux or plot_flux_err or plot_continuum or plot_model or plot_mask):
+        if spectrum is not None and (plot_flux or plot_flux_err or plot_continuum or plot_model or plot_residual or plot_mask):
             p.plot_spectrum(spectrum,
                             apply_flux_corr=apply_flux_corr,
                             normalize_cont=normalize_cont,
                             plot_flux=plot_flux, plot_flux_err=plot_flux_err,
-                            plot_continuum=plot_continuum, plot_model=plot_model,
+                            plot_continuum=plot_continuum,
+                            plot_model=plot_model,
+                            plot_residual=plot_residual,
                             plot_mask=plot_mask, mask_bits=mask_bits,
                             print_snr=print_snr,
                             wlim=wlim, auto_limits=auto_limits,

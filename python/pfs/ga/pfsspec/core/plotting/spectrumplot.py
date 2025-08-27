@@ -275,7 +275,7 @@ class SpectrumPlot(Diagram):
         f = flux if flux is not None else cont
         e = flux_err
 
-        if np.sum(m) > 0:
+        if m is None or np.sum(m) > 0:
             wmin, wmax, fmin, fmax = self.get_limits(
                 apply_slice(wave),
                 apply_slice(f),

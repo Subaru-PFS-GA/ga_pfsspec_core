@@ -74,6 +74,9 @@ class SpectrumStacker():
         """
         Resample and stack the spectra to a common grid
 
+        This function destroys the input spectra so only pass a copy of them
+        to it if you want to keep the original flux.
+
         Parameters
         ----------
         spectra : list
@@ -89,6 +92,14 @@ class SpectrumStacker():
             shifted by the velocity correction before stacking.
         """
 
+        # Call the trace hook to plot the input spectra
+        if self.trace is not None:
+            self.trace.on_coadd_start_stack(
+                { 'any': spectra },
+                self.mask_no_data_bit,
+                self.mask_exclude_bits
+            )
+
         # Common wavelength grid
         redshifts = self.__get_redshifts(spectra, v_corr=v_corr)
         target_wave, target_wave_edges = self.__get_target_wave(
@@ -103,18 +114,27 @@ class SpectrumStacker():
         #       - calculate full error covariance matrix
 
 
-        # TODO: separate resampling and stacking into two pipeline steps
+        # TODO: separate resampling and stacking into two pipeline steps?
+        # TODO: how to stack up covariance?
 
-        stacked_flux = np.zeros(target_wave.shape, dtype=spectra[0].flux.dtype)
-        stacked_flux_err = np.zeros(target_wave.shape, dtype=spectra[0].flux.dtype)
-        stacked_mask = np.zeros(target_wave.shape, dtype=spectra[0].mask.dtype)
-        stacked_weight = np.zeros(target_wave.shape, dtype=spectra[0].flux.dtype)
+        # Create vectors for observed quantities but never the models
+        shape = target_wave.shape
+        dtype = spectra[0].flux.dtype
+        mask_dtype = spectra[0].mask.dtype
+
+        stacked_flux = np.zeros(shape, dtype=dtype)
+        stacked_flux_err = np.zeros(shape, dtype=dtype)
+        stacked_mask = np.zeros(shape, dtype=mask_dtype)
+        stacked_weight = np.zeros(shape, dtype=dtype)
+        stacked_flux_sky = np.zeros(shape, dtype=dtype)
 
         is_flux_calibrated = True
+        has_sky = True
         mask_flags = None
 
         for i, spec in enumerate(spectra):
             is_flux_calibrated &= spec.is_flux_calibrated
+            has_sky &= spec.flux_sky is not None
             mask_flags = mask_flags if mask_flags is not None else spec.mask_flags
 
             # TODO: Do we need to rescale the flux when correcting for the Doppler shift?
@@ -163,6 +183,12 @@ class SpectrumStacker():
                                                        target_wave=target_wave[wave_mask],
                                                        target_wave_edges=target_wave_edges[wave_edges_mask])
             
+            if has_sky:
+                flux_sky, _, _ = self.resampler.resample_flux(
+                    wave, wave_edges, spec.flux_sky, spec.flux_err,
+                    target_wave=target_wave[wave_mask],
+                    target_wave_edges=target_wave_edges[wave_edges_mask])
+            
             # Calculate the weight vector for each pixel of the current spectrum
             # TODO: use exposure time or we're happy with weighting by relative error?
             # TODO: verify if this is correct in case of normalized spectra
@@ -177,6 +203,8 @@ class SpectrumStacker():
             # Stack up vectors. Errors are assumed to be absolute and summed up in quadrature.
             stacked_flux[wave_mask] = stacked_flux[wave_mask] + weight * np.where(resampler_mask, flux, 0.0)
             stacked_weight[wave_mask] = stacked_weight[wave_mask] + np.where(resampler_mask, weight, 0.0)
+            if has_sky:
+                stacked_flux_sky[wave_mask] = stacked_flux_sky[wave_mask] + np.where(resampler_mask, flux_sky, 0.0)
             
             # Only consider that part of the mask where the flux could be calculated
             # Resampler_mask is True for the pixels where the flux could be calculated by the interpolator
@@ -190,6 +218,8 @@ class SpectrumStacker():
         stacked_flux = stacked_flux / stacked_weight
         stacked_flux_err = np.sqrt(1 / stacked_weight)
         stacked_flux_err[~np.isfinite(stacked_flux_err)] = 0.0
+        if has_sky:
+            stacked_flux_sky = stacked_flux_sky / stacked_weight
 
         # Mask out bins where the weight is zero
         stacked_mask = np.where(stacked_weight == 0, stacked_mask | self.mask_no_data_bit, stacked_mask)
@@ -217,6 +247,65 @@ class SpectrumStacker():
         spec.flux = stacked_flux
         spec.flux_err = stacked_flux_err
         spec.mask = stacked_mask
+        if has_sky:
+            spec.flux_sky = stacked_flux_sky
+
+        # TODO: sky? covar? covar2? - these are required for a valid PfsFiberArray
+        # TODO: these should go into the stacker class
+        spec.covar = np.zeros((3,) + spec.wave.shape)
+        spec.covar[1, :] = spec.flux_err**2
+        spec.covar2 = np.zeros((1, 1), dtype=np.float32)
+
+        if self.trace is not None:
+            self.trace.on_coadd_finish_stack(
+                { 'any': [spec] },
+                self.mask_no_data_bit,
+                self.mask_exclude_bits)
+
+        return spec
+
+    def merge(self, spectra: dict):
+        
+        """
+        Merge spectra from multiple arms into a single spectrum.
+
+        Parameters
+        ----------
+        spectra : dict
+            Dict of Spectrum objects
+        """
+
+        # TODO: we currently assume that each arm has only one spectrum
+        assert all([ len(spectra[arm]) == 1 for arm in spectra ])
+
+        # Sort arms by wavelength
+        sorted_arms = sorted(spectra.keys(), key=lambda arm: np.min(spectra[arm][0].wave))
+
+        def concatenate_vectors(vfunc):
+            if all(vfunc(spectra[arm][0]) is not None for arm in sorted_arms):
+                return np.concatenate([ vfunc(spectra[arm][0]) for arm in sorted_arms ])
+            else:
+                return None
+
+        # Create a new Spectrum object
+        spec = self.spectrum_type()
+
+        # Concatenate spectra from different arms
+        # TODO: figure out how to iterate over all vectors in the Spectrum class
+        spec.wave = concatenate_vectors(lambda s: s.wave)
+        spec.wave_edges = concatenate_vectors(lambda s: s.wave_edges)
+        spec.flux = concatenate_vectors(lambda s: s.flux)
+        spec.flux_model = concatenate_vectors(lambda s: s.flux_model)
+        spec.flux_err = concatenate_vectors(lambda s: s.flux_err)
+        spec.flux_sky = concatenate_vectors(lambda s: s.flux_sky)
+        spec.flux_corr = concatenate_vectors(lambda s: s.flux_corr)
+        spec.mask = concatenate_vectors(lambda s: s.mask)
+        spec.weight = concatenate_vectors(lambda s: s.weight)
+        spec.cont = concatenate_vectors(lambda s: s.cont)
+        spec.cont_fit = concatenate_vectors(lambda s: s.cont_fit)
+
+        if self.trace is not None:
+            self.trace.on_coadd_finish_merged(spec)
 
         return spec
 

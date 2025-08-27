@@ -1,3 +1,2 @@
 from .spectrumstacker import SpectrumStacker
 from .spectrumstackertrace import SpectrumStackerTrace
-from .spectrummerger import SpectrumMerger

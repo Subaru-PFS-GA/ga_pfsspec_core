@@ -28,26 +28,70 @@ class Binning():
         return wmin, wmax
     
     @staticmethod
-    def generate_wave_bins(wmin, wmax, nbins=None, binsize=None, binning='lin'):
+    def generate_wave_bins(wmin, wmax, nbins=None, binsize=None, resolution=None, binning='lin', align='edges'):
         if nbins is not None:
-            if binning == 'lin':
-                wave_edges = np.linspace(wmin, wmax, nbins + 1)
-            elif binning == 'log':
-                wave_edges = np.exp(np.linspace(np.log(wmin), np.log(wmax), nbins + 1))
+            if align == 'edges':
+                if binning == 'lin':
+                    wave_edges = np.linspace(wmin, wmax, nbins + 1)
+                    wave = 0.5 * (wave_edges[1:] + wave_edges[:-1])
+                elif binning == 'log':
+                    log_wave_edges = np.linspace(np.log(wmin), np.log(wmax), nbins + 1)
+                    log_wave = 0.5 * (log_wave_edges[1:] + log_wave_edges[:-1])
+                else:
+                    raise NotImplementedError()
+            elif align == 'center':
+                if binning == 'lin':
+                    wave = np.linspace(wmin, wmax, nbins)
+                    binsize = (wave[-1] - wave[0]) / (nbins - 1)
+                    wave_edges = np.linspace(wave[0] - 0.5 * binsize, wave[-1] + 0.5 * binsize, nbins + 1)
+                elif binning == 'log':
+                    log_wave = np.linspace(np.log(wmin), np.log(wmax), nbins)
+                    binsize = (log_wave[-1] - log_wave[0]) / (nbins - 1)
+                    log_wave_edges = np.linspace(log_wave[0] - 0.5 * binsize, log_wave[-1] + 0.5 * binsize, nbins + 1)
+                else:
+                    raise NotImplementedError()
             else:
                 raise NotImplementedError()
         elif binsize is not None:
-            if binning == 'lin':
-                wave_edges = np.arange(wmin, wmax + binsize, binsize)
-            elif binning == 'log':
-                wave_edges = np.exp(np.arange(np.log(wmin), np.log(wmax) + binsize, binsize))
+            if align == 'edges':
+                if binning == 'lin':
+                    wave_edges = np.arange(wmin, wmax + binsize, binsize)
+                    wave = 0.5 * (wave_edges[1:] + wave_edges[:-1])
+                elif binning == 'log':
+                    log_wave_edges = np.arange(np.log(wmin), np.log(wmax) + binsize, binsize)
+                    log_wave = 0.5 * (log_wave_edges[1:] + log_wave_edges[:-1])
+                else:
+                    raise NotImplementedError()
+            elif align == 'center':
+                if binning == 'lin':
+                    wave = np.arange(wmin, wmax + binsize, binsize)
+                    wave_edges = np.arange(wave[0] - 0.5 * binsize, wave[-1] + 1.5 * binsize, binsize)
+                elif binning == 'log':
+                    log_wave = np.arange(np.log(wmin), np.log(wmax) + binsize, binsize)
+                    log_wave_edges = np.arange(log_wave[0] - 0.5 * binsize, log_wave[-1] + 0.5 * binsize, binsize)
+                else:
+                    raise NotImplementedError()
+            else:
+                raise NotImplementedError()
+        elif resolution is not None and binning == 'log':
+            if align == 'edges':
+                nbins = int(np.log(wmax / wmin) / np.log(1 + 1 / resolution))
+                log_wave_edges = np.linspace(np.log(wmin), np.log(wmax), nbins + 1)
+                log_wave = 0.5 * (log_wave_edges[1:] + log_wave_edges[:-1])
+            elif align == 'center':
+                binsize = np.log(1 + 1 / resolution)
+                log_wave = np.arange(np.log(wmin), np.log(wmax) + binsize, binsize)
+                log_wave_edges = np.arange(log_wave[0] - 0.5 * binsize, log_wave[-1] + 1.5 * binsize, binsize)
+            else:
+                raise NotImplementedError()
         else:
             raise ValueError('Either `nbins` or `binsize` must be specified.')
         
         if binning == 'lin':
-            wave = 0.5 * (wave_edges[1:] + wave_edges[:-1])
+            pass
         elif binning == 'log':
-            wave = np.exp(0.5 * (np.log(wave_edges[1:]) + np.log(wave_edges[:-1])))
+            wave = np.exp(log_wave)
+            wave_edges = np.exp(log_wave_edges)
         else:
             raise NotImplementedError()
         

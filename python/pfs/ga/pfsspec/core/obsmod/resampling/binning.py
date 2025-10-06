@@ -29,6 +29,9 @@ class Binning():
     
     @staticmethod
     def generate_wave_bins(wmin, wmax, nbins=None, binsize=None, resolution=None, binning='lin', align='edges'):
+
+        align = 'edges' if align is None else align
+
         if nbins is not None:
             if align == 'edges':
                 if binning == 'lin':

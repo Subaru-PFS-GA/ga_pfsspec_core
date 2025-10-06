@@ -6,7 +6,7 @@ from .physics import Physics
 from .pfsobject import PfsObject
 from .spectrum import Spectrum
 from .obsmod.psf import GaussPsf, PcaPsf
-from .obsmod.resampling import Interp1dResampler, FluxConservingResampler
+from .obsmod.resampling import Binning, Interp1dResampler, FluxConservingResampler
 
 class Pipeline(PfsObject):
     """
@@ -37,6 +37,11 @@ class Pipeline(PfsObject):
             self.wave_lin = False
             self.wave_log = False
             self.wave_bins = None
+            self.wave_binsize = None        # When set, use this binsize to determine number of bins
+            self.wave_resolution = None     # When set, use this resolution to determine binsize
+            self.wave_align = None          # Align center by default
+            self.wave_to_air = False        # When true, convert vacuum to air wavelengths
+            self.wave_to_vac = False        # When true, convert air to vacuum wavelengths
             self.wave_resampler = FluxConservingResampler()
 
             self.norm = None                # Post process normalization method
@@ -58,7 +63,12 @@ class Pipeline(PfsObject):
             self.wave_lin = orig.wave_lin
             self.wave_log = orig.wave_log
             self.wave_bins = orig.wave_bins
-            self.wave_resampler = orig.resampler
+            self.wave_binsize = orig.wave_binsize
+            self.wave_resolution = orig.wave_resolution
+            self.wave_align = orig.wave_align
+            self.wave_to_air = orig.wave_to_air
+            self.wave_to_vac = orig.wave_to_vac
+            self.wave_resampler = orig.wave_resampler
             
             self.norm = orig.norm
             self.norm_wave = orig.norm_wave
@@ -73,8 +83,14 @@ class Pipeline(PfsObject):
 
         parser.add_argument('--wave', type=float, nargs=2, default=None, help='Wavelength range.\n')
         parser.add_argument('--wave-bins', type=int, help='Number of wavelength bins.\n')
+        parser.add_argument('--wave-binsize', type=float, help='Wavelength bin size.\n')
         parser.add_argument('--wave-lin', action='store_true', help='Linear wavelength binning.\n')
         parser.add_argument('--wave-log', action='store_true', help='Logarithmic wavelength binning.\n')
+
+        parser.add_argument('--wave-resolution', type=float, help='When logarithmic binning is used, set binsize from resolution.\n')
+        parser.add_argument('--wave-align', type=str, choices=['edges', 'center'], help='Align edge or center.\n')
+        parser.add_argument('--wave-to-air', action='store_true', help='Convert wavelengths to air.\n')
+        parser.add_argument('--wave-to-vac', action='store_true', help='Convert wavelengths to vacuum.\n')
         parser.add_argument('--wave-resampler', type=str, default='rebin', choices=['interp', 'rebin'], help='Flux resampler.\n')
 
         parser.add_argument('--norm', type=str, default=None, help='Normalization method\n')
@@ -93,8 +109,13 @@ class Pipeline(PfsObject):
         # If the number of bins are specified as well, resampling will be done
         self.wave = self.get_arg('wave', self.wave, args)
         self.wave_bins = self.get_arg('wave_bins', self.wave_bins, args)
+        self.wave_binsize = self.get_arg('wave_binsize', self.wave_binsize, args)
         self.wave_lin = self.get_arg('wave_lin', self.wave_lin, args)
         self.wave_log = self.get_arg('wave_log', self.wave_log, args)
+        self.wave_resolution = self.get_arg('wave_resolution', self.wave_resolution, args)
+        self.wave_align = self.get_arg('wave_align', self.wave_align, args)
+        self.wave_to_air = self.get_arg('wave_to_air', self.wave_to_air, args)
+        self.wave_to_vac = self.get_arg('wave_to_vac', self.wave_to_vac, args)
 
         # Resampling is on, calculate the grid
         if self.wave is not None:
@@ -155,24 +176,36 @@ class Pipeline(PfsObject):
         if self.wave_lin and self.wave_log:
             raise ValueError("Only one of --wave-lin and --wave-log must be specified.")
         
-        if (self.wave_lin or self.wave_log) and (self.wave is None or self.wave_bins is None):
+        if (self.wave_lin or self.wave_log) and (self.wave is None or \
+                                                 self.wave_bins is None and \
+                                                 self.wave_binsize is None and \
+                                                 self.wave_resolution is None):
+            
             raise ValueError("--wave and --wave-bins must be specified when --wave-lin or --wave-log is set.")
         
         if self.wave_bins is not None and not self.wave_lin and not self.wave_log:
             raise ValueError("--wave-lin or --wave-log must be specified when --wave-bin is set.")
 
-        if self.wave_lin:
-            # Linear binning with a constant grid
-            edges = np.linspace(self.wave[0], self.wave[1], self.wave_bins + 1)
-            centers = 0.5 * (edges[1:] + edges[:-1])
-            return centers, np.stack([edges[:-1], edges[1:]]), None
-        elif self.wave_log:
-            # Logarithmic binning with a constant grid
-            edges = np.linspace(np.log10(self.wave[0]), np.log10(self.wave[1]), self.wave_bins + 1)
-            centers = 0.5 * (edges[1:] + edges[:-1])
-            return 10 ** centers, 10 ** np.stack([edges[:-1], edges[1:]]), None
+        if self.wave_log and self.wave_resolution is not None and self.wave_bins is not None:
+            raise ValueError("Only one of --wave-bins and --wave-resolution must be specified when --wave-log is set.")
+
+        if self.wave_log and self.wave_resolution is not None:
+            wave, wave_edges = Binning.generate_wave_bins(
+                self.wave[0], self.wave[1],
+                binning='log',
+                resolution=self.wave_resolution,
+                align=self.wave_align)
+        elif self.wave_log or self.wave_lin:
+            wave, wave_edges = Binning.generate_wave_bins(
+                self.wave[0], self.wave[1],
+                nbins=self.wave_bins,
+                binsize=self.wave_binsize,
+                binning='lin' if self.wave_lin else 'log',
+                align=self.wave_align)
         else:
             raise ValueError("No wavelength limits are specified.")
+
+        return wave, np.stack([wave_edges[:-1], wave_edges[1:]]), None
     
     def get_wave_spec(self, spec, **kwargs):
         # Take the grid from the spectrum but limit it to the range
@@ -190,6 +223,7 @@ class Pipeline(PfsObject):
         self.run_step_restframe(spec, **kwargs)
         self.run_step_redshift(spec, **kwargs)
         self.run_step_convolution(spec, **kwargs)
+        self.run_step_air_vacuum(spec, **kwargs)
         self.run_step_resample(spec, **kwargs)
         self.run_step_normalize(spec, **kwargs)
 
@@ -211,10 +245,23 @@ class Pipeline(PfsObject):
         if z is not None and not np.isnan(z) and z != 0.0:
             spec.apply_redshift(z)
 
+    def run_step_air_vacuum(self, spec, **kwargs):
+        if self.wave_to_air and not self.wave_to_vac:
+            spec.vac_to_air()
+        elif self.wave_to_vac and not self.wave_to_air:
+            spec.air_to_vac()
+        elif self.wave_to_air and self.wave_to_vac:
+            raise ValueError("Both wave_to_air and wave_to_vac cannot be true.")
+
     def run_step_resample(self, spec, **kwargs):
         if self.wave is not None:
             wave, wave_edges, _ = self.get_wave()
             spec.apply_resampler(self.wave_resampler, wave, wave_edges)
+
+            if self.wave_lin or self.wave_log:
+                spec.is_wave_regular = True
+                spec.is_wave_lin = self.wave_lin
+                spec.is_wave_log = self.wave_log
 
     #region Convolution
 

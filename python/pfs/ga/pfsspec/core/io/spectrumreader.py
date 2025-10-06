@@ -1,3 +1,5 @@
+import os
+
 from pfs.ga.pfsspec.core.pfsobject import PfsObject
 
 class SpectrumReader(PfsObject):
@@ -27,3 +29,12 @@ class SpectrumReader(PfsObject):
 
     def read_all(self):
         return [self.read(),]
+
+    def get_filename(self, **params):
+        raise NotImplementedError()
+
+    def prefix_filename(self, fn):
+        return os.path.join(self.path, fn)
+
+    def is_file(self, fn):
+        return os.path.isfile(fn)

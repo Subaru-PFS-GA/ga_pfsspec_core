@@ -61,6 +61,7 @@ class Spectrum(PfsObject):
             self.weight = None
             self.cont = None
             self.cont_fit = None
+            self.line = None                    # Lines only
 
             self.mask_bits = None               # Default mask bits for masking wrong pixels
             self.mask_flags = None              # Dict with meaning of mask bits
@@ -69,6 +70,7 @@ class Spectrum(PfsObject):
             self.is_wave_regular = None
             self.is_wave_lin = None
             self.is_wave_log = None
+            self.is_wave_vacuum = None
 
             self.is_flux_calibrated = None
 
@@ -78,7 +80,7 @@ class Spectrum(PfsObject):
             self.index = orig.index
             self.id = orig.id
 
-            # TODO: move these from the base class
+            # TODO: move these from the base class to a mixin
             self.redshift = orig.redshift
             self.redshift_err = orig.redshift_err
             self.exp_count = orig.exp_count
@@ -107,7 +109,8 @@ class Spectrum(PfsObject):
             self.mask = safe_deep_copy(orig.mask)
             self.weight = safe_deep_copy(orig.weight)
             self.cont = safe_deep_copy(orig.cont)
-            self.cont_fit = orig.cont_fit
+            self.cont_fit = safe_deep_copy(orig.cont_fit)
+            self.line = safe_deep_copy(orig.line)
 
             self.mask_bits = orig.mask_bits
             self.mask_flags = orig.mask_flags
@@ -116,6 +119,7 @@ class Spectrum(PfsObject):
             self.is_wave_regular = orig.is_wave_regular
             self.is_wave_lin = orig.is_wave_lin
             self.is_wave_log = orig.is_wave_log
+            self.is_wave_vacuum = orig.is_wave_vacuum
 
             self.is_flux_calibrated = orig.is_flux_calibrated
 
@@ -324,6 +328,35 @@ class Spectrum(PfsObject):
             self.wave_edges = self.wave_edges / (1 + self.redshift)
         self.redshift = 0.0
 
+    #region Air/Vacuum conversion
+
+    def vac_to_air(self):
+        if self.is_wave_vacuum is not None and not self.is_wave_vacuum:
+            logger.warning("Wavelengths are already in air, not converting.")
+
+        if self.wave is not None:
+            self.wave = Physics.vac_to_air(self.wave)
+        if self.wave_edges is not None:
+            self.wave_edges = Physics.vac_to_air(self.wave_edges)
+
+        self.is_wave_vacuum = False
+
+        self.append_history(f'Wavelengths converted from vacuum to air.')
+
+    def air_to_vac(self):
+        if self.is_wave_vacuum is not None and self.is_wave_vacuum:
+            logger.warning("Wavelengths are already in vacuum, not converting.")
+
+        if self.wave is not None:
+            self.wave = Physics.air_to_vac(self.wave)
+        if self.wave_edges is not None:
+            self.wave_edges = Physics.air_to_vac(self.wave_edges)
+
+        self.is_wave_vacuum = True
+
+        self.append_history(f'Wavelengths converted from air to vacuum.')
+
+    #endregion
     #region Resampling
 
     def apply_resampler_impl(self, resampler):
@@ -331,14 +364,15 @@ class Spectrum(PfsObject):
 
         self.flux, self.flux_err, mask = resampler.resample_flux(self.wave, self.wave_edges, self.flux, self.flux_err)
         self.flux_sky, _, _ = resampler.resample_flux(self.wave, self.wave_edges, self.flux_sky)
+        self.flux_model, _, _ = resampler.resample_flux(self.wave, self.wave_edges, self.flux_model)
         self.cont, _, _ = resampler.resample_flux(self.wave, self.wave_edges, self.cont)
         self.cont_fit, _, _ = resampler.resample_flux(self.wave, self.wave_edges, self.cont_fit)
-
-        # TODO: flux_calibration
-        #       flux_model
+        self.line, _, _ = resampler.resample_flux(self.wave, self.wave_edges, self.line)
         
         self.mask = resampler.resample_mask(self.wave, self.wave_edges, self.mask)
         self.weight = resampler.resample_weight(self.wave, self.wave_edges, self.weight)
+
+        # TODO: resample flux covariance matrix if present
 
         return mask
 
@@ -620,6 +654,12 @@ class Spectrum(PfsObject):
         if self.flux_err is not None:
             error.append(self.flux_err[idx])
 
+        if self.flux_model is not None:
+            flux.append(self.flux_model[idx])
+
+        if self.line is not None:
+            flux.append(self.line[idx])
+
         if isinstance(psf, Psf):
             w, flux, error, shift = psf.convolve(wave, values=flux, errors=error, size=size, normalize=True)
             s = np.s_[shift:wave.shape[0] - shift]
@@ -632,6 +672,12 @@ class Spectrum(PfsObject):
         
         if self.flux_err is not None:
             self.flux_err = set_array(self.flux_err, error.pop(0))
+
+        if self.flux_model is not None:
+            self.flux_model = set_array(self.flux_model, flux.pop(0))
+
+        if self.line is not None:
+            self.line = set_array(self.line, flux.pop(0))
 
         # TODO: try to estimate the resolution or give name to PSF to be able to distinguish
         self.append_history(f'Convolved with PSF of type `{type(psf).__name__}` with width of {2 * shift + 1}.')

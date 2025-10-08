@@ -300,11 +300,7 @@ class ArrayGrid(Grid):
         return ii
 
     def has_value_index(self, name):
-        if self.preload_arrays or self.mmap_arrays:
-            return self.value_indexes is not None and \
-                   name in self.value_indexes and self.value_indexes[name] is not None
-        else:
-            return name in self.value_indexes and self.has_item(self.get_index_path(name))
+        return name in self.value_indexes and self.has_item(self.get_index_path(name))
 
     def get_value_index(self, name, s=None):
         if self.has_value_index(name):
@@ -347,12 +343,7 @@ class ArrayGrid(Grid):
             return super(ArrayGrid, self).get_compression(name, shape, s=s)
 
     def has_value(self, name):
-        if self.preload_arrays or self.mmap_arrays:
-            return name in self.values and self.values[name] is not None and \
-                   name in self.value_indexes and self.value_indexes[name] is not None
-        else:
-            return name in self.values and self.has_item(self.get_value_path(name)) and \
-                   name in self.value_indexes and self.value_indexes[name] is not None
+        return name in self.values
 
     def has_error(self, name):
         return False
@@ -389,13 +380,13 @@ class ArrayGrid(Grid):
         if self.has_value_index(name):
             if valid is None:
                 valid = self.is_value_valid(name, value)
-            if self.preload_arrays or self.mmap_arrays:
+            if self.value_indexes[name] is not None:
                 self.value_indexes[name][idx] = valid
             else:
                 self.save_item(self.get_index_path(name), np.array(valid), s=idx)
 
         idx = Grid.rectify_index(idx, s)
-        if self.preload_arrays or self.mmap_arrays:
+        if self.values[name] is not None:
             self.values[name][idx] = value
         else:
             self.save_item(self.get_value_path(name), value, idx)
@@ -447,7 +438,7 @@ class ArrayGrid(Grid):
         
         if self.has_value_at(name, idx):
             idx = Grid.rectify_index(idx, s)
-            if self.preload_arrays or self.mmap_arrays:
+            if self.values[name] is not None:
                 v = np.array(self.values[name][idx], copy=True)
             else:
                 self.ensure_lazy_load()
@@ -751,7 +742,7 @@ class ArrayGrid(Grid):
             return None
 
         idx = Grid.rectify_index(idx, s)
-        if self.preload_arrays or self.mmap_arrays:
+        if self.values[name] is not None:
             value = np.array(self.values[name][idx][valid_value], copy=True)
         else:
             self.ensure_lazy_load()

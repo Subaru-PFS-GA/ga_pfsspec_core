@@ -261,12 +261,13 @@ class PfsObject():
 
         raise NotImplementedError()
 
-    def allocate_item(self, name, shape, dtype=float):
+    def allocate_item(self, name, path, shape, dtype=float):
         """
         Allocates the storage space for a data item. Preallocation is supported
         in HDF5 only.
 
-        :param name: Name or path of the data item.
+        :param name: Name of the array.
+        :param path: Path of the dataset within the file.
         :param shape: Array shape.
         :param dtype: Array base type.
         """
@@ -276,9 +277,15 @@ class PfsObject():
 
         if self.fileformat == 'h5':
             with h5py.File(self.filename, 'a') as f:
-                if name not in f.keys():
+                if path not in f.keys():
                     chunks = self.get_chunk_shape(name, shape, None)
-                    return f.create_dataset(name, shape=shape, dtype=dtype, chunks=chunks)
+                    compression = self.get_compression(name, shape, None)
+                    return f.create_dataset(
+                        path,
+                        shape=shape,
+                        dtype=dtype,
+                        chunks=chunks,
+                        compression=compression)
 
     def save_item(self, name, item, s=None, min_string_length=None):
         """
@@ -408,6 +415,9 @@ class PfsObject():
             return tuple(chunks)
         else:
             return None
+
+    def get_compression(self, name, shape, s=None):
+        return None
 
     def load(self, filename, s=None, format=None, load_items_func=None):
         """
@@ -582,7 +592,7 @@ class PfsObject():
                         output_shape = ()          # output shape
                         idx_shape = None           # shape of the index array
                         for i in range(len(s)):
-                            if isinstance(s[i], (np.int32, np.int64)):
+                            if isinstance(s[i], (int, np.int32, np.int64)):
                                 output_shape = output_shape + (1,)
                             elif isinstance(s[i], np.ndarray):
                                 output_shape = output_shape + s[i].shape

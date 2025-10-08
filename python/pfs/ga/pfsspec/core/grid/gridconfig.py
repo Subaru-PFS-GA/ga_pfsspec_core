@@ -64,3 +64,16 @@ class GridConfig():
         """
         
         return None
+
+    def get_compression(self, grid, name, shape, s=None):
+        """
+        When implemented in derived classes, it returns a compression method
+        for a particular value array identified by name.
+
+        :param grid: Reference to the grid.
+        :param name: Name of the value array.
+        :param shape: Shape of the value array.
+        :param s: Optional slicing (reserved, not used)
+        """
+        
+        return None

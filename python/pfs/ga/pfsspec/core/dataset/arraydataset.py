@@ -174,7 +174,7 @@ class ArrayDataset(Dataset):
 
                 logger.debug('Initializing data file for dataset value array "{}" of size {}...'.format(name, full_shape))
                 if not self.has_item(self.get_value_path(name)):
-                    self.allocate_item(self.get_value_path(name), full_shape, dtype=dtype)
+                    self.allocate_item(name, self.get_value_path(name), full_shape, dtype=dtype)
                 logger.debug('Skipped memory initialization for dataset value array "{}". Will read random slices from storage.'.format(name))
 
     def allocate_value(self, name, shape=None, dtype=None, **kwargs):
@@ -287,7 +287,7 @@ class ArrayDataset(Dataset):
                 else:
                     shape = self.get_value_shape(name)
                     logger.info('Allocating dataset value array "{}" with size {}...'.format(name, shape))
-                    self.allocate_item(self.get_value_path(name), shape, self.value_dtypes[name])
+                    self.allocate_item(name, self.get_value_path(name), shape, self.value_dtypes[name])
                     logger.info('Allocated dataset value array "{}" with size {}. Will write directly to storage.'.format(name, shape))
 
     #endregion

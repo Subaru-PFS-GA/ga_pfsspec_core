@@ -75,8 +75,8 @@ class RbfGrid(Grid):
             else:
                 self.values[name] = None
                 logger.info('Initializing data file for RBF "{}" of size {}...'.format(name, valueshape))
-                if not self.has_item(name):
-                    self.allocate_item(name, valueshape, dtype=float)
+                if not self.has_item(self.get_value_path(name)):
+                    self.allocate_item(name, self.get_value_path(name), valueshape, dtype=float)
                 logger.info('Skipped memory initialization for RBF "{}". Will read random slices from storage.'.format(name))
 
     def allocate_value(self, name, shape=None):

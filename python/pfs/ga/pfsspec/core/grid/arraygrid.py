@@ -128,7 +128,10 @@ class ArrayGrid(Grid):
         return shape
 
     # TODO: add support for dtype
-    def init_value(self, name, shape=None, **kwargs):
+    def init_value(self, name, shape=None, dtype=None, **kwargs):
+        
+        dtype = dtype if dtype is not None else float
+        
         if shape is None:
             self.values[name] = None
             self.value_shapes[name] = None
@@ -155,14 +158,14 @@ class ArrayGrid(Grid):
                 self.value_indexes[name] = None
                 logger.info('Initializing data file for grid "{}" of size {}...'.format(name, value_shape))
                 if not self.has_item(self.get_value_path(name)):
-                    self.allocate_item(self.get_value_path(name), value_shape, dtype=float)
-                    self.allocate_item(self.get_index_path(name), grid_shape, dtype=bool)
+                    self.allocate_item(name, self.get_value_path(name), value_shape, dtype=dtype)
+                    self.allocate_item(f'{name}_index', self.get_index_path(name), grid_shape, dtype=bool)
                 logger.info('Skipped memory initialization for grid "{}". Will read random slices from storage.'.format(name))
 
-    def allocate_value(self, name, shape=None):
+    def allocate_value(self, name, shape=None, dtype=float):
         if shape is not None:
             self.value_shapes[name] = shape
-        self.init_value(name, self.value_shapes[name])
+        self.init_value(name, self.value_shapes[name], dtype=dtype)
 
     def is_value_valid(self, name, value):
         if self.config is not None:
@@ -333,9 +336,15 @@ class ArrayGrid(Grid):
 
     def get_chunk_shape(self, name, shape, s=None):
         if self.config is not None:
-            self.config.get_chunk_shape(self, name, shape, s=s)
+            return self.config.get_chunk_shape(self, name, shape, s=s)
         else:
-            super(ArrayGrid, self).get_chunk_shape(name, shape, s=s)
+            return super(ArrayGrid, self).get_chunk_shape(name, shape, s=s)
+
+    def get_compression(self, name, shape, s=None):
+        if self.config is not None:
+            return self.config.get_compression(self, name, shape, s=s)
+        else:
+            return super(ArrayGrid, self).get_compression(name, shape, s=s)
 
     def has_value(self, name):
         if self.preload_arrays or self.mmap_arrays:
@@ -489,7 +498,7 @@ class ArrayGrid(Grid):
                 else:
                     shape = self.get_value_shape(name)
                     logger.debug('Allocating grid "{}" with size {}...'.format(name, shape))
-                    self.allocate_item(self.get_value_path(name), shape, float)
+                    self.allocate_item(name, self.get_value_path(name), shape, float)
                     logger.debug('Allocated grid "{}" with size {}. Will write directly to storage.'.format(name, shape))
 
     def load_values(self, s=None):

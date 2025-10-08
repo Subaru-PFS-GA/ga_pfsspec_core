@@ -15,12 +15,16 @@ class GridReader(Importer):
         if not isinstance(orig, GridReader):
             self.args = None
             self.preload_arrays = False
+            self.chunking = 'none'
+            self.compression = 'none'
 
             self.path = None
             self.grid = grid
         else:
             self.args = orig.args
             self.preload_arrays = orig.preload_arrays
+            self.chunking = orig.chunking
+            self.compression = orig.compression
 
             self.path = orig.path
             self.grid = grid if grid is not None else orig.grid
@@ -29,11 +33,15 @@ class GridReader(Importer):
         super().add_args(parser, config)
 
         parser.add_argument('--preload-arrays', action='store_true', help='Preload arrays, do not use to save memory\n')
+        parser.add_argument('--chunking', type=str, help='Use chunked storage for arrays, requires HDF5\n')
+        parser.add_argument('--compression', type=str, help='Use compressed storage for arrays, requires HDF5\n')
 
     def init_from_args(self, script, config, args):
         super().init_from_args(script, config, args)
         
         self.preload_arrays = self.get_arg('preload_arrays', self.preload_arrays, args)
+        self.chunking = self.get_arg('chunking', self.chunking, args)
+        self.compression = self.get_arg('compression', self.compression, args)
 
     def create_grid(self):
         raise NotImplementedError()

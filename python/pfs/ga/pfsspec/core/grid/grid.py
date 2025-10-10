@@ -67,6 +67,9 @@ class Grid(PfsObject):
     def get_axis(self, key):
         return self.axes[key]
 
+    def has_axis(self, key):
+        return key in self.axes
+
     @staticmethod
     def enumerate_axes_impl(axes, s=None, squeeze=False):
         """

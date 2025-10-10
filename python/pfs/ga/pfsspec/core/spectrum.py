@@ -390,6 +390,24 @@ class Spectrum(PfsObject):
 
     #endregion
 
+    def apply_extinction(self, curve, ebv):
+        """
+        Apply an extinction curve to the spectrum.
+        The curve is in units of magnitudes per unit E(B-V).
+        """
+        
+        ext = 10 ** (-0.4 * curve * ebv)
+
+        self.flux = ext * self.flux
+        if self.flux_err is not None:
+            self.flux_err = ext * self.flux_err
+        if self.flux_sky is not None:
+            self.flux_sky = ext * self.flux_sky
+        if self.cont is not None:
+            self.cont = ext * self.cont
+
+        self.append_history(f'Applied extinction with E(B-V)={ebv}.')
+
     def trim_wave(self, wlim):
         """
         Trim wavelength to be between limits

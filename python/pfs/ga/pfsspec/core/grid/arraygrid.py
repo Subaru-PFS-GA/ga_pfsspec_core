@@ -512,12 +512,21 @@ class ArrayGrid(Grid):
                     self.value_shapes[name] = self.values[name].shape[len(grid_shape):]
                     logger.debug(f'Loaded grid `{path}` of size {self.value_shapes[name]} from file `{self.filename}`.')
             elif self.mmap_arrays:
-                # When mmap'ing, we simply ignore the slice
+                # When mmap'ing, we simply ignore the slice. When mmapping is not supported,
+                # skip to lazy-loading
                 logger.debug(f'Memory mapping grid `{path}` from file `{self.filename}`.')
-                self.values[name] = self.load_item(path, np.ndarray, mmap=True)
+                self.values[name] = self.load_item(path, np.ndarray, mmap=True, skip_mmap=False)
                 if self.values[name] is not None:
                     self.value_shapes[name] = self.values[name].shape[len(grid_shape):]
                     logger.debug(f'Memory mapped grid `{path}` of size {self.value_shapes[name]} from file `{self.filename}`.')
+                else:
+                    shape = self.get_item_shape(path)    
+                    if shape is not None:
+                        self.value_shapes[name] = shape[len(grid_shape):]
+                    else:
+                        self.value_shapes[name] = None
+
+                    logger.debug(f'Skipped loading grid `{path}` from `{self.filename}`. Will read directly from storage.')
             else:
                 # When lazy-loading, we simply ignore the slice
                 shape = self.get_item_shape(path)

@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.integrate import trapezoid
 
 class Physics():
     h = 6.62607015e-34  # J s
@@ -140,3 +141,10 @@ class Physics():
         t = 10 ** log_T_eff                     # T_eff from isochrone is in log(teff)
         radius = np.sqrt(l / (4 * np.pi * sb * t**4))
         return radius                           # radius in cm
+
+    @staticmethod
+    def synth_flux_lam(wave, flux, thru):
+        num = trapezoid(flux * thru * wave, wave)
+        den = trapezoid(thru / wave, wave)
+        flux = num / den / Physics.c
+        return flux

@@ -56,7 +56,6 @@ class CornerPlot():
                 ax = self.__diagram_page.add_diagram((j, i), d)
                 self.__ax[(i, j)] = ax
 
-
     def update_limits(self, i, limits):
         """
         When generating multiple subplots, keep track of data min and max (or quantiles).
@@ -73,6 +72,33 @@ class CornerPlot():
         for d in self.__diagrams.values():
             if d is not None:
                 d.apply()
+
+        for i, iaxis in enumerate(self.__diagram_axes):
+            for j, jaxis in enumerate(self.__diagram_axes):
+                if (i, j) in self.__ax:
+                    ax = self.__ax[(i, j)]
+
+                    if i == j:
+                        # Move the y-labels to the right side
+                        ax.yaxis.set_label_position("right")
+                        ax.yaxis.tick_right()
+
+                        # Turn off the x-labels for all but the bottom plot
+                        if i < len(self.__diagram_axes) - 1:
+                            ax.set_xticklabels([])
+                            ax.set_xlabel(None)
+                    else:
+                        # Turn off labels for inner plots
+                        if i > 0:
+                            ax.set_yticklabels([])
+                            ax.set_ylabel(None)
+
+                        if j < len(self.__diagram_axes) - 1:
+                            ax.set_xticklabels([])
+                            ax.set_xlabel(None)
+
+                    # Turn on ticks on on all four axes and move them the inside
+                    ax.tick_params(axis='both', which='both', direction='in', top=True, right=True, left=True, bottom=True)
 
         self.__diagram_page.apply()
 
@@ -185,6 +211,8 @@ class CornerPlot():
             d.plot_prior(param_prior, param_bounds, param_0, param_step, 
                          normalize=normalize, auto_limits=False,
                          **kwargs)
+
+        self.apply()
 
     def print_parameters(self, *args, **kwargs):
         # Print the parameters along the diagonal

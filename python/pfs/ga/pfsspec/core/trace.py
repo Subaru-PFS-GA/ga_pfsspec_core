@@ -47,6 +47,7 @@ class Trace():
         pass
 
     def init_from_args(self, script, config, args):
+        # TODO: handle more arguments here if necessary
         self.plot_level = get_arg('plot_level', self.plot_level, args)
 
     def inc_counter(self, key):
@@ -67,7 +68,8 @@ class Trace():
 
     def get_diagram_page(self, key, npages=1, nrows=1, ncols=1, 
                          title=None,
-                         page_size=None, diagram_size=None):
+                         page_size=None, diagram_size=None,
+                         margins=None, gutters=None):
         
         # Substitute tokens
         key = key.format(id=self.id)
@@ -78,7 +80,8 @@ class Trace():
         else:
             f = DiagramPage(npages, nrows, ncols,
                             title=title,
-                            page_size=page_size, diagram_size=diagram_size)
+                            page_size=page_size, diagram_size=diagram_size,
+                            margins=margins, gutters=gutters)
             self.diagram_pages[key] = f
             return f
         

@@ -461,6 +461,7 @@ class SpectrumPlot(Diagram):
         if normalize_cont and cont is not None:
             flux = flux / cont
             flux_err = flux_err / cont if flux_err is not None else None
+            model = model / cont if model is not None else None
 
         wave_mask = self._get_wave_mask(spectrum, wlim)
         l = self._plot_spectrum(wave,

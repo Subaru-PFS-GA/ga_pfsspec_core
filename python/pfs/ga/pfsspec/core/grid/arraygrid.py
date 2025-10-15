@@ -429,12 +429,15 @@ class ArrayGrid(Grid):
         to it. The `raw` parameter has no effect in case of array grids.
         """
 
+        idx = Grid.rectify_index(idx)
+
         if self.value_cache is not None:
             cache_key = cache_key_prefix + (name, idx, s, raw, squeeze)
             if self.value_cache.is_cached(cache_key):
+                logger.trace(f'Value at {idx} found in cache.')
                 return self.value_cache.get(cache_key)
 
-        idx = Grid.rectify_index(idx)
+        logger.trace(f'Loading grid value at {idx}.')
         
         if self.has_value_at(name, idx):
             idx = Grid.rectify_index(idx, s)
@@ -607,6 +610,9 @@ class ArrayGrid(Grid):
     def get_nearby_value_at(self, name, idx1, idx2, s=None, raw=None, pre_process=None, cache_key_prefix=(), squeeze=False):
         # TODO: implement multi-value version
 
+        idx1 = Grid.rectify_index(idx1)
+        idx2 = Grid.rectify_index(idx2)
+
         if self.value_cache is not None:
             # TODO: do we want the post process function in the cache key?
             cache_key = cache_key_prefix + (name, idx1, idx2, s, raw, pre_process, squeeze)
@@ -696,13 +702,14 @@ class ArrayGrid(Grid):
         
         logger.trace('Interpolating values to {} using linead Nd.'.format(kwargs))
         
-        # Perform the 1d interpolations along each axis
+        # Perform the 1d interpolations along each dimension
         for d in range(dim):
             x0 = xx[d][0]
             x1 = xx[d][1]
             
             if (x1 != x0):
-                v = v[0] + (v[1] - v[0]) / (x1 - x0) * (x[d] - x0)
+                p = (x[d] - x0) / (x1 - x0)
+                v = (1 - p) * v[0] + p * v[1]
             else:
                 v = v[0]
 

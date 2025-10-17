@@ -2,8 +2,18 @@ import numpy as np
 from scipy.integrate import trapezoid
 
 class Physics():
+    """
+    Class containing physical constants and utility functions.
+    
+    Some default units:
+    - wavelength: angstrom
+    - flam: flux density per unit wavelength: erg/s/cm^2/Angstrom
+    - fnu: flux density per unit frequency: erg/s/cm^2/Hz
+    """
+
+
     h = 6.62607015e-34  # J s
-    c = 299792458  # m/s
+    c = 299792458       # m/s
     k_B = 1.380649e-23  # J/K
 
     HYDROGEN_LIMITS = [3646.0, 8203.6, 14584]                   # all numbers in air
@@ -47,7 +57,7 @@ class Physics():
     def fnu_to_flam(wave, fnu):
         # ergs/cm**2/s/Hz to erg/s/cm^2/A
         if wave is not None and fnu is not None:
-            flam = fnu / (3.336e-19 * wave**2)
+            flam = fnu / (3.336e-19 * wave**2)          # 1/c 1e-10
             return flam
         else:
             return None
@@ -56,7 +66,7 @@ class Physics():
     def flam_to_fnu(wave, flam):
         # erg/s/cm^2/A to ergs/cm**2/s/Hz
         if wave is not None and flam is not None:
-            fnu = flam * 3.336e-19 * wave**2
+            fnu = flam * 3.336e-19 * wave**2            # 1/c 1e-10
             return fnu
         else:
             return None
@@ -143,8 +153,18 @@ class Physics():
         return radius                           # radius in cm
 
     @staticmethod
-    def synth_flux_lam(wave, flux, thru):
+    def synth_flux_from_flam(wave, flux, thru):
+        """
+        Calculate the synthetic flux in a filter from flux per unit wavelength.
+
+        This is the flux that goes into the AB magnitude calculation.
+        """
+
         num = trapezoid(flux * thru * wave, wave)
         den = trapezoid(thru / wave, wave)
-        flux = num / den / Physics.c
+        flux = num / den / Physics.c * 1e-10    # erg/s/cm^2/Hz
         return flux
+
+    @staticmethod
+    def synth_flux_from_fnu(wave, flux, thru):
+        raise NotImplementedError()

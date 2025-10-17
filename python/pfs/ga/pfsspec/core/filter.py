@@ -88,7 +88,7 @@ class Filter(PfsObject):
         if self.ip is None:
             self.ip = interp1d(self.wave, self.thru, kind='linear', bounds_error=False, fill_value=0.0)
     
-    def synth_flux(self, wave, flux):
+    def synth_flux(self, wave, flux, flux_err=None, wave_edges=None):
         """
         Integrate the flux through the filter. Assume that we have flux density
         per unit wavelength and we are calculating AB magnitudes.
@@ -106,6 +106,9 @@ class Filter(PfsObject):
             Integrated flux through the filter.
         """
 
+        # TODO: use flux_err and wave_edges if provided
+
         self.interpolate()
-        flux = Physics.synth_flux_lam(wave, flux, self.ip(wave))
-        return flux
+        flux = Physics.synth_flux_from_flam(wave, flux, self.ip(wave))
+        flux_err = None  # Not implemented
+        return flux, flux_err

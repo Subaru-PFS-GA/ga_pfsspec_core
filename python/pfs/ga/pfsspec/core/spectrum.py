@@ -516,7 +516,7 @@ class Spectrum(PfsObject):
 
     def normalize_to_mag(self, filt, mag):
         try:
-            m = self.synthmag(filt)
+            m = self.synth_mag(filt)
         except Exception as ex:
             print('flux max', np.max(self.flux))
             print('mag', mag)
@@ -580,39 +580,17 @@ class Spectrum(PfsObject):
         extval = extval or self.ext
         self.redden(-extval)
 
-    def synthflux(self, filter):
-        try:
-            if 'pysynphot' not in globals():
-                import pysynphot
-                import pysynphot.binning
-                import pysynphot.spectrum
-                import pysynphot.reddening
-        except ModuleNotFoundError as ex:
-            logger.warning(ex.msg)
-            pysynphot = None
+    def synth_flux(self, filter):
+        wave, wave_edges = self.wave_in_unit('AA')
+        flux, flux_err = self.flux_in_unit('flam')
+        synth_flux, synth_flux_err = filter.synth_flux(wave, flux, flux_err=flux_err, wave_edges=wave_edges)
+        return synth_flux, synth_flux_err
 
-
-        # TODO: Calculate error from error array?
-
-        filt = pysynphot.spectrum.ArraySpectralElement(filter.wave, filter.thru, waveunits='angstrom')
-        spec = pysynphot.spectrum.ArraySourceSpectrum(wave=self.wave, flux=self.flux, keepneg=True, fluxunits='flam')
-        
-        # Binning of the filter should be the same as the spectrum but trimmed
-        # to the coverage of the spectrum.
-        # Setting binset manually will supress the warning from pysynphot
-        mask = (filt.wave.min() <= spec.wave) & (spec.wave <= filt.wave.max())
-        filt.binset = spec.wave[mask]
-
-        try:
-            obs = pysynphot.observation.Observation(spec, filt)
-            return obs.effstim('Jy')
-        except Exception as ex:
-            logger.warning(f'Synthetic flux in filter `{filter.name}` turned out to be negative.')
-            return np.nan
-
-    def synthmag(self, filter, norm=1.0):
-        flux = norm * self.synthflux(filter)
-        return -2.5 * np.log10(flux) + 8.90
+    def synth_mag(self, filter, norm=1.0):
+        # TODO: calculate error
+        fnu, fnu_err = self.synth_flux(filter)
+        mag = Physics.fnu_to_abmag(norm * fnu)
+        return mag
 
     def get_wlim_slice(self, wlim, buffer=None):
         if wlim is not None:
@@ -813,15 +791,15 @@ class Spectrum(PfsObject):
 
         if flux is None:
             return None
-        elif unit == 'erg s-1 cm-2 A-1':
+        elif unit in [ 'flam', 'erg s-1 cm-2 A-1' ]:
             return flux
-        elif unit in ['nJy', 'Jy', 'erg s-1 cm-2 Hz-1']:
+        elif unit in [ 'fnu', 'nJy', 'Jy', 'erg s-1 cm-2 Hz-1']:
             flux = Physics.flam_to_fnu(wave, flux)
             if unit == 'nJy':
                 return conv(1e32, flux)
             elif unit == 'Jy':
                 return conv(1e23, flux)
-            elif unit == 'erg s-1 cm-2 Hz-1':
+            elif unit == 'fnu' or unit == 'erg s-1 cm-2 Hz-1':
                 return flux
         else:
             raise NotImplementedError()

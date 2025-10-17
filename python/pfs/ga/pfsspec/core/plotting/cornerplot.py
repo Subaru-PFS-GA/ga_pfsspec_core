@@ -179,7 +179,7 @@ class CornerPlot():
         ax.add_patch(ellipse)
         return ellipse
 
-    def plot_covariance(self, mu, cov, sigma=None, **kwargs):
+    def plot_covariance(self, mu, cov, idx, sigma=None, **kwargs):
         # Plot the projections of a covariance matrix
 
         if sigma is None:
@@ -187,12 +187,12 @@ class CornerPlot():
         elif not isinstance(sigma, Iterable):
             sigma = [ sigma ]
 
-        for i, iaxis in enumerate(self.__diagram_axes):
-            for j, jaxis in enumerate(self.__diagram_axes):
-                if i < j:
-                    d = self.__diagrams[(i, j)]
-                    ax = self.__ax[(i, j)]
-                    
+        for i, iaxis in enumerate(idx):
+            for j, jaxis in enumerate(idx):
+                if iaxis < jaxis:
+                    d = self.__diagrams[(iaxis, jaxis)]
+                    ax = self.__ax[(iaxis, jaxis)]
+
                     pmu, pcov = self.__proj_cov(mu, cov, [i, j])
 
                     for s in sigma:

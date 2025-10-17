@@ -38,5 +38,8 @@ class Snr():
             else:                
                 mask = (s > 0.0)
 
-            return self.get_snr_impl(v, s, mask)
+            if mask.sum() == 0:
+                return np.nan
+            else:
+                return self.get_snr_impl(v, s, mask)
 

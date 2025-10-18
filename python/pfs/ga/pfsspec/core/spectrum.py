@@ -3,6 +3,7 @@ import numbers
 import collections
 import matplotlib.pyplot as plt
 import logging
+import extinction
 
 from pfs.ga.pfsspec.core.history import History
 from pfs.ga.pfsspec.core.util.copy import *
@@ -554,28 +555,29 @@ class Spectrum(PfsObject):
             self.append_history(f'S/N calculated to be {self.snr} using method `{type(snr).__name__}`')
 
         return self.snr
-        
-    def redden(self, extval=None):
-        if 'pysynphot' not in globals():
-            try:    
-                import pysynphot
-                import pysynphot.binning
-                import pysynphot.spectrum
-                import pysynphot.reddening
-            except ModuleNotFoundError as ex:
-                logger.warning(ex.msg)
-                pysynphot = None
 
+    def redden(self, extval=None, R_V=3.1):
         extval = extval or self.ext
         self.ext = extval
-        
-        spec = pysynphot.spectrum.ArraySourceSpectrum(wave=self.wave, flux=self.flux, keepneg=True)
-        # Cardelli, Clayton, & Mathis (1989, ApJ, 345, 245) R_V = 3.10.
-        obs = spec * pysynphot.reddening.Extinction(extval, 'mwavg')
-        self.flux = obs.flux
+
+        if extval is None:
+            return
+
+        # Use Cardelli, Clayton, & Mathis (1989)
+        A_V = extval * R_V  # extinction.ccm89 expects A(V)
+        A_lambda = extinction.ccm89(self.wave, A_V, R_V)
+
+        factor = 10.0 ** (-0.4 * A_lambda)
+
+        if self.flux is not None:
+            self.flux = factor * self.flux
+        if self.flux_err is not None:
+            self.flux_err = factor * self.flux_err
+        if self.cont is not None:
+            self.cont = factor * self.cont
 
         self.append_history(f'Applied reddening of {extval} using `mwavg`.')
-
+        
     def deredden(self, extval=None):
         extval = extval or self.ext
         self.redden(-extval)

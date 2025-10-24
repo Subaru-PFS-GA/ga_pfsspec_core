@@ -199,7 +199,10 @@ class SpectrumStacker():
             
             # Give zero weight to masked pixels
             if self.mask_exclude_bits is not None:
-                weight[(mask & self.mask_exclude_bits) != 0] = 0
+                if mask.dtype == bool:
+                    weight[mask] = 0
+                else:
+                    weight[(mask & self.mask_exclude_bits) != 0] = 0
             
             # TODO: add trace hook
 
@@ -209,12 +212,18 @@ class SpectrumStacker():
             if has_sky:
                 stacked_flux_sky[wave_mask] = stacked_flux_sky[wave_mask] + np.where(resampler_mask, flux_sky, 0.0)
             
-            # Only consider that part of the mask where the flux could be calculated
+            # Only consider that part of the mask where the flux could be calculated and the weight is non-zero
+            weight_mask = np.isfinite(weight) & (weight > 0)
+
             # Resampler_mask is True for the pixels where the flux could be calculated by the interpolator
+            
             if mask.dtype == bool:
-                stacked_mask[wave_mask] = stacked_mask[wave_mask] | np.where(resampler_mask, mask, False)
+                mask_update = np.where(resampler_mask, mask, False)
             else:
-                stacked_mask[wave_mask] = stacked_mask[wave_mask] | np.where(resampler_mask, mask, self.mask_no_data_bit)
+                mask_update = np.where(resampler_mask, mask, self.mask_no_data_bit)
+
+            # TODO: some mask bits may need to be &-ed instead of |-d
+            stacked_mask[wave_mask] = np.where(weight_mask, stacked_mask[wave_mask] | mask_update, stacked_mask[wave_mask])
 
         # TODO: add trace hook
 

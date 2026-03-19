@@ -34,18 +34,20 @@ class Astro():
         return t.datetime
     
     @staticmethod
-    def __normalize_coord_time_obs(ra, dec, mjd, observatory=None):
-        observatory = observatory if observatory is not None else 'Subaru'
-        if isinstance(observatory, str):
-            observatory = EarthLocation.of_site(observatory)
+    def __normalize_coord_time_obs(ra, dec, mjd=None, time=None, location=None):
+        location = location if location is not None else 'Subaru'
+        if isinstance(location, str):
+            location = EarthLocation.of_site(location)
 
         coord = SkyCoord(ra=ra, dec=dec, unit='deg')
-        time = Time(mjd, format='mjd')
 
-        return coord, time, observatory
+        if mjd is not None:
+            time = Time(mjd, format='mjd')
+
+        return coord, time, location
     
     @staticmethod
-    def radec_to_altaz(ra, dec, mjd, observatory=None):
+    def radec_to_altaz(ra, dec, mjd=None, time=None, location=None):
         """
         Converts RA, Dec to Alt, Az.
 
@@ -53,24 +55,25 @@ class Astro():
             ra (float): The RA in degrees.
             deg (float): The Dec in degrees.
             mjd (float): The Modified Julian Date.
-            observatory (str): The observatory name. Default is Subaru.
+            time (astropy.time.Time): The observation time. If provided, it overrides `mjd`.
+            location (astropy.coordinates.EarthLocation): The observatory location. Default is Subaru.
 
         Returns:
             tuple: The corresponding (Alt, Az) pair in degrees.
         """
 
-        coord, time, observatory = Astro.__normalize_coord_time_obs(ra, dec, mjd, observatory)
-        altaz = coord.transform_to(AltAz(obstime=time, location=observatory))
+        coord, time, location = Astro.__normalize_coord_time_obs(ra, dec, mjd=mjd, time=time, location=location)
+        altaz = coord.transform_to(AltAz(obstime=time, location=location))
 
         return altaz.alt.deg, altaz.az.deg
             
     @staticmethod
-    def v_corr(kind, ra, dec, mjd, observatory=None):
+    def v_corr(kind, ra, dec, mjd=None, time=None, location=None):
         # Calculate the barycentric or heliocentric velocity correction
         # Note that the barycentric correction is calculated using the optical
         # convention as v_corr = z * c so corrections to already determined
         # velocities should be calculated as v = v_obs + v_corr + v_obs * v_corr / c
 
-        coord, time, observatory = Astro.__normalize_coord_time_obs(ra, dec, mjd, observatory)
-        v_corr = coord.radial_velocity_correction(kind, obstime=time, location=observatory)
+        coord, time, location = Astro.__normalize_coord_time_obs(ra, dec, mjd=mjd, time=time, location=location)
+        v_corr = coord.radial_velocity_correction(kind, obstime=time, location=location)
         return v_corr.to(u.km / u.s).value

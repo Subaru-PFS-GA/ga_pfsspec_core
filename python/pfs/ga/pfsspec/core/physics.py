@@ -1,6 +1,8 @@
 import numpy as np
 from scipy.integrate import trapezoid
 
+MISSING = object()
+
 class Physics():
     """
     Class containing physical constants and utility functions.
@@ -40,11 +42,21 @@ class Physics():
             return None
     
     @staticmethod
-    def jy_to_abmag(flux):
+    def jy_to_abmag(flux, flux_err=MISSING):
         if flux is not None:
-            return -2.5 * np.log10(flux) + 8.90
+            mag = -2.5 * np.log10(flux) + 8.90
+            if flux_err is not MISSING and flux_err is not None:
+                mag_err = 2.5 / np.log(10) * flux_err / flux
+            else:
+                mag_err = None
         else:
-            return None
+            mag = None
+            mag_err = None
+
+        if flux_err is MISSING:
+            return mag
+        else:
+            return mag, mag_err
     
     @staticmethod
     def abmag_to_jy(mag):

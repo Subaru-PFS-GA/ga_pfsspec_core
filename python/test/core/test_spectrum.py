@@ -1,8 +1,9 @@
 import numpy as np
 import numpy.testing as npt
 
-from test.pfs.ga.pfsspec.core import TestBase
 from pfs.ga.pfsspec.core import Spectrum
+
+from .test_base import TestBase
 
 class TestSpectrum(TestBase):
     # TODO: implement stellar library agnostic tests of basic function

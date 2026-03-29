@@ -2,8 +2,9 @@ import os
 import numpy as np
 import pandas as pd
 
-from test.pfs.ga.pfsspec.core import TestBase
 from pfs.ga.pfsspec.core.obsmod.psf import TabulatedPsf, GaussPsf
+
+from ...test_base import TestBase
 
 class TestGaussPsf(TestBase):
     def test_save(self):

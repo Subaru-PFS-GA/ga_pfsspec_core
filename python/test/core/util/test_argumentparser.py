@@ -1,7 +1,8 @@
 import os
 
-from test.pfs.ga.pfsspec.core import TestBase
 from pfs.ga.pfsspec.core.util.argumentparser import ArgumentParser
+
+from ..test_base import TestBase
 
 class TestArgumentParser(TestBase):
     def test_get_config_files(self):

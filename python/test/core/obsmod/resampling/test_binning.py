@@ -1,8 +1,9 @@
 import numpy as np
 import numpy.testing as npt
 
-from test.pfs.ga.pfsspec.core import TestBase
 from pfs.ga.pfsspec.core.obsmod.resampling import Binning
+
+from ...test_base import TestBase
 
 class TestBinning(TestBase):
     def test_find_wave_edges(self):

@@ -1,9 +1,10 @@
 import numpy as np
 import numpy.testing as npt
 
-from test.pfs.ga.pfsspec.core import TestBase
 from pfs.ga.pfsspec.core.sampling import CompositeDistribution
 from pfs.ga.pfsspec.core.sampling import UniformDistribution, NormalDistribution
+
+from ..test_base import TestBase
 
 class CompositeDistributionTest(TestBase):
 

@@ -3,9 +3,10 @@ import os
 import numpy as np
 import pandas as pd
 
-from test.pfs.ga.pfsspec.core import TestBase
 from pfs.ga.pfsspec.core import PfsObject
 from pfs.ga.pfsspec.core.dataset import SpectrumDataset
+
+from ..test_base import TestBase
 
 class TestSpectrumDataset(TestBase):
     def create_dataset(self, spectrum_count=100, wave_count=6000, constant_wave=True):

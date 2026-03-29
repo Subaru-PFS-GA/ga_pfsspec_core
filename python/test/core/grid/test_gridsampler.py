@@ -4,8 +4,9 @@ import numpy as np
 import pandas as pd
 from numpy.testing import assert_array_equal
 
-from test.pfs.ga.pfsspec.core import TestBase
 from pfs.ga.pfsspec.core.grid import ArrayGrid, GridAxis, GridSampler
+
+from ..test_base import TestBase
 
 class TestArrayGrid(TestBase):
     def create_new_grid(self, preload_arrays=True):

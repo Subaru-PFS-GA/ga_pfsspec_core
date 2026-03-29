@@ -2,8 +2,9 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-from test.pfs.ga.pfsspec.core import TestBase
 from pfs.ga.pfsspec.core.plotting import Diagram
+
+from ..test_base import TestBase
 
 class DiagramTest(TestBase):
 

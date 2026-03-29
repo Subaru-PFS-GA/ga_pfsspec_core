@@ -1,7 +1,8 @@
 import numpy as np
 
-from test.pfs.ga.pfsspec.core import TestBase
 from pfs.ga.pfsspec.core.sampling import LogNormalDistribution
+
+from ..test_base import TestBase
 
 class LogNormalDistributionTest(TestBase):
 

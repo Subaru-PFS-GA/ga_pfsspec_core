@@ -1,7 +1,8 @@
 import numpy as np
 
-from test.pfs.ga.pfsspec.core import TestBase
 from pfs.ga.pfsspec.core.obsmod.resampling.resampler import Resampler
+
+from ...test_base import TestBase
 
 class TestResampler(TestBase):
     def test_find_edges(self):

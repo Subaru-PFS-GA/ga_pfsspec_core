@@ -1,7 +1,8 @@
 import os
 
-from test.pfs.ga.pfsspec.core import TestBase
 from pfs.ga.pfsspec.core.io import SpectrumReader
+
+from ..test_base import TestBase
 
 class TestSpectrumReader(TestBase):
     pass

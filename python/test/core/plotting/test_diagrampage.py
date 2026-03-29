@@ -1,8 +1,9 @@
 import os
 import numpy as np
 
-from test.pfs.ga.pfsspec.core import TestBase
 from pfs.ga.pfsspec.core.plotting import DiagramPage, Diagram
+
+from ..test_base import TestBase
 
 class DiagramPageTest(TestBase):
 

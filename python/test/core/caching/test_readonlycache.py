@@ -1,8 +1,8 @@
 import numpy as np
 
-from test.pfs.ga.pfsspec.core import TestBase
 from pfs.ga.pfsspec.core.caching import ReadOnlyCache
 
+from ..test_base import TestBase
 
 class TestReadOnlyCache(TestBase):
     def test_flush(self):

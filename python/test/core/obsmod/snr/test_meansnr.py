@@ -1,7 +1,8 @@
 import numpy as np
 
-from test.pfs.ga.pfsspec.core import TestBase
 from pfs.ga.pfsspec.core.obsmod.snr import MeanSnr
+
+from ...test_base import TestBase
 
 class MeanSnrTest(TestBase):
 

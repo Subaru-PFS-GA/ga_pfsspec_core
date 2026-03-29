@@ -1,9 +1,10 @@
 import os
 import numpy as np
 
-from test.pfs.ga.pfsspec.core import TestBase
 from pfs.ga.pfsspec.core.util.math import *
 from pfs.ga.pfsspec.core.obsmod.psf import LambdaPsf
+
+from ...test_base import TestBase
 
 class TestLambdaPsf(TestBase):
         

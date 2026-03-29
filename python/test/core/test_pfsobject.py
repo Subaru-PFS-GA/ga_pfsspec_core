@@ -1,7 +1,8 @@
 import os
 
-from test.pfs.ga.pfsspec.core import TestBase
 from pfs.ga.pfsspec.core import PfsObject
+
+from .test_base import TestBase
 
 class JsonTestHelperObject(PfsObject):
     def __init__(self):

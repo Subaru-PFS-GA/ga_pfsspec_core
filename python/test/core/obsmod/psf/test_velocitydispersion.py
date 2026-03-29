@@ -1,8 +1,9 @@
 import os
 import numpy as np
 
-from test.pfs.ga.pfsspec.core import TestBase
 from pfs.ga.pfsspec.core.obsmod.psf import VelocityDispersion
+
+from ...test_base import TestBase
 
 class TestVelocityDispersion(TestBase):
     def test_convolve(self):

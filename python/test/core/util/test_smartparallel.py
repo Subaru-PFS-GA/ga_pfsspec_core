@@ -1,8 +1,9 @@
 import os, sys
 import logging
 
-from test.pfs.ga.pfsspec.core import TestBase
 from pfs.ga.pfsspec.core.util.smartparallel import SmartParallel
+
+from ..test_base import TestBase
 
 class TestSmartParallel(TestBase):
 

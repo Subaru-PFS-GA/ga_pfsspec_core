@@ -1,7 +1,8 @@
 import numpy as np
 
-from test.pfs.ga.pfsspec.core import TestBase
 from pfs.ga.pfsspec.core.obsmod.resampling import Interp1dResampler
+
+from ...test_base import TestBase
 
 class TestInterp1dResampler(TestBase):
 

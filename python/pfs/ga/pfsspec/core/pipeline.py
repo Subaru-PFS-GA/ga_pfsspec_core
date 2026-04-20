@@ -27,10 +27,12 @@ class Pipeline(PfsObject):
                                             # when value, use value to redshift spectrum to
             self.conv = None                # Convolution method
             self.conv_sigma = None          # Gaussian convolution sigma in wavelength units
+            self.conv_fwhm = None           # Gaussian convolution FWHM in wavelength units
             self.conv_resolution = None     # Convolution to a given resolution
             self.conv_gauss = None
 
             self.psf = None                 # PSF to be used for convolution
+            self.psf_initialized = False    # Set to true once the PSF is initialized for the first spectrum
             
             self.wave = None                # When set, resample to this grid
             self.wave_edges = None
@@ -42,7 +44,8 @@ class Pipeline(PfsObject):
             self.wave_align = None          # Align center by default
             self.wave_to_air = False        # When true, convert vacuum to air wavelengths
             self.wave_to_vac = False        # When true, convert air to vacuum wavelengths
-            self.wave_resampler = FluxConservingResampler()
+            
+            self.resampler = FluxConservingResampler()
 
             self.norm = None                # Post process normalization method
             self.norm_wave = None           # Post process normalization wavelength range
@@ -53,10 +56,12 @@ class Pipeline(PfsObject):
             self.redshift = orig.redshift
 
             self.conv_sigma = orig.conv_sigma
+            self.conv_fwhm = orig.conv_fwhm
             self.conv_resolution = orig.conv_resolution
             self.conv_gauss = orig.conv_gauss
 
             self.psf = orig.psf
+            self.psf_initialized = orig.psf_initialized
 
             self.wave = orig.wave
             self.wave_edges = orig.wave_edges
@@ -68,7 +73,8 @@ class Pipeline(PfsObject):
             self.wave_align = orig.wave_align
             self.wave_to_air = orig.wave_to_air
             self.wave_to_vac = orig.wave_to_vac
-            self.wave_resampler = orig.wave_resampler
+            
+            self.resampler = orig.resampler
             
             self.norm = orig.norm
             self.norm_wave = orig.norm_wave
@@ -78,6 +84,7 @@ class Pipeline(PfsObject):
 
         parser.add_argument('--restframe', action='store_true', help='Convert to rest-frame.\n')
         parser.add_argument('--conv-sigma', type=float, help='Gaussian convolution sigma in AA.\n')
+        parser.add_argument('--conv-fwhm', type=float, help='Gaussian convolution FWHM in AA.\n')
         parser.add_argument('--conv-resolution', type=float, help='Gaussian convolution to resolution.\n')
         parser.add_argument('--conv-gauss', type=str, help='Convolve using a Gauss PSF file.\n')
 
@@ -91,7 +98,8 @@ class Pipeline(PfsObject):
         parser.add_argument('--wave-align', type=str, choices=['edges', 'center'], help='Align edge or center.\n')
         parser.add_argument('--wave-to-air', action='store_true', help='Convert wavelengths to air.\n')
         parser.add_argument('--wave-to-vac', action='store_true', help='Convert wavelengths to vacuum.\n')
-        parser.add_argument('--wave-resampler', type=str, default='rebin', choices=['interp', 'rebin'], help='Flux resampler.\n')
+        
+        parser.add_argument('--resample', type=str, default='rebin', choices=['interp', 'rebin'], help='Flux resampler.\n')
 
         parser.add_argument('--norm', type=str, default=None, help='Normalization method\n')
         parser.add_argument('--norm-wave', type=float, nargs=2, default=[4200, 6500], help='Normalization method\n')
@@ -102,6 +110,7 @@ class Pipeline(PfsObject):
         self.restframe = self.get_arg('restframe', self.restframe, args)
             
         self.conv_sigma = self.get_arg('conv_sigma', self.conv_sigma, args)
+        self.conv_fwhm = self.get_arg('conv_fwhm', self.conv_fwhm, args)
         self.conv_resolution = self.get_arg('conv_resolution', self.conv_resolution, args)
         self.conv_gauss = self.get_arg('conv_gauss', self.conv_gauss, args)
 
@@ -121,11 +130,11 @@ class Pipeline(PfsObject):
         if self.wave is not None:
             self.wave, self.wave_edges, _ = self.get_wave_grid()
 
-        resampler = self.get_arg('wave_resampler', None, args)
+        resampler = self.get_arg('resample', None, args)
         if resampler == 'interp':
-            self.wave_resampler = Interp1dResampler()
+            self.resampler = Interp1dResampler()
         elif resampler == 'rebin' or resampler is None:
-            self.wave_resampler = FluxConservingResampler()
+            self.resampler = FluxConservingResampler()
         else:
             raise NotImplementedError()
         
@@ -256,7 +265,7 @@ class Pipeline(PfsObject):
     def run_step_resample(self, spec, **kwargs):
         if self.wave is not None:
             wave, wave_edges, _ = self.get_wave()
-            spec.apply_resampler(self.wave_resampler, wave, wave_edges)
+            spec.apply_resampler(self.resampler, wave, wave_edges)
 
             if self.wave_lin or self.wave_log:
                 spec.is_wave_regular = True
@@ -267,44 +276,47 @@ class Pipeline(PfsObject):
 
     def init_psf(self, spec):
 
-        # TODO: This is all wrong because the wavelength grid might change
-        #       due to redshifting
-        raise NotImplementedError()
-
-        # Initialize PSF kernel, if not already
-
         # TODO: differentiate based on log-wave binning
 
-        if self.psf is None:
-            if self.conv_sigma is not None:
-                self.psf = GaussPsf(sigma=self.conv_sigma)
-            elif self.conv_resolution is not None:
-                # TODO: create an interpolated gauss kernel to degrade resolution
-                #       take resolution from the spectrum
-                raise NotImplementedError()
-            elif self.conv_gauss is not None:
-                # Load tabulated kernel file from disk
-                psf = GaussPsf(reuse_kernel=False)
-                psf.load(self.conv_gauss, format='h5')
+        if self.conv_sigma is not None:
+            psf = GaussPsf(sigma=self.conv_sigma)
+        elif self.conv_fwhm is not None:
+            sigma = self.conv_fwhm / (2 * np.sqrt(2 * np.log(2)))
+            psf = GaussPsf(sigma=sigma)
+        elif self.conv_resolution is not None:
+            # Create an interpolated gauss kernel to degrade resolution
+            # take resolution from the spectrum
+            def sigma_R(wave, R):
+                fwhm = wave / R
+                return fwhm / (2 * np.sqrt(2 * np.log(2)))
+            wave = self.wave[::100]
+            sigma = sigma_R(wave, self.conv_resolution)
+            psf = GaussPsf(wave=wave, sigma=sigma)
+        elif self.conv_gauss is not None:
+            # Load tabulated kernel file from disk
+            psf = GaussPsf(reuse_kernel=False)
+            psf.load(self.conv_gauss, format='h5')
 
-                # Calculate kernel sigma from target sigma
-                if spec.resolution is not None:
-                    input_dlam = psf.wave / spec.resolution
-                    input_sigma = input_dlam / (2 * np.sqrt(2 * np.log(2)))
-                    # Calculate kernel sigma
-                    psf.sigma = np.sqrt(psf.sigma**2 - input_sigma**2)
-                    psf.init_ip()
+            # Calculate kernel sigma from target sigma
+            if spec.resolution is not None:
+                input_dlam = psf.wave / spec.resolution
+                input_sigma = input_dlam / (2 * np.sqrt(2 * np.log(2)))
+                # Calculate kernel sigma
+                psf.sigma = np.sqrt(psf.sigma**2 - input_sigma**2)
+                psf.init_ip()
 
-                # Precompute PCA for faster convolution
-                # TODO: how do we know that wave is constant?
-                size = psf.get_optimal_size(spec.wave)
-                self.psf = PcaPsf.from_psf(psf, spec.wave, size=size)
+        # Precompute PCA for faster convolution
+        # TODO: how do we know that wave is constant?
+        size = psf.get_optimal_size(spec.wave)
+        self.psf = PcaPsf.from_psf(psf, spec.wave, size=size, truncate=5)
 
     def run_step_convolution(self, spec, **kwargs):
-        if self.psf is not None:
+        if not self.psf_initialized:
             self.init_psf(spec)
+            self.psf_initialized = True
 
-            # Convolve with a PSF
+        # Convolve with a PSF
+        if self.psf is not None:
             spec.convolve_psf(self.psf)
 
     #endregion

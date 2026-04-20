@@ -135,7 +135,10 @@ class Spectrum(PfsObject):
     def append_history(self, msg, log_level=None):
         # Save message to the history and write to the log
 
-        log_level = log_level if log_level is not None else logging.TRACE
+        if log_level is None and hasattr(logging, 'TRACE'):
+            log_level = logging.TRACE
+        else:
+            log_level = logging.DEBUG
 
         self.history.append(msg)
         logger.log(log_level, msg)
@@ -547,7 +550,7 @@ class Spectrum(PfsObject):
     def calculate_snr(self, snr, mask_bits=None):
         mask = self.mask_as_bool(bits=mask_bits)
 
-        if mask.sum() == 0:
+        if mask is not None and mask.sum() == 0:
             self.snr = np.nan
             self.append_history(f'S/N cannot be calculated using method `{type(snr).__name__}` because number of unmasked pixels is zero.', logging.WARNING)
         else:

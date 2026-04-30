@@ -3,6 +3,7 @@ import pandas as pd
 from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit
 
+from ...physics import Physics
 from ...util.copy import safe_deep_copy
 from ...util.math import *
 from .psf import Psf
@@ -94,3 +95,12 @@ class GaussPsf(Psf):
         
         return k
     
+    def apply_template_resolution(self, R):
+        """
+        Reduce the width of the kernel by the resolution of the templates used for fitting.
+        """
+
+        fwhm_template = self.wave / R
+        sigma_template = fwhm_template / (2 * np.sqrt(2 * np.log(2)))
+
+        self.sigma = np.sqrt(self.sigma**2 - sigma_template**2)

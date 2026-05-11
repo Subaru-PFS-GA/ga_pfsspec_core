@@ -228,7 +228,7 @@ class Spectrum(PfsObject):
             m[mask] = True
             return m
         elif isinstance(mask, np.ndarray) and mask.dtype == bool:
-            return mask
+            return mask.copy()
         elif isinstance(mask, np.ndarray) and mask.dtype != bool:
             if bits is not None:
                 return (np.bitwise_and(mask, bits) == 0)
@@ -260,14 +260,12 @@ class Spectrum(PfsObject):
             m[mask] = 0
             return m
         elif mask.dtype == int:
-            return mask
+            return mask.copy()
         else:
             raise NotImplementedError("Unknown mask format")
         
     @staticmethod
     def get_mask_merged(wave, mask1, mask2, bits1=MASK_DEFAULT, bits2=MASK_DEFAULT):
-        mask1 = Spectrum.get_mask_as_int(wave, mask1, bits=bits1)
-        mask2 = Spectrum.get_mask_as_int(wave, mask2, bits=bits2)
 
         if mask1 is None and mask2 is None:
             return None
@@ -276,7 +274,12 @@ class Spectrum(PfsObject):
         elif mask1 is None and mask2 is not None:
             return mask2
         else:
-            return np.bitwise_or(mask1, mask2)
+            if mask1.dtype == bool and mask2.dtype == bool:
+                return mask1 | mask2
+            else:
+                mask1 = Spectrum.get_mask_as_int(wave, mask1, bits=bits1)
+                mask2 = Spectrum.get_mask_as_int(wave, mask2, bits=bits2)
+                return np.bitwise_or(mask1, mask2)
 
     #endregion
         

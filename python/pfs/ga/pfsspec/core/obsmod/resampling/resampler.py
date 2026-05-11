@@ -59,7 +59,7 @@ class Resampler(PfsObject):
         # If the mask is integer, we calculate the bitwise OR of the source pixels
         if mask.dtype == bool:
             mask_idx = np.where(wave_idx, mask, False)
-            target_mask = np.logical_and.reduce(mask_idx, axis=-1)
+            target_mask = np.logical_and.reduce((mask_idx | ~wave_idx), axis=-1)
         else:
             mask_idx = np.where(wave_idx, mask, False)
             target_mask = np.bitwise_or.reduce(mask_idx, axis=-1)
